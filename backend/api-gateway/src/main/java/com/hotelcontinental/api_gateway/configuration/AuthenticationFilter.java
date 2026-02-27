@@ -29,23 +29,22 @@ import java.util.List;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PACKAGE)
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true) // Thêm makeFinal = true để Lombok tạo constructor cho các field này
 public class AuthenticationFilter implements GlobalFilter, Ordered {
     IdentityService identityService;
     ObjectMapper objectMapper;
 
-    @NonFinal
-    private String[] publicEndpoints = {
-            "/identity/auth/.*",
-            "/identity/test/.*",
-            "/identity/users/registration",
-            "/notification/email/send",
-            "/file/media/download/.*"
-    };
-
+    @NonFinal // Đánh dấu field này không final để @Value hoạt động được (vì makeFinal=true sẽ ép tất cả thành final)
     @Value("${app.api-prefix}")
+    String apiPrefix;
+
     @NonFinal
-    private String apiPrefix;
+    String[] publicEndpoints = {
+            "/identity/auth/.*",
+            "/identity/profileExpand/create",
+            "/identity/profileExpand/.*", // Thêm endpoint tạo profile nếu cần
+            "/notification/email/send"
+    };
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {

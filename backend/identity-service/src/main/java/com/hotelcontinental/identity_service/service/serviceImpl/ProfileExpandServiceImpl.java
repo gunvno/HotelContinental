@@ -23,8 +23,13 @@ public class ProfileExpandServiceImpl implements ProfileExpandService {
 
     @Override
     public ProfileExpandResponse createProfileExpand(ProfileExpandCreationRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String userId = auth.getName();
+        String userId = request.getUserId();
+        // Fallback to authenticated user if userId not in request (optional, but good for dual-use)
+        if (userId == null) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            userId = auth.getName();
+        }
+        
         boolean exists = profileExpandRepository.existsById(userId);
         if(!exists) {
             ProfileExpands profileExpand = ProfileExpands.builder()
