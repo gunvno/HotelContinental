@@ -1,0 +1,31 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /notification
+
+spring:
+  application:
+    name: notification-service
+
+  kafka:
+    bootstrap-servers: localhost:9094
+    consumer:
+      group-id: notification-group
+      auto-offset-reset: earliest
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.hotelcontinental.notification_service.event.NotificationEvent
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: longta2004.vtv3@gmail.com
+    password: irnyjvkkgsnmcfyk   # ✅ PASSWORD MỚI
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
