@@ -21,23 +21,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(value = Exception.class)
     ResponseEntity<ApiResponse> handlingRuntimeException(Exception exception) {
         log.error("Exception: ", exception);
-        ApiResponse apiResponse = new ApiResponse();
-
-        apiResponse.setCode(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode());
-        apiResponse.setMessage(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage());
-
-        return ResponseEntity.badRequest().body(apiResponse);
+        return ResponseEntity.badRequest().body(ApiResponse.builder()
+                .code(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
+                .message(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage())
+                .build());
     }
 
     @ExceptionHandler(value = AppException.class)
     ResponseEntity<ApiResponse> handlingAppException(AppException exception) {
         ErrorCode errorCode = exception.getErrorCode();
-        ApiResponse apiResponse = new ApiResponse();
-
-        apiResponse.setCode(errorCode.getCode());
-        apiResponse.setMessage(errorCode.getMessage());
-
-        return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
+        return ResponseEntity.status(errorCode.getStatusCode()).body(ApiResponse.builder()
+            .code(errorCode.getCode())
+            .message(errorCode.getMessage())
+            .build());
     }
 
     @ExceptionHandler(value = AccessDeniedException.class)
@@ -71,15 +67,13 @@ public class GlobalExceptionHandler {
 
         }
 
-        ApiResponse apiResponse = new ApiResponse();
-
-        apiResponse.setCode(errorCode.getCode());
-        apiResponse.setMessage(
+        return ResponseEntity.badRequest().body(ApiResponse.builder()
+            .code(errorCode.getCode())
+            .message(
                 Objects.nonNull(attributes)
-                        ? mapAttribute(errorCode.getMessage(), attributes)
-                        : errorCode.getMessage());
-
-        return ResponseEntity.badRequest().body(apiResponse);
+                    ? mapAttribute(errorCode.getMessage(), attributes)
+                    : errorCode.getMessage())
+            .build());
     }
 
     private String mapAttribute(String message, Map<String, Object> attributes) {

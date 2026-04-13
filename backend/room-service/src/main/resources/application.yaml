@@ -28,3 +28,8 @@ idp:
   url: http://localhost:8180
   client-id: HotelContinentalBackend
   client-secret: 0NnN2ZKjioAFkWuRyjgP0JLE5F8crVFz
+cloudinary:
+  cloud-name: dweslsemq
+  api-key: 489933971286769
+  api-secret: KKuSOQMLU7W-Nl3eJXx-qs9Mb9E
+  folder: hotelcontinental_rooms

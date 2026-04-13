@@ -11,6 +11,8 @@ public enum ErrorCode {
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     FILE_NOT_FOUND(1008, "File not found", HttpStatus.NOT_FOUND),
+    INVALID_FILE_UPLOAD(1009, "Invalid file upload", HttpStatus.BAD_REQUEST),
+    FILE_UPLOAD_FAILED(1010, "File upload failed", HttpStatus.BAD_REQUEST),
 
     ROOM_NOT_FOUND(2001, "Room not found", HttpStatus.NOT_FOUND),
     ROOM_ALREADY_EXISTS(2002, "Room already exists", HttpStatus.BAD_REQUEST),

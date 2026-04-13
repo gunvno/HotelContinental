@@ -30,12 +30,67 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           <Link
             href="/"
             className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname === "/" 
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" 
+              pathname === "/"
+                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
                 : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
             }`}
           >
             <span className="font-medium">Dashboard</span>
+          </Link>
+
+          <Link
+            href="/admin"
+            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
+              pathname === "/admin"
+                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
+                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+          >
+            <span className="font-medium">Danh mục tổng quan</span>
+          </Link>
+
+          <Link
+            href="/admin/room-types"
+            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
+              pathname.startsWith("/admin/room-types")
+                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
+                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+          >
+            <span className="font-medium">Loại phòng</span>
+          </Link>
+
+          <Link
+            href="/admin/amenities"
+            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
+              pathname.startsWith("/admin/amenities")
+                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
+                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+          >
+            <span className="font-medium">Tiện nghi</span>
+          </Link>
+
+          <Link
+            href="/admin/amenity-rooms"
+            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
+              pathname.startsWith("/admin/amenity-rooms")
+                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
+                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+          >
+            <span className="font-medium">Tiện nghi - loại phòng</span>
+          </Link>
+
+          <Link
+            href="/admin/room-type-services"
+            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
+              pathname.startsWith("/admin/room-type-services")
+                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
+                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+          >
+            <span className="font-medium">Dịch vụ - loại phòng</span>
           </Link>
 
           <div className="px-4 py-2 mt-6 text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -141,6 +196,11 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 function getPathTitle(pathname: string) {
     if (pathname === "/") return "Dashboard Overview";
     if (pathname.startsWith("/rooms")) return "Quản lý Phòng";
+    if (pathname === "/admin") return "Quản lý Danh mục";
+    if (pathname.startsWith("/admin/room-types")) return "Quản lý Loại phòng";
+    if (pathname.startsWith("/admin/amenities")) return "Quản lý Tiện nghi";
+    if (pathname.startsWith("/admin/amenity-rooms")) return "Quản lý Tiện nghi - Loại phòng";
+    if (pathname.startsWith("/admin/room-type-services")) return "Quản lý Dịch vụ - Loại phòng";
     if (pathname.startsWith("/bookings")) return "Quản lý Đặt phòng";
     if (pathname.startsWith("/users")) return "Quản lý Người dùng";
     if (pathname.startsWith("/settings")) return "Cài đặt Hệ thống";

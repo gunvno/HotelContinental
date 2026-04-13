@@ -160,7 +160,24 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return matched;
     }
     public UserInfoResponse getInfoByToken(String token){
-        return identityClient.getUserInfo(token);
+        return identityClient.getUserInfo(normalizeBearerToken(token));
+    }
+
+    private String normalizeBearerToken(String token) {
+        if (token == null) {
+            return "Bearer";
+        }
+
+        String normalized = token.trim();
+        if (normalized.startsWith("\"") && normalized.endsWith("\"") && normalized.length() > 1) {
+            normalized = normalized.substring(1, normalized.length() - 1);
+        }
+
+        if (!normalized.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            normalized = "Bearer " + normalized;
+        }
+
+        return normalized;
     }
 
 }

@@ -26,7 +26,12 @@ export type ProfileResponse = {
 };
 
 export async function getMyProfile() {
-  const res = await http.get("identity/profileExpand/my-profile").json<ApiResponse<ProfileResponse | null>>();
-  return res.result;
+  try {
+    const res = await http.get("identity/profileExpand/my-profile").json<ApiResponse<ProfileResponse | null>>();
+    return res.result;
+  } catch (error) {
+    console.warn("[profile-service] getMyProfile failed", error);
+    return null;
+  }
 }
 

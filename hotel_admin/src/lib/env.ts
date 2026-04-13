@@ -5,14 +5,14 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_API_BASE_URL: z
     .string()
     .url()
-    .default("https://localhost:7150/api"),
+    .default("http://localhost:8888/api/v1"),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
 
 export const clientEnv: ClientEnv = clientEnvSchema.parse({
   NEXT_PUBLIC_API_BASE_URL:
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://localhost:7150/api",
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8888/api/v1",
 });
 
 // Schema riêng cho biến server chỉ truy cập trên backend.

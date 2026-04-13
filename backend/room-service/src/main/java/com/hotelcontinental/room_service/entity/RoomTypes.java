@@ -1,10 +1,7 @@
 package com.hotelcontinental.room_service.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
@@ -13,6 +10,7 @@ import java.util.List;
 @Entity
 @Table(name = "room_types")
 @Data
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -43,6 +41,7 @@ public class RoomTypes {
     String modifiedBy;
 
     @Column(name = "deleted")
+    @Builder.Default
     Boolean deleted = false;
 
     @Column(name = "deleted_time")

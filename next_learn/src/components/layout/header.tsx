@@ -24,7 +24,7 @@ Hướng dẫn custom Header
 // Danh sách menu gợi ý các điểm chạm chính trên website khách sạn.
 const navItems = [
   { label: "Trang chủ", href: "/" },
-  { label: "Phòng & Suite", href: "/#rooms", hash: "#rooms" },
+  { label: "Phòng & Suite", href: "/room/listroom", hash: "#rooms" },
   { label: "Tiện nghi", href: "/#amenities", hash: "#amenities" },
   { label: "Liên hệ", href: "/#contact", hash: "#contact" },
 ];
@@ -175,7 +175,7 @@ export function Header() {
           </span>
           {!token ? (
             // Nút đăng nhập thay thế vị trí nút liên hệ (đã bỏ)
-            <Button href="/login" size="sm" variant="secondary" className="hidden md:inline-flex">
+            <Button href="/login" size="sm" variant="primary" className="hidden md:inline-flex">
               Đăng nhập
             </Button>
           ) : (

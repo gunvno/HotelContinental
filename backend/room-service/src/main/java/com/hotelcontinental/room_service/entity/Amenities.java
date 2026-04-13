@@ -11,6 +11,7 @@ import java.util.List;
 @Entity
 @Table(name = "amenities")
 @Getter @Setter
+@Builder(toBuilder = true)
 @NoArgsConstructor @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Amenities {
@@ -42,6 +43,7 @@ public class Amenities {
     String modifiedBy;
 
     @Column(name = "deleted")
+    @Builder.Default
     Boolean deleted = false;
 
     @Column(name = "deleted_time")

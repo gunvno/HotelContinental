@@ -4,7 +4,6 @@
 import Keycloak from "keycloak-js";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
 import { getMyProfile } from "@/services/profile-service";
 
 interface UserInfo {
@@ -45,8 +44,6 @@ export function KeycloakAuthProvider({ children }: KeycloakAuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const doLogin = useAuthStore((s) => s.login);
-  const router = useRouter();
-  const currentPath = usePathname();
 
   useEffect(() => {
     let refreshInterval: ReturnType<typeof setInterval>;
@@ -134,16 +131,8 @@ export function KeycloakAuthProvider({ children }: KeycloakAuthProviderProps) {
                 .catch(console.error);
             }, 60 * 1000); // Check every minute
 
-            // Check if user has profile
-            try {
-              const profile = await getMyProfile();
-              // If no profile and not already on the registration page
-              if (!profile && currentPath !== "/register-profile") {
-                router.push(`/register-profile?userId=${userInfo.sub}`);
-              }
-            } catch (error) {
-              console.error("Error checking profile:", error);
-            }
+            // Optional: ping profile endpoint for warm-up, but do not force redirect.
+            await getMyProfile();
           }
         }
         

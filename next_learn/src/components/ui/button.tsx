@@ -44,12 +44,13 @@ type ConditionalProps =
 // Quy ước class theo biến thể giúp dễ nhận diện và mở rộng.
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-gradient-to-r from-[#e3b480] to-[#c47a34] text-white shadow-[0_18px_42px_-24px_rgba(196,122,52,0.8)] hover:from-[#f0c899] hover:to-[#c17528]",
+    "rounded-full bg-gradient-to-r from-[#865316] to-[#C68948] text-white font-bold text-sm uppercase tracking-widest shadow-xl hover:-translate-y-1 transition-all",
   secondary:
-    "border border-border/50 bg-background/85 text-foreground shadow-[0_12px_30px_-24px_rgba(31,41,55,0.35)] hover:border-ring/40 hover:bg-background/95",
+    "rounded-full bg-white/40 backdrop-blur-md border border-outline-variant/30 text-on-surface font-bold text-sm uppercase tracking-widest hover:bg-white/60 transition-all",
   ghost:
-    "border border-transparent bg-transparent text-foreground hover:border-border/40 hover:bg-background/70",
+    "rounded-full border border-outline/20 text-on-surface font-bold text-sm uppercase tracking-widest hover:bg-surface-variant/50 transition-all",
 };
+
 
 // Kích thước thông dụng cần có để đảm bảo nhất quán.
 const sizeClasses: Record<ButtonSize, string> = {
