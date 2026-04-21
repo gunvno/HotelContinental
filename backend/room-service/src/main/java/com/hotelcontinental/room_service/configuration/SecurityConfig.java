@@ -29,7 +29,9 @@ public class SecurityConfig {
             "/roomTypeService",
             "/room/roomTypeService",
             "/roomTypeService/roomType/**"
-            ,"/room/roomTypeService/roomType/**"
+            ,"/room/roomTypeService/roomType/**",
+            "/room/room/**"
+
     };
 
     private final CustomJwtDecoder customJwtDecoder;

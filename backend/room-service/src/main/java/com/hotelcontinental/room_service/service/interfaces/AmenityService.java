@@ -12,4 +12,5 @@ public interface AmenityService {
     AmenityResponse getAmenity(String id);
     AmenityResponse updateAmenity(String id, AmenityUpdateRequest request);
     void deleteAmenity(String id);
+    void restoreAmenity(String id);
 }

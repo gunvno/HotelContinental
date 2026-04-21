@@ -1,4 +1,5 @@
 import ky, { type KyInstance } from "ky";
+
 import { clientEnv } from "@/lib/env";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -36,7 +37,6 @@ function createHttpClient(): KyInstance {
         async (request, options, response) => {
           // Chỉ xử lý khi gặp lỗi 401 Unauthorized
           if (response.status === 401) {
-             const authStore = useAuthStore.getState();
              // Token hết hạn hoặc không hợp lệ -> Logout
              // authStore.logout(); // Logout action
              // if (typeof window !== "undefined") window.location.href = "/"; // Redirect to home (which redirects to Keycloak)

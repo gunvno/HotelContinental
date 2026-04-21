@@ -13,4 +13,5 @@ public class RoomTypeUpdateRequest {
     String description;
     int maximumOccupancy;
     int quantity;
+    Boolean deleted;
 }

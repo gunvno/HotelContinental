@@ -1,12 +1,12 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { createJSONStorage,persist } from "zustand/middleware";
 
 export interface UserInfo {
   name?: string;
   preferred_username?: string;
   email?: string;
   sub?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface AuthState {
@@ -49,3 +49,19 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+export const selectToken = (state: AuthState) => state.token;
+export const selectUserName = (state: AuthState) =>
+  state.userInfo?.preferred_username || state.userInfo?.name || null;
+export const selectFirstName = (state: AuthState) => {
+  const name = state.userInfo?.name;
+  return name ? name.split(" ")[0] : null;
+};
+export const selectLastName = (state: AuthState) => {
+  const name = state.userInfo?.name;
+  if (!name) {
+    return state.userInfo?.preferred_username || null;
+  }
+
+  return name.split(" ").slice(1).join(" ") || name;
+};

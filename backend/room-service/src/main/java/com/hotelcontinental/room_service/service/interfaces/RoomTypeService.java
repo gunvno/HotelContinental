@@ -12,4 +12,5 @@ public interface RoomTypeService {
     RoomTypeResponse getRoomType(String id);
     RoomTypeResponse updateRoomType(String id, RoomTypeUpdateRequest request);
     void deleteRoomType(String id);
+    void restoreRoomType(String id);
 }

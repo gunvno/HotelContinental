@@ -1,9 +1,10 @@
 "use client";
 
+import { BadgeDollarSign, BedDouble,CalendarDays, Filter, Search, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BadgeDollarSign, CalendarDays, Filter, Search, UserRound, BedDouble } from "lucide-react";
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED";
 

@@ -13,4 +13,5 @@ public class AmenityUpdateRequest {
     String name;
     String description;
     AmenityStatus status;
+    Boolean deleted;
 }

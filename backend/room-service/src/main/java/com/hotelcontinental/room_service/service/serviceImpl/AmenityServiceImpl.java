@@ -55,7 +55,7 @@ public class AmenityServiceImpl implements AmenityService {
 
     @Override
     public Page<AmenityResponse> getAllAmenities(Pageable pageable) {
-        Page<Amenities> amenities = amenitiesRepository.findByDeletedFalse(pageable);
+        Page<Amenities> amenities = amenitiesRepository.findAll(pageable);
         return amenities.map(this::mapToAmenityResponse);
     }
 
@@ -85,6 +85,9 @@ public class AmenityServiceImpl implements AmenityService {
                 .name(request.getName() != null ? request.getName() : amenity.getName())
                 .description(request.getDescription() != null ? request.getDescription() : amenity.getDescription())
                 .status(request.getStatus() != null ? request.getStatus() : amenity.getStatus())
+            .deleted(request.getDeleted() != null ? request.getDeleted() : amenity.getDeleted())
+            .deletedTime(Boolean.TRUE.equals(request.getDeleted()) ? LocalDateTime.now() : (Boolean.FALSE.equals(request.getDeleted()) ? null : amenity.getDeletedTime()))
+            .deletedBy(Boolean.TRUE.equals(request.getDeleted()) ? modifiedBy : (Boolean.FALSE.equals(request.getDeleted()) ? null : amenity.getDeletedBy()))
                 .modifiedTime(LocalDateTime.now())
                 .modifiedBy(modifiedBy)
                 .build());
@@ -111,6 +114,30 @@ public class AmenityServiceImpl implements AmenityService {
             .deletedTime(LocalDateTime.now())
             .deletedBy(deletedBy)
             .build());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public void restoreAmenity(String id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
+        String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+
+        Amenities amenity = amenitiesRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
+        amenitiesRepository.save(amenity.toBuilder()
+                .deleted(false)
+                .deletedTime(null)
+                .deletedBy(null)
+                .modifiedTime(LocalDateTime.now())
+                .modifiedBy(modifiedBy)
+                .build());
     }
 
     private AmenityResponse mapToAmenityResponse(Amenities amenity) {

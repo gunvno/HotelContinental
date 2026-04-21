@@ -1,8 +1,9 @@
 "use client";
 
+import { Search, Shield, UserRound } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Shield, UserRound } from "lucide-react";
 
 const users = [
   { id: "1", name: "Admin User", email: "admin@system.com", role: "ADMIN", status: "Active" },

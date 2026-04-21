@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -9,37 +9,35 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/utils";
 import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
-import { selectFirstName, selectLastName, selectToken, selectUserName, useAuthStore } from "@/store/auth-store";
+import {
+  selectFirstName,
+  selectLastName,
+  selectToken,
+  selectUserName,
+  useAuthStore,
+} from "@/store/auth-store";
+import { BadgeInfo, ChevronDown, LogOut, Mail, UserRound } from "lucide-react";
 
-/*
-Hướng dẫn custom Header
-
-- navItems: thêm/bớt mục menu hoặc đổi đường dẫn/hash.
-- Kiểu nav: đổi class trong <nav>/<Link> để có underline, background khác...
-- Logo: thay cụm <span> hiệu ứng bằng hình/biểu trưng riêng.
-- Khu vực hành động: thêm nút/đường link ở khu vực bên phải (ThemeToggle, Button...).
-- className: áp dụng lớp Tailwind ở <header>/<Container> để đổi nền, blur, shadow.
-*/
-
-// Danh sách menu gợi ý các điểm chạm chính trên website khách sạn.
 const navItems = [
   { label: "Trang chủ", href: "/" },
-  { label: "Phòng & Suite", href: "/room/listroom", hash: "#rooms" },
-  { label: "Tiện nghi", href: "/#amenities", hash: "#amenities" },
+  { label: "Phòng & Suite", href: "/room/listroom" },
+  { label: "Tiện nghi", href: "/amenities" },
   { label: "Liên hệ", href: "/#contact", hash: "#contact" },
 ];
 
-// Header hiển thị logo, menu và nút đổi theme.
+const PENDING_HOME_HASH_KEY = "next_learn:pending-home-hash";
+
 export function Header() {
   const pathname = usePathname();
-  const [activeHash, setActiveHash] = useState<string>("");
+  const router = useRouter();
+  const [activeHash, setActiveHash] = useState("");
   const token = useAuthStore(selectToken);
   const userName = useAuthStore(selectUserName);
   const firstName = useAuthStore(selectFirstName);
   const lastName = useAuthStore(selectLastName);
-  const logoutLocal = useAuthStore((s) => s.logout);
-  const { logout: logoutSSO } = useKeycloakAuth();
-  const [logoutOpen, setLogoutOpen] = useState(false);
+  const logoutLocal = useAuthStore((state) => state.logout);
+  const { logout: logoutSSO, userInfo } = useKeycloakAuth();
+  const [accountOpen, setAccountOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -69,13 +67,69 @@ export function Header() {
     [pathname, activeHash],
   );
 
-  // Đóng menu mobile khi điều hướng
   useEffect(() => {
     if (mobileOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMobileOpen(false);
     }
   }, [pathname, activeHash, mobileOpen]);
+
+  useEffect(() => {
+    setAccountOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || pathname !== "/") {
+      return;
+    }
+
+    const pendingHash = window.sessionStorage.getItem(PENDING_HOME_HASH_KEY);
+    if (!pendingHash) {
+      return;
+    }
+
+    window.sessionStorage.removeItem(PENDING_HOME_HASH_KEY);
+    window.scrollTo({ top: 0, behavior: "auto" });
+    window.requestAnimationFrame(() => {
+      const target = document.querySelector(pendingHash);
+      if (target instanceof HTMLElement) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.history.replaceState(null, "", pendingHash);
+        setActiveHash(pendingHash);
+      }
+    });
+  }, [pathname]);
+
+  const handleNavClick = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    item: (typeof navItems)[number],
+  ) => {
+    if (!item.hash) {
+      setActiveHash("");
+      return;
+    }
+
+    event.preventDefault();
+    setActiveHash(item.hash);
+    setMobileOpen(false);
+
+    if (pathname !== "/") {
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(PENDING_HOME_HASH_KEY, item.hash);
+      }
+      router.push("/");
+      return;
+    }
+
+    const target = document.querySelector(item.hash);
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.history.replaceState(null, "", item.hash);
+    }
+  };
+
+  const displayName = [firstName, lastName].filter(Boolean).join(" ") || userName || userInfo?.name || "bạn";
+  const displayEmail = userInfo?.email || userInfo?.preferred_username || "Tài khoản khách";
+  const accountInitial = (firstName?.[0] || lastName?.[0] || userName?.[0] || userInfo?.name?.[0] || "C").toUpperCase();
 
   return (
     <header className="border-border/40 bg-background/85 sticky top-0 z-40 border-b shadow-[0_20px_60px_-40px_rgba(31,41,55,0.45)] backdrop-blur-xl">
@@ -128,14 +182,13 @@ export function Header() {
             </span>
           </span>
         </Link>
+
         <nav className="hidden items-center gap-3 text-sm font-medium md:flex">
           {computedNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => {
-                setActiveHash(item.hash ?? "");
-              }}
+              onClick={(event) => handleNavClick(event, item)}
               className={cn(
                 "rounded-full border border-transparent px-3 py-1.5 transition-all duration-200",
                 item.isActive
@@ -147,14 +200,14 @@ export function Header() {
             </Link>
           ))}
         </nav>
+
         <div className="flex items-center gap-3">
-          {/* Hamburger chỉ hiện trên mobile */}
           <button
             type="button"
             aria-label="Mở menu"
             aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((v) => !v)}
-            className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-background/80 shadow-sm hover:bg-background/70"
+            onClick={() => setMobileOpen((value) => !value)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-background/80 shadow-sm hover:bg-background/70 md:hidden"
           >
             <svg
               viewBox="0 0 24 24"
@@ -170,52 +223,108 @@ export function Header() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
+
           <span className="hidden md:inline-flex">
             <ThemeToggle />
           </span>
+
           {!token ? (
-            // Nút đăng nhập thay thế vị trí nút liên hệ (đã bỏ)
             <Button href="/login" size="sm" variant="primary" className="hidden md:inline-flex">
               Đăng nhập
             </Button>
           ) : (
-            // Greeting + nút Đăng xuất trôi nổi: click để hiện, click lại để ẩn
-            <>
+            <div className="relative hidden md:block">
               <button
                 type="button"
-                onClick={() => setLogoutOpen((v) => !v)}
+                onClick={() => setAccountOpen((value) => !value)}
                 aria-haspopup="true"
-                aria-expanded={logoutOpen}
-                className="hidden md:inline-flex items-center text-muted-foreground text-sm max-w-[20rem] truncate"
+                aria-expanded={accountOpen}
+                className="flex items-center gap-3 rounded-full border border-border/60 bg-background/70 px-3 py-2 text-left shadow-sm transition hover:border-ring/30 hover:bg-background"
               >
-                Xin chào, <span className="text-foreground font-medium ml-1 truncate">{lastName || userName || "bạn"}</span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#2b1d12] to-[#c68948] text-sm font-bold text-white shadow-[0_16px_30px_-18px_rgba(0,0,0,0.8)]">
+                  {accountInitial}
+                </span>
+                <span className="flex max-w-[16rem] flex-col leading-tight">
+                  <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Xin chào
+                  </span>
+                  <span className="truncate text-sm font-semibold text-foreground">
+                    {displayName}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn("h-4 w-4 text-muted-foreground transition-transform", accountOpen && "rotate-180")}
+                />
               </button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  logoutLocal();
-                  logoutSSO();
-                  setLogoutOpen(false);
-                }}
+
+              <div
                 className={cn(
-                  "hidden md:inline-flex absolute top-full right-0 mt-[3px] rounded-full shadow-lg transition-opacity duration-150",
-                  logoutOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+                  "absolute right-0 top-full mt-3 w-[340px] rounded-3xl border border-border/60 bg-background/95 p-4 shadow-[0_30px_80px_-35px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-150",
+                  accountOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0",
                 )}
-                aria-label="Đăng xuất"
-                title="Đăng xuất"
               >
-                Đăng xuất
-              </Button>
-            </>
+                <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2b1d12] to-[#c68948] text-lg font-bold text-white shadow-[0_16px_30px_-18px_rgba(0,0,0,0.8)]">
+                    {accountInitial}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+                    <p className="truncate text-xs text-muted-foreground">{displayEmail}</p>
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                      <BadgeInfo className="h-3.5 w-3.5" />
+                      Hồ sơ cá nhân
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2 text-sm">
+                  <Link
+                    href="/account"
+                    onClick={() => setAccountOpen(false)}
+                    className="flex items-center gap-3 rounded-2xl border border-border/50 px-3 py-3 transition hover:border-ring/30 hover:bg-muted/40"
+                  >
+                    <UserRound className="h-4 w-4 text-[#8b5e22]" />
+                    <span className="flex-1">
+                      <span className="block font-medium text-foreground">Thông tin tài khoản</span>
+                      <span className="block text-xs text-muted-foreground">Xem hồ sơ, liên hệ và trạng thái đăng nhập</span>
+                    </span>
+                  </Link>
+                  <div className="flex items-center gap-3 rounded-2xl border border-border/50 px-3 py-3">
+                    <Mail className="h-4 w-4 text-[#8b5e22]" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium text-foreground">Email</span>
+                      <span className="block truncate text-xs text-muted-foreground">{displayEmail}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Button href="/account" variant="secondary" size="sm" className="w-full" onClick={() => setAccountOpen(false)}>
+                    Mở hồ sơ
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      logoutLocal();
+                      logoutSSO();
+                      setAccountOpen(false);
+                    }}
+                    className="w-full"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Đăng xuất
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
-        {/* Dropdown menu mobile */}
+
         <div
           className={cn(
-            "absolute left-2 right-2 top-full mt-2 origin-top rounded-xl border border-border bg-background shadow-lg md:hidden z-50",
+            "absolute left-2 right-2 top-full z-50 mt-2 origin-top rounded-xl border border-border bg-background shadow-lg transition-all duration-150 md:hidden",
             mobileOpen ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0",
-            "transition-all duration-150",
           )}
         >
           <nav className="flex flex-col p-2 text-sm">
@@ -223,15 +332,13 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => {
-                  setActiveHash(item.hash ?? "");
+                onClick={(event) => {
+                  handleNavClick(event, item);
                   setMobileOpen(false);
                 }}
                 className={cn(
                   "rounded-lg px-3 py-2",
-                  item.isActive
-                    ? "bg-ring/15 text-ring"
-                    : "text-foreground hover:bg-background/70",
+                  item.isActive ? "bg-ring/15 text-ring" : "text-foreground hover:bg-background/70",
                 )}
               >
                 {item.label}
@@ -239,7 +346,7 @@ export function Header() {
             ))}
             <div className="my-2 h-px bg-border/60" />
             <div className="flex items-center justify-between px-2 py-1">
-              <span className="text-muted-foreground text-xs">Giao diện</span>
+              <span className="text-xs text-muted-foreground">Giao diện</span>
               <ThemeToggle />
             </div>
             {!token ? (
@@ -249,18 +356,27 @@ export function Header() {
                 </Button>
               </div>
             ) : (
-              <div className="p-2">
+              <div className="space-y-3 p-2">
+                <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+                  <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Tài khoản</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{displayName}</p>
+                  <p className="truncate text-xs text-muted-foreground">{displayEmail}</p>
+                </div>
+                <Button href="/account" size="sm" variant="secondary" className="w-full" onClick={() => setMobileOpen(false)}>
+                  Thông tin tài khoản
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => {
                     logoutLocal();
                     logoutSSO();
-                    setLogoutOpen(false);
+                    setAccountOpen(false);
                     setMobileOpen(false);
                   }}
                   className="w-full"
                 >
+                  <LogOut className="mr-2 h-4 w-4" />
                   Đăng xuất
                 </Button>
               </div>

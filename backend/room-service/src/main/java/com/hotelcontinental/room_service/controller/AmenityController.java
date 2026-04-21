@@ -53,4 +53,10 @@ public class AmenityController {
         amenityService.deleteAmenity(id);
         return ApiResponse.<Void>builder().build();
     }
+
+    @PostMapping("/{id}/restore")
+    public ApiResponse<Void> restoreAmenity(@PathVariable String id) {
+        amenityService.restoreAmenity(id);
+        return ApiResponse.<Void>builder().build();
+    }
 }

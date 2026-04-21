@@ -11,8 +11,6 @@ import java.util.Optional;
 
 @Repository
 public interface RoomTypeServicesRepository extends JpaRepository<RoomTypeServices, String> {
-    Page<RoomTypeServices> findByDeletedFalse(Pageable pageable);
-    List<RoomTypeServices> findByRoomTypesIdAndDeletedFalse(String roomTypeId);
-    Page<RoomTypeServices> findByRoomTypesIdAndDeletedFalse(String roomTypeId, Pageable pageable);
-    Optional<RoomTypeServices> findByIdAndDeletedFalse(String id);
+    List<RoomTypeServices> findByRoomTypesId(String roomTypeId);
+    Page<RoomTypeServices> findByRoomTypesId(String roomTypeId, Pageable pageable);
 }

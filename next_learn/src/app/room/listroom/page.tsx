@@ -7,7 +7,7 @@ import { RoomFilter } from "@/components/room/roomfilter";
 import type { RoomFilterValues } from "@/components/room/roomfilter";
 import type { RoomEntity } from "@/components/room/roomcard";
 
-import { getRoomsForCustomer } from "@/services/room-service";
+import { getAllRooms, RoomResponse } from "@/services/room-service";
 
 const PAGE_SIZE = 2;
 
@@ -21,7 +21,7 @@ const defaultFilterValues: RoomFilterValues = {
 };
 
 export default function ListRoomPage() {
-    const [rooms, setRooms] = useState<RoomEntity[]>([]);
+    const [rooms, setRooms] = useState<RoomResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filterValues, setFilterValues] = useState<RoomFilterValues>(defaultFilterValues);
@@ -32,10 +32,13 @@ export default function ListRoomPage() {
             try {
                 setIsLoading(true);
                 setError(null);
-                const response = await getRoomsForCustomer(0, 200);
-                setRooms(response.rooms);
+                const response = await getAllRooms();
+                console.log("room cus: ", response);
+                setRooms(response.data);
             } catch {
                 setError("Không thể tải danh sách phòng. Vui lòng thử lại sau.");
+                console.log("loi room cus");
+                
             } finally {
                 setIsLoading(false);
             }

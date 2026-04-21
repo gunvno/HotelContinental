@@ -51,4 +51,10 @@ public class RoomTypeController {
         roomTypeService.deleteRoomType(id);
         return ApiResponse.<Void>builder().build();
     }
+
+    @PostMapping("/{id}/restore")
+    ApiResponse<Void> restoreRoomType(@PathVariable String id) {
+        roomTypeService.restoreRoomType(id);
+        return ApiResponse.<Void>builder().build();
+    }
 }

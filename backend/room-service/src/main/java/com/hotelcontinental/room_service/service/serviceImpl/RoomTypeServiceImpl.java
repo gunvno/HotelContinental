@@ -85,6 +85,9 @@ public class RoomTypeServiceImpl implements RoomTypeService {
                 .description(request.getDescription() != null ? request.getDescription() : roomType.getDescription())
                 .maximumOccupancy(request.getMaximumOccupancy() > 0 ? request.getMaximumOccupancy() : roomType.getMaximumOccupancy())
                 .quantity(request.getQuantity() >= 0 ? request.getQuantity() : roomType.getQuantity())
+            .deleted(request.getDeleted() != null ? request.getDeleted() : roomType.getDeleted())
+            .deletedTime(Boolean.TRUE.equals(request.getDeleted()) ? LocalDateTime.now() : (Boolean.FALSE.equals(request.getDeleted()) ? null : roomType.getDeletedTime()))
+            .deletedBy(Boolean.TRUE.equals(request.getDeleted()) ? modifiedBy : (Boolean.FALSE.equals(request.getDeleted()) ? null : roomType.getDeletedBy()))
                 .modifiedTime(LocalDateTime.now())
                 .modifiedBy(modifiedBy)
                 .build();
@@ -112,6 +115,30 @@ public class RoomTypeServiceImpl implements RoomTypeService {
             .deletedTime(LocalDateTime.now())
             .deletedBy(deletedBy)
             .build());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public void restoreRoomType(String id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
+        String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+
+        RoomTypes roomType = roomTypeRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+
+        roomTypeRepository.save(roomType.toBuilder()
+                .deleted(false)
+                .deletedTime(null)
+                .deletedBy(null)
+                .modifiedTime(LocalDateTime.now())
+                .modifiedBy(modifiedBy)
+                .build());
     }
 
     private RoomTypeResponse mapToRoomTypeResponse(RoomTypes roomType, String creator) {

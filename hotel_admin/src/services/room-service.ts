@@ -1,5 +1,5 @@
-import { http } from "@/lib/http";
 import { clientEnv } from "@/lib/env";
+import { http } from "@/lib/http";
 import { useAuthStore } from "@/store/auth-store";
 import type { ApiResponse } from "@/types/api-types";
 
@@ -9,6 +9,7 @@ export type RoomTypePayload = {
   description?: string;
   maximumOccupancy: number;
   quantity?: number;
+  deleted?: boolean;
 };
 
 export type RoomTypeResponse = {
@@ -21,12 +22,15 @@ export type RoomTypeResponse = {
   createdTime?: string;
   modifiedBy?: string;
   modifiedTime?: string;
+  deleted?: boolean;
 };
 
 // ============= AMENITIES =============
 export type AmenityPayload = {
   name: string;
   description?: string;
+  status?: "AVAILABLE" | "UNAVAILABLE";
+  deleted?: boolean;
 };
 
 export type AmenityResponse = {
@@ -38,6 +42,7 @@ export type AmenityResponse = {
   createdTime?: string;
   modifiedBy?: string;
   modifiedTime?: string;
+  deleted?: boolean;
 };
 
 // ============= AMENITY ROOMS =============
@@ -45,6 +50,7 @@ export type AmenityRoomPayload = {
   amenityId: string;
   roomTypeId: string;
   amount: number;
+  deleted?: boolean;
 };
 
 export type AmenityRoomResponse = {
@@ -54,6 +60,9 @@ export type AmenityRoomResponse = {
   amount: number;
   createdBy?: string;
   createdTime?: string;
+  modifiedBy?: string;
+  modifiedTime?: string;
+  deleted?: boolean;
 };
 
 // ============= ROOM TYPE SERVICES =============
@@ -61,6 +70,7 @@ export type RoomTypeServicePayload = {
   roomTypeId: string;
   serviceId: string;
   amount: number;
+  deleted?: boolean;
 };
 
 export type RoomTypeServiceResponse = {
@@ -101,6 +111,7 @@ export type RoomResponse = {
   roomSize: string;
   status: string;
   createdBy?: string;
+  roomTypes?: RoomTypeResponse | null;
 };
 
 export type RoomTypeOption = {
@@ -183,7 +194,7 @@ export async function getAmenity(id: string): Promise<AmenityResponse> {
 
 export async function updateAmenity(
   id: string,
-  payload: { name?: string; description?: string; status?: "AVAILABLE" | "UNAVAILABLE" }
+  payload: { name?: string; description?: string; status?: "AVAILABLE" | "UNAVAILABLE"; deleted?: boolean }
 ): Promise<AmenityResponse> {
   const res = await http.put(`room/amenity/${id}`, { json: payload }).json<ApiResponse<AmenityResponse>>();
   return (res.result ?? res.content) as AmenityResponse;
@@ -224,7 +235,7 @@ export async function getAmenityRoomsByRoomTypePaged(
   };
 }
 
-export async function updateAmenityRoom(id: string, payload: { amount: number }): Promise<AmenityRoomResponse> {
+export async function updateAmenityRoom(id: string, payload: { amount: number; deleted?: boolean }): Promise<AmenityRoomResponse> {
   const res = await http.put(`room/amenityRoom/${id}`, { json: payload }).json<ApiResponse<AmenityRoomResponse>>();
   return (res.result ?? res.content) as AmenityRoomResponse;
 }
@@ -280,7 +291,7 @@ export async function getRoomTypeServicesByRoomTypePaged(
 
 export async function updateRoomTypeService(
   id: string,
-  payload: { serviceId?: string; amount?: number }
+  payload: { serviceId?: string; amount?: number; deleted?: boolean }
 ): Promise<RoomTypeServiceResponse> {
   const res = await http.put(`room/roomTypeService/${id}`, { json: payload }).json<ApiResponse<RoomTypeServiceResponse>>();
   return (res.result ?? res.content) as RoomTypeServiceResponse;
@@ -323,7 +334,7 @@ export async function getRoomTypeOptions(): Promise<RoomTypeOption[]> {
 }
 
 export async function createRoom(payload: CreateRoomPayload): Promise<RoomResponse> {
-  const res = await http.post("room", { json: payload }).json<ApiResponse<RoomResponse>>();
+  const res = await http.post("room/room", { json: payload }).json<ApiResponse<RoomResponse>>();
   return (res.result ?? res.content) as RoomResponse;
 }
 
@@ -339,7 +350,7 @@ export async function uploadRoomImages(roomId: string, files: File[], coverIndex
   }
   formData.append("coverIndex", String(coverIndex));
 
-  const url = `${clientEnv.NEXT_PUBLIC_API_BASE_URL.replace(/\/$/, "")}/room/${roomId}/images`;
+  const url = `${clientEnv.NEXT_PUBLIC_API_BASE_URL.replace(/\/$/, "")}/room/room/${roomId}/images`;
   const response = await fetch(url, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -347,6 +358,29 @@ export async function uploadRoomImages(roomId: string, files: File[], coverIndex
   });
 
   if (!response.ok) {
-    throw new Error("Upload room images failed");
+    let message = "Upload room images failed";
+    try {
+      const body = (await response.json()) as { message?: string };
+      if (body?.message) {
+        message = body.message;
+      }
+    } catch {
+      // Keep default message when the response body is not JSON.
+    }
+    throw new Error(message);
   }
+}
+
+export async function getAllRooms(page = 0,
+  size = 20): Promise<{ data: RoomResponse[]; total: number }> {
+  const res = await http
+    .get("room/room/customer", {
+      searchParams: { page, size },
+    })
+    .json<ApiResponse<SpringPage<RoomResponse>>>();
+  const pageData = (res.result ?? res.content) as SpringPage<RoomResponse> | undefined;
+  return {
+    data: pageData?.content ?? [],
+    total: pageData?.totalElements ?? 0,
+  };
 }

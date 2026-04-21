@@ -60,18 +60,18 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
 
     @Override
     public Page<RoomTypeServiceResponse> getAllRoomTypeServices(Pageable pageable) {
-        return roomTypeServicesRepository.findByDeletedFalse(pageable).map(this::map);
+        return roomTypeServicesRepository.findAll(pageable).map(this::map);
     }
 
     @Override
     public Page<RoomTypeServiceResponse> getByRoomType(String roomTypeId, Pageable pageable) {
-        return roomTypeServicesRepository.findByRoomTypesIdAndDeletedFalse(roomTypeId, pageable)
+        return roomTypeServicesRepository.findByRoomTypesId(roomTypeId, pageable)
                 .map(this::map);
     }
 
     @Override
     public RoomTypeServiceResponse getRoomTypeService(String id) {
-        return map(roomTypeServicesRepository.findByIdAndDeletedFalse(id)
+        return map(roomTypeServicesRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND)));
     }
 
@@ -87,12 +87,15 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
         String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
         String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
 
-        RoomTypeServices roomTypeService = roomTypeServicesRepository.findByIdAndDeletedFalse(id)
+        RoomTypeServices roomTypeService = roomTypeServicesRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
 
         RoomTypeServices updated = roomTypeService.toBuilder()
                 .serviceId(request.getServiceId() != null ? request.getServiceId() : roomTypeService.getServiceId())
                 .amount(request.getAmount() > 0 ? request.getAmount() : roomTypeService.getAmount())
+            .deleted(request.getDeleted() != null ? request.getDeleted() : roomTypeService.getDeleted())
+            .deletedTime(Boolean.TRUE.equals(request.getDeleted()) ? LocalDateTime.now() : (Boolean.FALSE.equals(request.getDeleted()) ? null : roomTypeService.getDeletedTime()))
+            .deletedBy(Boolean.TRUE.equals(request.getDeleted()) ? modifiedBy : (Boolean.FALSE.equals(request.getDeleted()) ? null : roomTypeService.getDeletedBy()))
                 .modifiedTime(LocalDateTime.now())
                 .modifiedBy(modifiedBy)
                 .build();
@@ -112,13 +115,37 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
         String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
         String deletedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
 
-        RoomTypeServices roomTypeService = roomTypeServicesRepository.findByIdAndDeletedFalse(id)
+        RoomTypeServices roomTypeService = roomTypeServicesRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
 
         roomTypeServicesRepository.save(roomTypeService.toBuilder()
                 .deleted(true)
                 .deletedTime(LocalDateTime.now())
                 .deletedBy(deletedBy)
+                .build());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public void restoreRoomTypeService(String id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
+        String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+
+        RoomTypeServices roomTypeService = roomTypeServicesRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
+        roomTypeServicesRepository.save(roomTypeService.toBuilder()
+                .deleted(false)
+                .deletedTime(null)
+                .deletedBy(null)
+                .modifiedTime(LocalDateTime.now())
+                .modifiedBy(modifiedBy)
                 .build());
     }
 

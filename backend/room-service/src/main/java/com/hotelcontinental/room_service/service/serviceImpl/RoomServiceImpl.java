@@ -4,6 +4,7 @@ import com.hotelcontinental.room_service.dto.request.room.RoomCreationRequest;
 import com.hotelcontinental.room_service.dto.response.room.RoomForCustomerResponse;
 import com.hotelcontinental.room_service.dto.response.room.RoomImageResponse;
 import com.hotelcontinental.room_service.dto.response.room.RoomResponse;
+import com.hotelcontinental.room_service.dto.response.roomtype.RoomTypeResponse;
 import com.hotelcontinental.room_service.enums.RoomStatus;
 import com.hotelcontinental.room_service.exception.AppException;
 import com.hotelcontinental.room_service.exception.ErrorCode;
@@ -75,7 +76,7 @@ public class RoomServiceImpl implements RoomService {
            return roomRepository.findAllByDeletedFalse(pageable)
                .map(room -> RoomForCustomerResponse.builder()
                    .id(room.getId())
-                   .roomTypes(room.getRoomTypes())
+                   .roomTypes(mapToRoomTypeResponse(room.getRoomTypes()))
                    .image(room.getImage())
                    .name(room.getName())
                    .pricePerDay(room.getPricePerDay())
@@ -123,7 +124,7 @@ public class RoomServiceImpl implements RoomService {
                 .description(request.getDescription())
                 .roomSize(request.getRoomSize())
                 .status(RoomStatus.AVAILABLE)
-                .roomTypes(request.getRoomTypes())
+                .roomTypes(mapToRoomTypeResponse(room.getRoomTypes()))
                 .createdTime(LocalDateTime.now())
                 .createdBy(createdBy)
                 .modifiedTime(null)
@@ -142,6 +143,10 @@ public class RoomServiceImpl implements RoomService {
             throw new AppException(ErrorCode.INVALID_FILE_UPLOAD);
         }
 
+        if (coverIndex != null && (coverIndex < 0 || coverIndex >= files.size())) {
+            throw new AppException(ErrorCode.INVALID_FILE_UPLOAD);
+        }
+
         Rooms room = roomRepository.findByIdAndDeletedFalse(roomId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
 
@@ -155,6 +160,19 @@ public class RoomServiceImpl implements RoomService {
         String username = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
 
         List<Images> existingImages = imageRepository.findAllByRoomIdAndDeletedFalse(roomId);
+        if (coverIndex != null) {
+            for (Images existingImage : existingImages) {
+                if (Boolean.TRUE.equals(existingImage.getIsCover())) {
+                    existingImage = existingImage.toBuilder()
+                            .isCover(false)
+                            .modifiedTime(LocalDateTime.now())
+                            .modifiedBy(username)
+                            .build();
+                    imageRepository.save(existingImage);
+                }
+            }
+        }
+
         int startOrder = existingImages.size();
         List<RoomImageResponse> responses = new ArrayList<>();
 
@@ -212,6 +230,27 @@ public class RoomServiceImpl implements RoomService {
 
         roomRepository.save(room);
         return responses;
+    }
+
+    private RoomTypeResponse mapToRoomTypeResponse(com.hotelcontinental.room_service.entity.RoomTypes roomType) {
+        if (roomType == null) {
+            return null;
+        }
+
+        return RoomTypeResponse.builder()
+                .id(roomType.getId())
+                .name(roomType.getName())
+                .description(roomType.getDescription())
+                .maximumOccupancy(roomType.getMaximumOccupancy())
+                .quantity(roomType.getQuantity())
+                .createdTime(roomType.getCreatedTime())
+                .createdBy(roomType.getCreatedBy())
+                .modifiedTime(roomType.getModifiedTime())
+                .modifiedBy(roomType.getModifiedBy())
+                .deleted(roomType.getDeleted())
+                .deletedTime(roomType.getDeletedTime())
+                .deletedBy(roomType.getDeletedBy())
+                .build();
     }
 
 

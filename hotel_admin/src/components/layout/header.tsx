@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/utils";
 import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
-import { selectFirstName, selectLastName, selectToken, selectUserName, useAuthStore } from "@/store/auth-store";
+import { selectLastName, selectToken, selectUserName, useAuthStore } from "@/store/auth-store";
 
 /*
 Hướng dẫn custom Header
@@ -35,7 +35,6 @@ export function Header() {
   const [activeHash, setActiveHash] = useState<string>("");
   const token = useAuthStore(selectToken);
   const userName = useAuthStore(selectUserName);
-  const firstName = useAuthStore(selectFirstName);
   const lastName = useAuthStore(selectLastName);
   const logoutLocal = useAuthStore((s) => s.logout);
   const { logout: logoutSSO } = useKeycloakAuth();

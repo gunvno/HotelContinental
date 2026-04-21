@@ -26,7 +26,7 @@ Mở rộng nhanh:
 */
 
 // Định nghĩa các biến thể button chuẩn cho toàn dự án.
-type ButtonVariant = "primary" | "secondary" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "outline";
 
 type ButtonSize = "sm" | "md" | "lg";
 
@@ -49,6 +49,8 @@ const variantClasses: Record<ButtonVariant, string> = {
     "border border-border/50 bg-background/85 text-foreground shadow-[0_12px_30px_-24px_rgba(31,41,55,0.35)] hover:border-ring/40 hover:bg-background/95",
   ghost:
     "border border-transparent bg-transparent text-foreground hover:border-border/40 hover:bg-background/70",
+  outline:
+    "border border-border/70 bg-transparent text-foreground hover:border-ring/45 hover:bg-background/75",
 };
 
 // Kích thước thông dụng cần có để đảm bảo nhất quán.

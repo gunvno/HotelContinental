@@ -70,13 +70,13 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
 
     @Override
     public Page<AmenityRoomResponse> getAmenitiesByRoomType(String roomTypeId, Pageable pageable) {
-        return amenityRoomsRepository.findByRoomTypesIdAndDeletedFalse(roomTypeId, pageable)
+        return amenityRoomsRepository.findByRoomTypesId(roomTypeId, pageable)
                 .map(this::mapToAmenityRoomResponse);
     }
 
     @Override
     public AmenityRoomResponse getAmenityRoom(String id) {
-        AmenityRooms amenityRoom = amenityRoomsRepository.findByIdAndDeletedFalse(id)
+        AmenityRooms amenityRoom = amenityRoomsRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
         return mapToAmenityRoomResponse(amenityRoom);
     }
@@ -93,11 +93,14 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
         String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
         String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
 
-        AmenityRooms amenityRoom = amenityRoomsRepository.findByIdAndDeletedFalse(id)
+        AmenityRooms amenityRoom = amenityRoomsRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
 
         AmenityRooms updatedAmenityRoom = amenityRoomsRepository.save(amenityRoom.toBuilder()
             .amount(request.getAmount() > 0 ? request.getAmount() : amenityRoom.getAmount())
+            .deleted(request.getDeleted() != null ? request.getDeleted() : amenityRoom.getDeleted())
+            .deletedTime(Boolean.TRUE.equals(request.getDeleted()) ? LocalDateTime.now() : (Boolean.FALSE.equals(request.getDeleted()) ? null : amenityRoom.getDeletedTime()))
+            .deletedBy(Boolean.TRUE.equals(request.getDeleted()) ? modifiedBy : (Boolean.FALSE.equals(request.getDeleted()) ? null : amenityRoom.getDeletedBy()))
             .modifiedTime(LocalDateTime.now())
             .modifiedBy(modifiedBy)
             .build());
@@ -116,7 +119,7 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
         String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
         String deletedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
 
-        AmenityRooms amenityRoom = amenityRoomsRepository.findByIdAndDeletedFalse(id)
+        AmenityRooms amenityRoom = amenityRoomsRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
 
         amenityRoomsRepository.save(amenityRoom.toBuilder()
@@ -124,6 +127,30 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
             .deletedTime(LocalDateTime.now())
             .deletedBy(deletedBy)
             .build());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public void restoreAmenityRoom(String id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
+        String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+
+        AmenityRooms amenityRoom = amenityRoomsRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
+        amenityRoomsRepository.save(amenityRoom.toBuilder()
+                .deleted(false)
+                .deletedTime(null)
+                .deletedBy(null)
+                .modifiedTime(LocalDateTime.now())
+                .modifiedBy(modifiedBy)
+                .build());
     }
 
     private AmenityResponse mapToAmenityResponse(Amenities amenity) {

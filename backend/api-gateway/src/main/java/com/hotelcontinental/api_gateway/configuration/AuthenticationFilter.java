@@ -46,6 +46,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             "/notification/email/send",
             "/room/building/get",
             "/room/floor/.*",
+            "/room/.*",
     };
 
     @Override

@@ -13,7 +13,7 @@ export type CreateProfilePayload = {
 export async function createProfile(payload: CreateProfilePayload) {
   // Assuming the endpoint is "users/profile" or similar. Adjust as needed.
   // The user didn't specify the exact endpoint, but based on context:
-  const res = await http.post("identity/profileExpand/create", { json: payload }).json<ApiResponse<any>>();
+  const res = await http.post("identity/profileExpand/create", { json: payload }).json<ApiResponse<ProfileResponse>>();
   return res.result;
 }
 

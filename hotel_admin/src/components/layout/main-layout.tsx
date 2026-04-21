@@ -1,208 +1,247 @@
 "use client";
 
+import {
+  BedDouble,
+  CalendarCheck,
+  ChevronRight,
+  ClipboardList,
+  DoorOpen,
+  Grid3X3,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuthStore } from "@/store/auth-store";
+import { useState } from "react";
+
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { cn } from "@/lib/utils";
 import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
+import { useAuthStore } from "@/store/auth-store";
+
+const primaryNav = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Phòng", href: "/rooms", icon: BedDouble },
+  { label: "Đặt phòng", href: "/bookings", icon: CalendarCheck },
+  { label: "Khách hàng", href: "/users", icon: Users },
+];
+
+const catalogNav = [
+  { label: "Tổng quan danh mục", href: "/admin", icon: Grid3X3 },
+  { label: "Loại phòng", href: "/admin/room-types", icon: DoorOpen },
+  { label: "Cơ sở vật chất", href: "/admin/amenities", icon: Sparkles },
+  { label: "Gán cơ sở vật chất theo loại", href: "/admin/amenity-rooms", icon: ClipboardList },
+  { label: "Gán dịch vụ bổ sung theo loại", href: "/admin/room-type-services", icon: ShieldCheck },
+];
+
+const systemNav = [{ label: "Cài đặt", href: "/settings", icon: Settings }];
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const userInfo = useAuthStore((state) => state.userInfo);
-  const { logout } = useKeycloakAuth(); // Use Keycloak logout instead of store logout
+  const { logout } = useKeycloakAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Nếu là trang login, hiển thị nội dung full màn hình (không có sidebar/header)
   if (pathname === "/login") {
-    // Chúng ta có thể bao bọc thêm div nếu cần style riêng cho container login
-    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{children}</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#f2d7b4,transparent_35%),#140f0b] p-4">
+        {children}
+      </div>
+    );
   }
 
+  const pageTitle = getPathTitle(pathname);
+  const displayName = userInfo?.name || userInfo?.preferred_username || "Admin";
+  const initials = displayName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 transition-all duration-300">
-        <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <span className="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">
-            Hotel Admin
-          </span>
+    <div className="min-h-screen overflow-hidden bg-[#f5efe5] text-[#211a14] dark:bg-[#11100d] dark:text-[#f8f1e7]">
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_15%_10%,rgba(178,106,44,0.18),transparent_30%),radial-gradient(circle_at_85%_0%,rgba(33,26,20,0.16),transparent_26%)]" />
+
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-4 top-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#decdb9] bg-white/80 shadow-lg backdrop-blur lg:hidden dark:border-[#3a2e24] dark:bg-[#1a1713]/80"
+        aria-label="Mở menu quản trị"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      <div
+        className={cn(
+          "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity lg:hidden",
+          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        onClick={() => setMobileOpen(false)}
+      />
+
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-[19rem] flex-col border-r border-[#decdb9] bg-[#1f1710] text-[#f9efe1] shadow-2xl transition-transform duration-300 lg:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <div className="relative overflow-hidden border-b border-white/10 p-5">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(236,183,110,0.35),transparent_35%)]" />
+          <div className="relative flex items-center justify-between gap-3">
+            <Link href="/" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e8c990]/40 bg-[#9b5c24] font-[var(--font-cormorant)] text-2xl font-bold shadow-[0_20px_50px_-28px_rgba(0,0,0,0.95)]">
+                C
+              </span>
+              <span className="leading-tight">
+                <span className="block font-[var(--font-cormorant)] text-2xl font-bold tracking-wide">
+                  Continental
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d9bf9a]">
+                  Admin House
+                </span>
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="rounded-full p-2 text-white/70 hover:bg-white/10 lg:hidden"
+              aria-label="Đóng menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-          <Link
-            href="/"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname === "/"
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Dashboard</span>
-          </Link>
+        <div className="flex-1 overflow-y-auto px-4 py-5">
+          <NavGroup title="Vận hành" items={primaryNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+          <NavGroup title="Danh mục phòng" items={catalogNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+          <NavGroup title="Hệ thống" items={systemNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+        </div>
 
-          <Link
-            href="/admin"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname === "/admin"
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Danh mục tổng quan</span>
-          </Link>
-
-          <Link
-            href="/admin/room-types"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname.startsWith("/admin/room-types")
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Loại phòng</span>
-          </Link>
-
-          <Link
-            href="/admin/amenities"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname.startsWith("/admin/amenities")
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Tiện nghi</span>
-          </Link>
-
-          <Link
-            href="/admin/amenity-rooms"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname.startsWith("/admin/amenity-rooms")
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Tiện nghi - loại phòng</span>
-          </Link>
-
-          <Link
-            href="/admin/room-type-services"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname.startsWith("/admin/room-type-services")
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Dịch vụ - loại phòng</span>
-          </Link>
-
-          <div className="px-4 py-2 mt-6 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Quản lý
-          </div>
-
-          <Link
-            href="/rooms"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname.startsWith("/rooms")
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Phòng</span>
-          </Link>
-
-          <Link
-            href="/bookings"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname.startsWith("/bookings")
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Đặt phòng</span>
-          </Link>
-
-          <Link
-            href="/users"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname.startsWith("/users")
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Người dùng</span>
-          </Link>
-
-          <div className="px-4 py-2 mt-6 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Hệ thống
-          </div>
-
-          <Link
-            href="/settings"
-            className={`flex items-center px-4 py-3 rounded-lg transition-colors group ${
-              pathname.startsWith("/settings")
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="font-medium">Cài đặt</span>
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
-              {userInfo?.username?.charAt(0).toUpperCase() || "A"}
-            </div>
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {userInfo?.fullName || userInfo?.username || "Admin User"}
-              </p>
-              <div className="flex justify-between items-center">
-                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {userInfo?.email || "admin@system.com"}
-                 </p>
+        <div className="border-t border-white/10 p-4">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#e8c990] text-sm font-black text-[#1f1710]">
+                {initials || "A"}
               </div>
-               <button 
-                  onClick={() => logout()}
-                  className="text-xs text-red-500 hover:text-red-700 mt-1 font-medium bg-transparent border-none p-0 cursor-pointer"
-                >
-                  Đăng xuất
-                </button>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">{displayName}</p>
+                <p className="truncate text-xs text-[#d9bf9a]">{userInfo?.email || "Quản trị viên"}</p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10"
+            >
+              <LogOut className="h-4 w-4" />
+              Đăng xuất
+            </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Header */}
-        <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 shadow-sm z-10">
-          <h1 className="text-lg font-semibold text-gray-800 dark:text-white">
-            {getPathTitle(pathname)}
-          </h1>
-          <div className="flex items-center space-x-4">
-            {/* Notification Bell or other items could go here */}
+      <div className="lg:pl-[19rem]">
+        <header className="sticky top-0 z-30 border-b border-[#decdb9]/80 bg-[#f6f1e8]/78 px-5 py-4 backdrop-blur-xl dark:border-[#3a2e24] dark:bg-[#11100d]/78 lg:px-8">
+          <div className="flex items-center justify-between gap-4 pl-14 lg:pl-0">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.28em] text-[#9b5c24] dark:text-[#d7a25f]">
+                Hotel Continental
+                <ChevronRight className="h-3.5 w-3.5" />
+                Admin
+              </div>
+              <h1 className="mt-1 font-[var(--font-cormorant)] text-3xl font-bold tracking-tight lg:text-4xl">
+                {pageTitle}
+              </h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden rounded-full border border-[#decdb9] bg-white/60 px-4 py-2 text-sm font-semibold text-[#5f5144] shadow-sm dark:border-[#3a2e24] dark:bg-white/[0.05] dark:text-[#d8c9b7] md:block">
+                {new Intl.DateTimeFormat("vi-VN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                }).format(new Date())}
+              </div>
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 
-        {/* Main Scrollable Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-6">
-          <div className="h-full">{children}</div>
+        <main className="min-h-[calc(100vh-88px)] p-5 lg:p-8">
+          <div className="mx-auto max-w-[1500px]">{children}</div>
         </main>
       </div>
     </div>
   );
 }
 
-// Helper to get title based on path
+type NavItem = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+function NavGroup({
+  title,
+  items,
+  pathname,
+  onNavigate,
+}: {
+  title: string;
+  items: NavItem[];
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <div className="mb-7">
+      <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.24em] text-[#b79b74]">
+        {title}
+      </p>
+      <nav className="space-y-1">
+        {items.map((item) => {
+          const Icon = item.icon;
+          const active = item.href === "/" || item.href === "/admin" ? pathname === item.href : pathname.startsWith(item.href);
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={cn(
+                "group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold transition",
+                active
+                  ? "bg-[#e8c990] text-[#1f1710] shadow-[0_18px_50px_-30px_rgba(232,201,144,0.85)]"
+                  : "text-[#eadbc4]/82 hover:bg-white/10 hover:text-white",
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              <span className="flex-1">{item.label}</span>
+              {active ? <span className="h-2 w-2 rounded-full bg-[#1f1710]" /> : null}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
 function getPathTitle(pathname: string) {
-    if (pathname === "/") return "Dashboard Overview";
-    if (pathname.startsWith("/rooms")) return "Quản lý Phòng";
-    if (pathname === "/admin") return "Quản lý Danh mục";
-    if (pathname.startsWith("/admin/room-types")) return "Quản lý Loại phòng";
-    if (pathname.startsWith("/admin/amenities")) return "Quản lý Tiện nghi";
-    if (pathname.startsWith("/admin/amenity-rooms")) return "Quản lý Tiện nghi - Loại phòng";
-    if (pathname.startsWith("/admin/room-type-services")) return "Quản lý Dịch vụ - Loại phòng";
-    if (pathname.startsWith("/bookings")) return "Quản lý Đặt phòng";
-    if (pathname.startsWith("/users")) return "Quản lý Người dùng";
-    if (pathname.startsWith("/settings")) return "Cài đặt Hệ thống";
-    return "Hotel Admin";
+  if (pathname === "/") return "Bảng điều khiển";
+  if (pathname.startsWith("/rooms")) return "Quản lý phòng";
+  if (pathname === "/admin") return "Danh mục vận hành";
+  if (pathname.startsWith("/admin/room-types")) return "Loại phòng";
+  if (pathname.startsWith("/admin/amenities")) return "Cơ sở vật chất";
+  if (pathname.startsWith("/admin/amenity-rooms")) return "Gán cơ sở vật chất theo loại phòng";
+  if (pathname.startsWith("/admin/room-type-services")) return "Gán dịch vụ bổ sung theo loại phòng";
+  if (pathname.startsWith("/bookings")) return "Đặt phòng";
+  if (pathname.startsWith("/users")) return "Khách hàng";
+  if (pathname.startsWith("/settings")) return "Cài đặt";
+  return "Hotel Admin";
 }

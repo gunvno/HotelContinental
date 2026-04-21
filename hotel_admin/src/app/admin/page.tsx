@@ -2,30 +2,32 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  getRoomTypes,
-  createRoomType,
-  updateRoomType,
-  deleteRoomType,
-  getAmenities,
-  createAmenity,
-  updateAmenity,
-  deleteAmenity,
-  getAmenityRoomsByRoomTypePaged,
-  createAmenityRoom,
-  deleteAmenityRoom,
-  getRoomTypeServicesByRoomTypePaged,
-  createRoomTypeService,
-  deleteRoomTypeService,
-  getRoomTypeServices,
-  updateRoomTypeService,
-  type RoomTypeResponse,
   type AmenityResponse,
   type AmenityRoomResponse,
+  createAmenity,
+  createAmenityRoom,
+  createRoomType,
+  createRoomTypeService,
+  deleteAmenity,
+  deleteAmenityRoom,
+  deleteRoomType,
+  deleteRoomTypeService,
+  getAmenities,
+  getAmenityRoomsByRoomTypePaged,
+  getRoomTypes,
+  getRoomTypeServices,
+  getRoomTypeServicesByRoomTypePaged,
+  type RoomTypeResponse,
   type RoomTypeServiceResponse,
+  updateAmenityRoom,
+  updateAmenity,
+  updateRoomType,
+  updateRoomTypeService,
 } from "@/services/room-service";
 
 export default function AdminPage() {
@@ -36,18 +38,18 @@ export default function AdminPage() {
       href: "/admin/room-types",
     },
     {
-      title: "Tiện Nghi",
-      description: "Quản lý danh sách tiện nghi dùng cho hệ thống phòng.",
+      title: "Cơ Sở Vật Chất",
+      description: "Quản lý các cơ sở vật chất của khách sạn.",
       href: "/admin/amenities",
     },
     {
-      title: "Tiện Nghi - Loại Phòng",
-      description: "Gán tiện nghi và số lượng cho từng loại phòng.",
+      title: "Cơ Sở Vật Chất Theo Loại",
+      description: "Bảng trung gian gán cơ sở vật chất và số lượng cho từng loại phòng.",
       href: "/admin/amenity-rooms",
     },
     {
-      title: "Dịch Vụ - Loại Phòng",
-      description: "Gán dịch vụ theo serviceId cho từng loại phòng.",
+      title: "Dịch Vụ Bổ Sung Theo Loại Phòng",
+      description: "Bảng trung gian gán mã dịch vụ và số lượng cho từng loại phòng.",
       href: "/admin/room-type-services",
     },
   ];
@@ -80,25 +82,74 @@ export default function AdminPage() {
   );
 }
 
+const PAGE_SIZE = 10;
+
+function PaginationBar({
+  page,
+  totalPages,
+  total,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  onChange: (nextPage: number) => void;
+}) {
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  return (
+    <div className="mt-5 flex flex-col gap-3 border-t border-gray-200 pt-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300 md:flex-row md:items-center md:justify-between">
+      <p>
+        Đang hiển thị trang {page + 1} / {totalPages} trên {total} bản ghi
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onChange(Math.max(0, page - 1))}
+          disabled={page === 0}
+          className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          Trước
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
+          disabled={page >= totalPages - 1}
+          className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          Sau
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ============= ROOM TYPES SECTION =============
 export function RoomTypesSection() {
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", description: "", maximumOccupancy: 1, quantity: 0 });
+  const [formData, setFormData] = useState({ name: "", description: "", maximumOccupancy: 1, quantity: 0, deleted: false });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    loadRoomTypes();
-  }, []);
+    loadRoomTypes(page);
+  }, [page]);
 
-  const loadRoomTypes = async () => {
+  const loadRoomTypes = async (pageIndex = page) => {
     try {
       setIsLoading(true);
-      const { data } = await getRoomTypes(0, 100);
+      const { data, total: totalCount } = await getRoomTypes(pageIndex, PAGE_SIZE);
       setRoomTypes(data);
+      setTotal(totalCount);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
       setError(`Lỗi tải danh sách loại phòng: ${message}`);
@@ -115,6 +166,7 @@ export function RoomTypesSection() {
       description: roomType.description || "",
       maximumOccupancy: roomType.maximumOccupancy,
       quantity: roomType.quantity,
+      deleted: !!roomType.deleted,
     });
     setIsModalOpen(true);
   };
@@ -134,9 +186,9 @@ export function RoomTypesSection() {
         setSuccess("Tạo loại phòng thành công");
       }
       setIsModalOpen(false);
-      setFormData({ name: "", description: "", maximumOccupancy: 1, quantity: 0 });
+      setFormData({ name: "", description: "", maximumOccupancy: 1, quantity: 0, deleted: false });
       setEditingId(null);
-      await loadRoomTypes();
+      await loadRoomTypes(page);
     } catch (e) {
       setError("Lỗi lưu loại phòng");
       console.error(e);
@@ -148,7 +200,7 @@ export function RoomTypesSection() {
       try {
         await deleteRoomType(id);
         setSuccess("Xóa loại phòng thành công");
-        await loadRoomTypes();
+        await loadRoomTypes(page);
       } catch (e) {
         setError("Lỗi xóa loại phòng");
         console.error(e);
@@ -156,14 +208,21 @@ export function RoomTypesSection() {
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex flex-col gap-3 rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-900/80 md:flex-row md:items-end md:justify-between">
+        <div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Danh Sách Loại Phòng</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Hiển thị cả bản ghi hoạt động lẫn đã xóa.
+          </p>
+        </div>
         <Button
           onClick={() => {
             setEditingId(null);
-            setFormData({ name: "", description: "", maximumOccupancy: 1, quantity: 0 });
+            setFormData({ name: "", description: "", maximumOccupancy: 1, quantity: 0, deleted: false });
             setIsModalOpen(true);
           }}
           className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -178,39 +237,52 @@ export function RoomTypesSection() {
       {isLoading ? (
         <div className="text-center py-8 text-gray-500">Đang tải...</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Tên Loại</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Mô Tả</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Max Khách</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Số Lượng</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roomTypes.map((rt) => (
-                <tr key={rt.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{rt.name}</td>
-                  <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{rt.description || "-"}</td>
-                  <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{rt.maximumOccupancy}</td>
-                  <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{rt.quantity}</td>
-                  <td className="py-3 px-4">
-                    <button
-                      onClick={() => handleEdit(rt)}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 mr-3"
-                    >
-                      Sửa
-                    </button>
-                    <button onClick={() => handleDelete(rt.id)} className="text-red-600 hover:text-red-700 dark:text-red-400">
-                      Xóa
-                    </button>
-                  </td>
+        <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-800/80">
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Tên Loại</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Mô Tả</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Max Khách</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Số Lượng</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Trạng Thái</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {roomTypes.map((rt) => (
+                  <tr key={rt.id} className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${rt.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                    <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{rt.name}</td>
+                    <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{rt.description || "-"}</td>
+                    <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{rt.maximumOccupancy}</td>
+                    <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{rt.quantity}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${rt.deleted ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"}`}>
+                        {rt.deleted ? "Đã xóa" : "Hoạt động"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="outline" onClick={() => handleEdit(rt)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                          Sửa
+                        </Button>
+                        {!rt.deleted && (
+                          <Button type="button" variant="outline" onClick={() => handleDelete(rt.id)} className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                            Xóa
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {roomTypes.length === 0 && <div className="py-10 text-center text-gray-500">Không có dữ liệu</div>}
+          <div className="px-4 pb-4">
+            <PaginationBar page={page} totalPages={totalPages} total={total} onChange={setPage} />
+          </div>
         </div>
       )}
 
@@ -268,6 +340,20 @@ export function RoomTypesSection() {
                   className="mt-1"
                 />
               </div>
+
+              {editingId && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Trạng Thái Xóa</Label>
+                  <select
+                    value={formData.deleted ? "deleted" : "active"}
+                    onChange={(e) => setFormData({ ...formData, deleted: e.target.value === "deleted" })}
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="active">Hoạt động</option>
+                    <option value="deleted">Đã xóa</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -291,24 +377,27 @@ export function RoomTypesSection() {
 // ============= AMENITIES SECTION =============
 export function AmenitiesSection() {
   const [amenities, setAmenities] = useState<AmenityResponse[]>([]);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", description: "" });
+  const [formData, setFormData] = useState({ name: "", description: "", deleted: false });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAmenities();
-  }, []);
+    loadAmenities(page);
+  }, [page]);
 
-  const loadAmenities = async () => {
+  const loadAmenities = async (pageIndex = page) => {
     try {
       setIsLoading(true);
-      const { data } = await getAmenities(0, 100);
+      const { data, total: totalCount } = await getAmenities(pageIndex, PAGE_SIZE);
       setAmenities(data);
+      setTotal(totalCount);
     } catch (e) {
-      setError("Lỗi tải danh sách tiện nghi");
+      setError("Lỗi tải danh sách cơ sở vật chất");
       console.error(e);
     } finally {
       setIsLoading(false);
@@ -317,60 +406,65 @@ export function AmenitiesSection() {
 
   const handleEdit = (amenity: AmenityResponse) => {
     setEditingId(amenity.id);
-    setFormData({ name: amenity.name, description: amenity.description || "" });
+    setFormData({ name: amenity.name, description: amenity.description || "", deleted: !!amenity.deleted });
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      setError("Tên tiện nghi không được để trống");
+      setError("Tên cơ sở vật chất không được để trống");
       return;
     }
 
     try {
       if (editingId) {
         await updateAmenity(editingId, formData);
-        setSuccess("Cập nhật tiện nghi thành công");
+        setSuccess("Cập nhật cơ sở vật chất thành công");
       } else {
         await createAmenity(formData);
-        setSuccess("Tạo tiện nghi thành công");
+        setSuccess("Tạo cơ sở vật chất thành công");
       }
       setIsModalOpen(false);
-      setFormData({ name: "", description: "" });
+      setFormData({ name: "", description: "", deleted: false });
       setEditingId(null);
-      await loadAmenities();
+      await loadAmenities(page);
     } catch (e) {
-      setError("Lỗi lưu tiện nghi");
+      setError("Lỗi lưu cơ sở vật chất");
       console.error(e);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa tiện nghi này?")) {
+    if (confirm("Bạn chắc chắn muốn xóa cơ sở vật chất này?")) {
       try {
         await deleteAmenity(id);
-        setSuccess("Xóa tiện nghi thành công");
-        await loadAmenities();
+        setSuccess("Xóa cơ sở vật chất thành công");
+        await loadAmenities(page);
       } catch (e) {
-        setError("Lỗi xóa tiện nghi");
+        setError("Lỗi xóa cơ sở vật chất");
         console.error(e);
       }
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Danh Sách Tiện Nghi</h2>
+      <div className="mb-6 flex flex-col gap-3 rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-900/80 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Danh Sách Cơ Sở Vật Chất</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Bản ghi đã xóa vẫn hiển thị trong danh sách.</p>
+        </div>
         <Button
           onClick={() => {
             setEditingId(null);
-            setFormData({ name: "", description: "" });
+            setFormData({ name: "", description: "", deleted: false });
             setIsModalOpen(true);
           }}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
-          + Thêm Tiện Nghi
+          + Thêm Cơ Sở Vật Chất
         </Button>
       </div>
 
@@ -380,47 +474,54 @@ export function AmenitiesSection() {
       {isLoading ? (
         <div className="text-center py-8 text-gray-500">Đang tải...</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Tên Tiện Nghi</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Mô Tả</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Trạng Thái</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {amenities.map((amenity) => (
-                <tr key={amenity.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{amenity.name}</td>
-                  <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{amenity.description || "-"}</td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`px-2 py-1 rounded text-sm font-medium ${
-                        amenity.status === "AVAILABLE"
-                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                          : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                      }`}
-                    >
-                      {amenity.status === "AVAILABLE" ? "Có Sẵn" : "Không Có"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <button
-                      onClick={() => handleEdit(amenity)}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 mr-3"
-                    >
-                      Sửa
-                    </button>
-                    <button onClick={() => handleDelete(amenity.id)} className="text-red-600 hover:text-red-700 dark:text-red-400">
-                      Xóa
-                    </button>
-                  </td>
+        <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-800/80">
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Tên Cơ Sở Vật Chất</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Mô Tả</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Trạng Thái Xóa</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Trạng Thái</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {amenities.map((amenity) => (
+                  <tr key={amenity.id} className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${amenity.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                    <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{amenity.name}</td>
+                    <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{amenity.description || "-"}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${amenity.status === "AVAILABLE" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200"}`}>
+                        {amenity.status === "AVAILABLE" ? "Có sẵn" : "Không có"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${amenity.deleted ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"}`}>
+                        {amenity.deleted ? "Đã xóa" : "Hoạt động"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="outline" onClick={() => handleEdit(amenity)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                          Sửa
+                        </Button>
+                        {!amenity.deleted && (
+                          <Button type="button" variant="outline" onClick={() => handleDelete(amenity.id)} className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                            Xóa
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {amenities.length === 0 && <div className="py-10 text-center text-gray-500">Không có dữ liệu</div>}
+          <div className="px-4 pb-4">
+            <PaginationBar page={page} totalPages={totalPages} total={total} onChange={setPage} />
+          </div>
         </div>
       )}
 
@@ -428,12 +529,12 @@ export function AmenitiesSection() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              {editingId ? "Cập Nhật Tiện Nghi" : "Thêm Tiện Nghi Mới"}
+              {editingId ? "Cập Nhật Cơ Sở Vật Chất" : "Thêm Cơ Sở Vật Chất Mới"}
             </h3>
 
             <div className="space-y-4">
               <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Tên Tiện Nghi</Label>
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Tên Cơ Sở Vật Chất</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -451,6 +552,20 @@ export function AmenitiesSection() {
                   className="mt-1"
                 />
               </div>
+
+              {editingId && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Trạng Thái Xóa</Label>
+                  <select
+                    value={formData.deleted ? "deleted" : "active"}
+                    onChange={(e) => setFormData({ ...formData, deleted: e.target.value === "deleted" })}
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="active">Hoạt động</option>
+                    <option value="deleted">Đã xóa</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -477,9 +592,12 @@ export function AmenityRoomsSection() {
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
   const [amenityRooms, setAmenityRooms] = useState<AmenityRoomResponse[]>([]);
   const [amenities, setAmenities] = useState<AmenityResponse[]>([]);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ amenityId: "", amount: 1 });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ roomTypeId: "", amenityId: "", amount: 1, deleted: false });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -489,9 +607,9 @@ export function AmenityRoomsSection() {
 
   useEffect(() => {
     if (selectedRoomTypeId) {
-      loadAmenityRooms();
+      loadAmenityRooms(page);
     }
-  }, [selectedRoomTypeId]);
+  }, [selectedRoomTypeId, page]);
 
   const loadInitialData = async () => {
     try {
@@ -499,8 +617,13 @@ export function AmenityRoomsSection() {
       const [rtData, amenityData] = await Promise.all([getRoomTypes(0, 100), getAmenities(0, 100)]);
       setRoomTypes(rtData.data);
       setAmenities(amenityData.data);
-      if (rtData.data.length > 0) {
+      const activeRoomTypes = rtData.data.filter((roomType) => !roomType.deleted);
+      if (activeRoomTypes.length > 0) {
+        setSelectedRoomTypeId(activeRoomTypes[0].id);
+        setFormData((prev) => ({ ...prev, roomTypeId: prev.roomTypeId || activeRoomTypes[0].id }));
+      } else if (rtData.data.length > 0) {
         setSelectedRoomTypeId(rtData.data[0].id);
+        setFormData((prev) => ({ ...prev, roomTypeId: prev.roomTypeId || rtData.data[0].id }));
       }
     } catch (e) {
       setError("Lỗi tải dữ liệu");
@@ -510,55 +633,83 @@ export function AmenityRoomsSection() {
     }
   };
 
-  const loadAmenityRooms = async () => {
+  const loadAmenityRooms = async (pageIndex = page) => {
     if (!selectedRoomTypeId) return;
     try {
-      const { data } = await getAmenityRoomsByRoomTypePaged(selectedRoomTypeId, 0, 100);
+      const { data, total: totalCount } = await getAmenityRoomsByRoomTypePaged(selectedRoomTypeId, pageIndex, PAGE_SIZE);
       setAmenityRooms(data);
+      setTotal(totalCount);
     } catch (e) {
-      setError("Lỗi tải tiện nghi của loại phòng");
+      setError("Lỗi tải cơ sở vật chất theo loại phòng");
       console.error(e);
     }
   };
 
   const handleSave = async () => {
+    const roomTypeId = formData.roomTypeId || selectedRoomTypeId;
+    if (!roomTypeId) {
+      setError("Vui lòng chọn loại phòng");
+      return;
+    }
+
     if (!formData.amenityId) {
-      setError("Vui lòng chọn tiện nghi");
+      setError("Vui lòng chọn cơ sở vật chất");
       return;
     }
 
     try {
-      await createAmenityRoom({
-        amenityId: formData.amenityId,
-        roomTypeId: selectedRoomTypeId,
-        amount: formData.amount,
-      });
-      setSuccess("Thêm tiện nghi cho loại phòng thành công");
+      if (editingId) {
+        await updateAmenityRoom(editingId, { amount: formData.amount, deleted: formData.deleted });
+        setSuccess("Cập nhật cơ sở vật chất theo loại thành công");
+      } else {
+        await createAmenityRoom({
+          amenityId: formData.amenityId,
+          roomTypeId,
+          amount: formData.amount,
+          deleted: formData.deleted,
+        });
+        setSuccess("Thêm cơ sở vật chất cho loại phòng thành công");
+      }
       setIsModalOpen(false);
-      setFormData({ amenityId: "", amount: 1 });
-      await loadAmenityRooms();
+      setEditingId(null);
+      setFormData({ roomTypeId: roomTypeId, amenityId: "", amount: 1, deleted: false });
+      setSelectedRoomTypeId(roomTypeId);
+      await loadAmenityRooms(page);
     } catch (e) {
-      setError("Lỗi thêm tiện nghi");
+      setError("Lỗi thêm cơ sở vật chất");
       console.error(e);
     }
   };
 
+  const handleEdit = (item: AmenityRoomResponse) => {
+    setEditingId(item.id);
+    setFormData({ roomTypeId: item.roomTypeId || selectedRoomTypeId, amenityId: item.amenity.id, amount: item.amount, deleted: !!item.deleted });
+    setIsModalOpen(true);
+  };
+
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa tiện nghi này?")) {
+    if (confirm("Bạn chắc chắn muốn xóa cơ sở vật chất này?")) {
       try {
         await deleteAmenityRoom(id);
-        setSuccess("Xóa tiện nghi thành công");
-        await loadAmenityRooms();
+        setSuccess("Xóa cơ sở vật chất thành công");
+        await loadAmenityRooms(page);
       } catch (e) {
-        setError("Lỗi xóa tiện nghi");
+        setError("Lỗi xóa cơ sở vật chất");
         console.error(e);
       }
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const activeRoomTypes = roomTypes.filter((roomType) => !roomType.deleted);
+  const activeAmenities = amenities.filter((amenity) => !amenity.deleted);
+
   return (
     <div className="p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Gán Tiện Nghi cho Loại Phòng</h2>
+      <div className="mb-6 rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-900/80">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Bảng Trung Gian Cơ Sở Vật Chất Theo Loại Phòng</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Danh sách gán cơ sở vật chất cho loại phòng. Khi thêm mới sẽ luôn ở trạng thái hoạt động.</p>
+      </div>
 
       {error && <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 rounded">{error}</div>}
       {success && <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-200 rounded">{success}</div>}
@@ -571,10 +722,13 @@ export function AmenityRoomsSection() {
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Chọn Loại Phòng</Label>
             <select
               value={selectedRoomTypeId}
-              onChange={(e) => setSelectedRoomTypeId(e.target.value)}
+              onChange={(e) => {
+                setPage(0);
+                setSelectedRoomTypeId(e.target.value);
+              }}
               className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             >
-              {roomTypes.map((rt) => (
+              {activeRoomTypes.map((rt) => (
                 <option key={rt.id} value={rt.id}>
                   {rt.name}
                 </option>
@@ -583,42 +737,61 @@ export function AmenityRoomsSection() {
           </div>
 
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">Danh Sách Tiện Nghi</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Danh Sách Cơ Sở Vật Chất</h3>
             <Button
               onClick={() => {
-                setFormData({ amenityId: "", amount: 1 });
+                setEditingId(null);
+                setFormData({ amenityId: "", amount: 1, deleted: false });
                 setIsModalOpen(true);
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              + Thêm Tiện Nghi
+              + Thêm Cơ Sở Vật Chất
             </Button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Tên Tiện Nghi</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Số Lượng</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {amenityRooms.map((ar) => (
-                  <tr key={ar.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                    <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{ar.amenity.name}</td>
-                    <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{ar.amount}</td>
-                    <td className="py-3 px-4">
-                      <button onClick={() => handleDelete(ar.id)} className="text-red-600 hover:text-red-700 dark:text-red-400">
-                        Xóa
-                      </button>
-                    </td>
+          <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-800/80">
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Tên Cơ Sở Vật Chất</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Số Lượng</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Trạng Thái</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {amenityRooms.length === 0 && <div className="text-center py-8 text-gray-500">Không có tiện nghi nào</div>}
+                </thead>
+                <tbody>
+                  {amenityRooms.map((ar) => (
+                    <tr key={ar.id} className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${ar.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                      <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{ar.amenity.name}</td>
+                      <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{ar.amount}</td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${ar.deleted ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"}`}>
+                          {ar.deleted ? "Đã xóa" : "Hoạt động"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <Button type="button" variant="outline" onClick={() => handleEdit(ar)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                            Sửa
+                          </Button>
+                          {!ar.deleted && (
+                            <Button type="button" variant="outline" onClick={() => handleDelete(ar.id)} className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                              Xóa
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {amenityRooms.length === 0 && <div className="py-8 text-center text-gray-500">Không có cơ sở vật chất nào</div>}
+            </div>
+            <div className="px-4 pb-4">
+              <PaginationBar page={page} totalPages={totalPages} total={total} onChange={setPage} />
+            </div>
           </div>
         </>
       )}
@@ -626,24 +799,53 @@ export function AmenityRoomsSection() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Thêm Tiện Nghi</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              {editingId ? "Cập Nhật Cơ Sở Vật Chất Theo Loại" : "Thêm Cơ Sở Vật Chất"}
+            </h3>
 
             <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Chọn Tiện Nghi</Label>
+              {!editingId && (
+                <div>
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Chọn Loại Phòng</Label>
+                <select
+                  value={formData.roomTypeId || selectedRoomTypeId}
+                  onChange={(e) => setFormData({ ...formData, roomTypeId: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">-- Chọn Loại Phòng --</option>
+                  {activeRoomTypes.map((rt) => (
+                    <option key={rt.id} value={rt.id}>
+                      {rt.name}
+                    </option>
+                  ))}
+                </select>
+                </div>
+              )}
+
+              {!editingId && (
+                <div>
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Chọn Cơ Sở Vật Chất</Label>
                 <select
                   value={formData.amenityId}
                   onChange={(e) => setFormData({ ...formData, amenityId: e.target.value })}
                   className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                 >
-                  <option value="">-- Chọn Tiện Nghi --</option>
-                  {amenities.map((a) => (
+                  <option value="">-- Chọn Cơ Sở Vật Chất --</option>
+                  {activeAmenities.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name}
                     </option>
                   ))}
                 </select>
-              </div>
+                </div>
+              )}
+
+              {editingId && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Loại Phòng</Label>
+                  <Input value={roomTypes.find((roomType) => roomType.id === (formData.roomTypeId || selectedRoomTypeId))?.name || selectedRoomTypeId} disabled className="mt-1" />
+                </div>
+              )}
 
               <div>
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Số Lượng</Label>
@@ -660,6 +862,20 @@ export function AmenityRoomsSection() {
                   className="mt-1"
                 />
               </div>
+
+              {editingId && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Trạng Thái Xóa</Label>
+                  <select
+                    value={formData.deleted ? "deleted" : "active"}
+                    onChange={(e) => setFormData({ ...formData, deleted: e.target.value === "deleted" })}
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="active">Hoạt động</option>
+                    <option value="deleted">Đã xóa</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -685,10 +901,12 @@ export function RoomTypeServicesSection() {
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
   const [roomTypeServices, setRoomTypeServices] = useState<RoomTypeServiceResponse[]>([]);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ serviceId: "", amount: 1 });
+  const [formData, setFormData] = useState({ roomTypeId: "", serviceId: "", amount: 1, deleted: false });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -698,9 +916,9 @@ export function RoomTypeServicesSection() {
 
   useEffect(() => {
     if (selectedRoomTypeId) {
-      loadRoomTypeServices();
+      loadRoomTypeServices(page);
     }
-  }, [selectedRoomTypeId]);
+  }, [selectedRoomTypeId, page]);
 
   const loadInitialData = async () => {
     try {
@@ -708,95 +926,112 @@ export function RoomTypeServicesSection() {
       const [roomTypeResult, serviceResult] = await Promise.all([getRoomTypes(0, 100), getRoomTypeServices(0, 100)]);
       setRoomTypes(roomTypeResult.data);
       setRoomTypeServices(serviceResult.data);
-      if (roomTypeResult.data.length > 0) {
+      const activeRoomTypes = roomTypeResult.data.filter((roomType) => !roomType.deleted);
+      if (activeRoomTypes.length > 0) {
+        setSelectedRoomTypeId(activeRoomTypes[0].id);
+        setFormData((prev) => ({ ...prev, roomTypeId: prev.roomTypeId || activeRoomTypes[0].id }));
+      } else if (roomTypeResult.data.length > 0) {
         setSelectedRoomTypeId(roomTypeResult.data[0].id);
+        setFormData((prev) => ({ ...prev, roomTypeId: prev.roomTypeId || roomTypeResult.data[0].id }));
       }
     } catch (loadError) {
       console.error(loadError);
-      setError("Lỗi tải dữ liệu dịch vụ loại phòng");
+      setError("Lỗi tải dữ liệu dịch vụ bổ sung theo loại phòng");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadRoomTypeServices = async () => {
+  const loadRoomTypeServices = async (pageIndex = page) => {
     if (!selectedRoomTypeId) {
       return;
     }
 
     try {
-      const { data } = await getRoomTypeServicesByRoomTypePaged(selectedRoomTypeId, 0, 100);
+      const { data, total: totalCount } = await getRoomTypeServicesByRoomTypePaged(selectedRoomTypeId, pageIndex, PAGE_SIZE);
       setRoomTypeServices(data);
+      setTotal(totalCount);
     } catch (loadError) {
       console.error(loadError);
-      setError("Lỗi tải danh sách dịch vụ của loại phòng");
+      setError("Lỗi tải danh sách dịch vụ bổ sung của loại phòng");
     }
   };
 
   const handleEdit = (item: RoomTypeServiceResponse) => {
     setEditingId(item.id);
-    setFormData({ serviceId: item.serviceId, amount: item.amount });
+    setFormData({ roomTypeId: item.roomTypeId || selectedRoomTypeId, serviceId: item.serviceId, amount: item.amount, deleted: !!item.deleted });
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
     if (!formData.serviceId.trim()) {
-      setError("Service ID không được để trống");
+      setError("Mã dịch vụ không được để trống");
+      return;
+    }
+
+    const roomTypeId = formData.roomTypeId || selectedRoomTypeId;
+    if (!roomTypeId) {
+      setError("Vui lòng chọn loại phòng");
       return;
     }
 
     try {
       if (editingId) {
         await updateRoomTypeService(editingId, formData);
-        setSuccess("Cập nhật dịch vụ loại phòng thành công");
+        setSuccess("Cập nhật dịch vụ bổ sung thành công");
       } else {
         await createRoomTypeService({
-          roomTypeId: selectedRoomTypeId,
+          roomTypeId,
           serviceId: formData.serviceId.trim(),
           amount: formData.amount,
+          deleted: formData.deleted,
         });
-        setSuccess("Thêm dịch vụ loại phòng thành công");
+        setSuccess("Thêm dịch vụ bổ sung thành công");
       }
 
       setIsModalOpen(false);
       setEditingId(null);
-      setFormData({ serviceId: "", amount: 1 });
-      await loadRoomTypeServices();
+      setFormData({ roomTypeId, serviceId: "", amount: 1, deleted: false });
+      setSelectedRoomTypeId(roomTypeId);
+      await loadRoomTypeServices(page);
     } catch (saveError) {
       console.error(saveError);
-      setError("Lỗi lưu dịch vụ loại phòng");
+      setError("Lỗi lưu dịch vụ bổ sung");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa dịch vụ này?")) {
+    if (confirm("Bạn chắc chắn muốn xóa dịch vụ bổ sung này?")) {
       try {
         await deleteRoomTypeService(id);
-        setSuccess("Xóa dịch vụ loại phòng thành công");
-        await loadRoomTypeServices();
+        setSuccess("Xóa dịch vụ bổ sung thành công");
+        await loadRoomTypeServices(page);
       } catch (deleteError) {
         console.error(deleteError);
-        setError("Lỗi xóa dịch vụ loại phòng");
+        setError("Lỗi xóa dịch vụ bổ sung");
       }
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const activeRoomTypes = roomTypes.filter((roomType) => !roomType.deleted);
+
   return (
     <div className="p-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between mb-6">
+      <div className="mb-6 rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-900/80 md:flex md:items-end md:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Dịch Vụ của Loại Phòng</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Gán serviceId và số lượng dịch vụ cho từng loại phòng.</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Bảng Trung Gian Dịch Vụ Bổ Sung Theo Loại Phòng</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Danh sách gán dịch vụ cho loại phòng. Khi thêm mới sẽ luôn ở trạng thái hoạt động.</p>
         </div>
         <Button
           onClick={() => {
             setEditingId(null);
-            setFormData({ serviceId: "", amount: 1 });
+            setFormData({ roomTypeId: selectedRoomTypeId, serviceId: "", amount: 1, deleted: false });
             setIsModalOpen(true);
           }}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
-          + Thêm Dịch Vụ
+          + Thêm Dịch Vụ Bổ Sung
         </Button>
       </div>
 
@@ -811,10 +1046,13 @@ export function RoomTypeServicesSection() {
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Chọn Loại Phòng</Label>
             <select
               value={selectedRoomTypeId}
-              onChange={(e) => setSelectedRoomTypeId(e.target.value)}
+              onChange={(e) => {
+                setPage(0);
+                setSelectedRoomTypeId(e.target.value);
+              }}
               className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
             >
-              {roomTypes.map((roomType) => (
+              {activeRoomTypes.map((roomType) => (
                 <option key={roomType.id} value={roomType.id}>
                   {roomType.name}
                 </option>
@@ -822,39 +1060,48 @@ export function RoomTypeServicesSection() {
             </select>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Service ID</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Số Lượng</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Trạng Thái</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roomTypeServices.map((item) => (
-                  <tr key={item.id} className="border-b border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/50">
-                    <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{item.serviceId}</td>
-                    <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{item.amount}</td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded px-2 py-1 text-xs font-semibold ${item.deleted ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200" : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200"}`}>
-                        {item.deleted ? "Đã xóa" : "Hoạt động"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => handleEdit(item)} className="mr-3 text-blue-600 hover:text-blue-700 dark:text-blue-400">
-                        Sửa
-                      </button>
-                      <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-700 dark:text-red-400">
-                        Xóa
-                      </button>
-                    </td>
+          <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-800/80">
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Mã Dịch Vụ</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Số Lượng</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Trạng Thái</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {roomTypeServices.length === 0 && <div className="py-8 text-center text-gray-500">Chưa có dịch vụ nào</div>}
+                </thead>
+                <tbody>
+                  {roomTypeServices.map((item) => (
+                    <tr key={item.id} className={`border-b border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/50 ${item.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{item.serviceId}</td>
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{item.amount}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${item.deleted ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"}`}>
+                          {item.deleted ? "Đã xóa" : "Hoạt động"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Button type="button" variant="outline" onClick={() => handleEdit(item)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                            Sửa
+                          </Button>
+                          {!item.deleted && (
+                            <Button type="button" variant="outline" onClick={() => handleDelete(item.id)} className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                              Xóa
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {roomTypeServices.length === 0 && <div className="py-8 text-center text-gray-500">Chưa có dịch vụ bổ sung nào</div>}
+            </div>
+            <div className="px-4 pb-4">
+              <PaginationBar page={page} totalPages={totalPages} total={total} onChange={setPage} />
+            </div>
           </div>
         </>
       )}
@@ -863,16 +1110,41 @@ export function RoomTypeServicesSection() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
             <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-              {editingId ? "Cập Nhật Dịch Vụ Loại Phòng" : "Thêm Dịch Vụ Loại Phòng"}
+              {editingId ? "Cập Nhật Dịch Vụ Bổ Sung" : "Thêm Dịch Vụ Bổ Sung"}
             </h3>
 
             <div className="space-y-4">
+              {!editingId && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Chọn Loại Phòng</Label>
+                  <select
+                    value={formData.roomTypeId || selectedRoomTypeId}
+                    onChange={(e) => setFormData({ ...formData, roomTypeId: e.target.value })}
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="">-- Chọn Loại Phòng --</option>
+                    {activeRoomTypes.map((roomType) => (
+                      <option key={roomType.id} value={roomType.id}>
+                        {roomType.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {editingId && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Loại Phòng</Label>
+                  <Input value={roomTypes.find((roomType) => roomType.id === (formData.roomTypeId || selectedRoomTypeId))?.name || selectedRoomTypeId} disabled className="mt-1" />
+                </div>
+              )}
+
               <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Service ID</Label>
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Mã Dịch Vụ</Label>
                 <Input
                   value={formData.serviceId}
                   onChange={(e) => setFormData({ ...formData, serviceId: e.target.value })}
-                  placeholder="VD: wifi, breakfast, parking"
+                  placeholder="VD: breakfast, parking, airport-pickup"
                   className="mt-1"
                 />
               </div>
@@ -892,6 +1164,20 @@ export function RoomTypeServicesSection() {
                   className="mt-1"
                 />
               </div>
+
+              {editingId && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Trạng Thái Xóa</Label>
+                  <select
+                    value={formData.deleted ? "deleted" : "active"}
+                    onChange={(e) => setFormData({ ...formData, deleted: e.target.value === "deleted" })}
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="active">Hoạt động</option>
+                    <option value="deleted">Đã xóa</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex gap-3">

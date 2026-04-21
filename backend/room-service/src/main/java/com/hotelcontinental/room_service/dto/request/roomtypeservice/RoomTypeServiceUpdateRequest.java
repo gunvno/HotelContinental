@@ -11,4 +11,5 @@ import lombok.experimental.FieldDefaults;
 public class RoomTypeServiceUpdateRequest {
     String serviceId;
     int amount;
+    Boolean deleted;
 }
