@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, CreditCard, Landmark, ShieldCheck, Wallet } from "lucide-react";
 
-export default function PaymentPage() {
+function PaymentContent() {
   const searchParams = useSearchParams();
 
   const paymentData = useMemo(() => {
@@ -298,5 +298,13 @@ export default function PaymentPage() {
         </section>
       </section>
     </main>
+  );
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<main className="bg-background min-h-screen p-10 text-center">Đang tải thanh toán...</main>}>
+      <PaymentContent />
+    </Suspense>
   );
 }

@@ -2,16 +2,11 @@ package com.hotelcontinental.room_service.service.serviceImpl;
 
 import com.hotelcontinental.room_service.dto.request.amenityroom.AmenityRoomCreationRequest;
 import com.hotelcontinental.room_service.dto.request.amenityroom.AmenityRoomUpdateRequest;
-import com.hotelcontinental.room_service.dto.response.amenity.AmenityResponse;
 import com.hotelcontinental.room_service.dto.response.amenityroom.AmenityRoomResponse;
-import com.hotelcontinental.room_service.entity.Amenities;
 import com.hotelcontinental.room_service.entity.AmenityRooms;
-import com.hotelcontinental.room_service.entity.RoomTypes;
 import com.hotelcontinental.room_service.exception.AppException;
 import com.hotelcontinental.room_service.exception.ErrorCode;
-import com.hotelcontinental.room_service.repository.AmenitiesRepository;
 import com.hotelcontinental.room_service.repository.AmenitiesRoomsRepository;
-import com.hotelcontinental.room_service.repository.RoomTypeRepository;
 import com.hotelcontinental.room_service.repository.httpclient.IdentityClient;
 import com.hotelcontinental.room_service.service.interfaces.AmenityRoomService;
 import jakarta.transaction.Transactional;
@@ -32,10 +27,6 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
     @Autowired
     private AmenitiesRoomsRepository amenityRoomsRepository;
     @Autowired
-    private AmenitiesRepository amenitiesRepository;
-    @Autowired
-    private RoomTypeRepository roomTypeRepository;
-    @Autowired
     private IdentityClient identityClient;
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -50,15 +41,9 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
         String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
         String createdBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
 
-        Amenities amenity = amenitiesRepository.findByIdAndDeletedFalse(request.getAmenityId())
-                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
-
-        RoomTypes roomType = roomTypeRepository.findById(request.getRoomTypeId())
-                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
-
         AmenityRooms amenityRoom = AmenityRooms.builder()
-            .amenity(amenity)
-            .roomTypes(roomType)
+            .amenityId(request.getAmenityId())
+            .roomTypeId(request.getRoomTypeId())
             .amount(request.getAmount())
             .createdBy(createdBy)
             .createdTime(LocalDateTime.now())
@@ -70,7 +55,7 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
 
     @Override
     public Page<AmenityRoomResponse> getAmenitiesByRoomType(String roomTypeId, Pageable pageable) {
-        return amenityRoomsRepository.findByRoomTypesId(roomTypeId, pageable)
+        return amenityRoomsRepository.findByRoomTypeId(roomTypeId, pageable)
                 .map(this::mapToAmenityRoomResponse);
     }
 
@@ -97,6 +82,8 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
 
         AmenityRooms updatedAmenityRoom = amenityRoomsRepository.save(amenityRoom.toBuilder()
+            .roomTypeId(request.getRoomTypeId() != null ? request.getRoomTypeId() : amenityRoom.getRoomTypeId())
+            .amenityId(request.getAmenityId() != null ? request.getAmenityId() : amenityRoom.getAmenityId())
             .amount(request.getAmount() > 0 ? request.getAmount() : amenityRoom.getAmount())
             .deleted(request.getDeleted() != null ? request.getDeleted() : amenityRoom.getDeleted())
             .deletedTime(Boolean.TRUE.equals(request.getDeleted()) ? LocalDateTime.now() : (Boolean.FALSE.equals(request.getDeleted()) ? null : amenityRoom.getDeletedTime()))
@@ -153,25 +140,11 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
                 .build());
     }
 
-    private AmenityResponse mapToAmenityResponse(Amenities amenity) {
-        return AmenityResponse.builder()
-                .id(amenity.getId())
-                .name(amenity.getName())
-                .description(amenity.getDescription())
-                .status(amenity.getStatus())
-                .createdBy(amenity.getCreatedBy())
-                .createdTime(amenity.getCreatedTime())
-                .modifiedBy(amenity.getModifiedBy())
-                .modifiedTime(amenity.getModifiedTime())
-                .deleted(amenity.getDeleted())
-                .build();
-    }
-
     private AmenityRoomResponse mapToAmenityRoomResponse(AmenityRooms amenityRoom) {
         return AmenityRoomResponse.builder()
                 .id(amenityRoom.getId())
-                .amenity(mapToAmenityResponse(amenityRoom.getAmenity()))
-                .roomTypeId(amenityRoom.getRoomTypes().getId())
+                .amenityId(amenityRoom.getAmenityId())
+                .roomTypeId(amenityRoom.getRoomTypeId())
                 .amount(amenityRoom.getAmount())
                 .createdBy(amenityRoom.getCreatedBy())
                 .createdTime(amenityRoom.getCreatedTime())

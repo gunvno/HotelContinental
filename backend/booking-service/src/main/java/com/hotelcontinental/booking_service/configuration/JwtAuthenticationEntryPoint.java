@@ -1,8 +1,8 @@
-package com.hotelcontinental.identity_service.configuration;
+package com.hotelcontinental.booking_service.configuration;
 
-import com.hotelcontinental.identity_service.dto.ApiResponse;
-import com.hotelcontinental.identity_service.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hotelcontinental.booking_service.dto.ApiResponse;
+import com.hotelcontinental.booking_service.exception.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;

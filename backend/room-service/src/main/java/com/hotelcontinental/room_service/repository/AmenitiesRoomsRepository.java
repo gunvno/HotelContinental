@@ -11,7 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface AmenitiesRoomsRepository extends JpaRepository<AmenityRooms, String> {
-    List<AmenityRooms> findByRoomTypesId(String roomTypeId);
-    Page<AmenityRooms> findByRoomTypesId(String roomTypeId, Pageable pageable);
+    List<AmenityRooms> findByRoomTypeId(String roomTypeId);
+    Page<AmenityRooms> findByRoomTypeId(String roomTypeId, Pageable pageable);
     List<AmenityRooms> findByAmenityId(String amenityId);
 }

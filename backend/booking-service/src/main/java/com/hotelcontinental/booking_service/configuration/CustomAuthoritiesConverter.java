@@ -1,4 +1,4 @@
-package com.hotelcontinental.identity_service.configuration;
+package com.hotelcontinental.booking_service.configuration;
 
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.lang.Nullable;
@@ -19,11 +19,18 @@ public class CustomAuthoritiesConverter implements Converter<Jwt, Collection<Gra
     @Override
     public Collection<GrantedAuthority> convert(Jwt source) {
         Map<String, Object> realmAccessMap = source.getClaimAsMap(REALM_ACCESS);
+        if (realmAccessMap == null) {
+            return List.of();
+        }
 
         Object roles = realmAccessMap.get("roles");
 
-        if(roles instanceof List stringRoles){
-            return ((List<String>)stringRoles).stream().map(s -> new SimpleGrantedAuthority(String.format("%s%s", ROLE_PREFIX, s))).collect(Collectors.toList());
+        if(roles instanceof List<?> stringRoles){
+            return stringRoles.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .map(s -> new SimpleGrantedAuthority(String.format("%s%s", ROLE_PREFIX, s)))
+                    .collect(Collectors.toList());
         }
         return List.of();
     }

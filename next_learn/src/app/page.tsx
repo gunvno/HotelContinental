@@ -127,23 +127,23 @@ function ServiceCard({
 export default function Home() {
   return (
     <>
-      <section id="amenities" className="border-border/60 relative overflow-hidden border-b bg-gradient-to-b from-[#f7f0e5] via-[#fcfaf5] to-[#f1e5d3] scroll-mt-28">
+      <section id="amenities" className="border-border/60 relative overflow-hidden border-b bg-gradient-to-b from-[#fffaf2] via-[#f7efe3] to-[#efe2ce] scroll-mt-28 dark:from-[#111827] dark:via-[#0f1722] dark:to-[#0b1018]">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-20 top-12 h-72 w-72 rounded-full bg-[#d5a15f]/20 blur-3xl" />
-          <div className="absolute right-0 top-0 h-80 w-80 rounded-full bg-[#7f5b31]/10 blur-3xl" />
+          <div className="absolute -left-20 top-12 h-72 w-72 rounded-full bg-[#d5a15f]/15 blur-3xl" />
+          <div className="absolute right-0 top-0 h-80 w-80 rounded-full bg-[#7f5b31]/12 blur-3xl" />
         </div>
 
         <Container className="relative py-20 md:py-24">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.12fr),minmax(320px,0.88fr)] lg:items-center">
             <div className="space-y-7">
-              <span className="border-border/60 bg-white/70 text-[#8b5e22] inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold tracking-[0.28em] uppercase shadow-sm backdrop-blur-md">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#d7c4aa] bg-white/70 px-4 py-1.5 text-xs font-semibold tracking-[0.28em] text-[#8b5e22] uppercase shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-[#d7a25f]">
                 Trải nghiệm khách sạn
               </span>
               <div className="space-y-4">
-                <h1 className="max-w-2xl font-serif text-5xl leading-[1.02] font-semibold tracking-tight text-[#24170f] sm:text-6xl">
+                <h1 className="max-w-2xl font-serif text-5xl leading-[1.02] font-semibold tracking-tight text-[#24170f] dark:text-[#f8f1e7] sm:text-6xl">
                   Nâng tầm kỳ nghỉ của bạn với dịch vụ được chăm chút đến từng chi tiết.
                 </h1>
-                <p className="max-w-2xl text-lg leading-8 text-[#5a493a]">
+                <p className="max-w-2xl text-lg leading-8 text-[#5a493a] dark:text-[#c9b8a4]">
                   Từ spa, ẩm thực đến xe đưa đón và concierge riêng, mọi trải nghiệm đều được thiết kế để mang lại cảm giác thanh lịch, riêng tư và trọn vẹn.
                 </p>
               </div>
@@ -152,12 +152,12 @@ export default function Home() {
                 {serviceStats.map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded-[1.5rem] border border-white/60 bg-white/75 p-4 shadow-[0_18px_40px_-28px_rgba(66,45,22,0.45)] backdrop-blur-md"
+                    className="rounded-[1.5rem] border border-white/70 bg-white/75 p-4 shadow-[0_18px_40px_-28px_rgba(66,45,22,0.45)] backdrop-blur-md dark:border-white/10 dark:bg-white/[0.06]"
                   >
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b5e22]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b5e22] dark:text-[#d7a25f]">
                       {stat.label}
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-[#24170f]">{stat.value}</p>
+                    <p className="mt-2 text-2xl font-semibold text-[#24170f] dark:text-[#f8f1e7]">{stat.value}</p>
                   </div>
                 ))}
               </div>
@@ -172,15 +172,15 @@ export default function Home() {
 
             <div id="rooms" className="relative scroll-mt-28">
               <div className="absolute -inset-6 rounded-[2.25rem] bg-[#d5a15f]/10 blur-2xl" aria-hidden="true" />
-              <div className="relative grid gap-4 rounded-[2.25rem] border border-white/70 bg-white/75 p-4 shadow-[0_28px_80px_-40px_rgba(66,45,22,0.55)] backdrop-blur-xl sm:p-5">
+              <div className="relative grid gap-4 rounded-[2.25rem] border border-white/70 bg-white/75 p-4 shadow-[0_28px_80px_-40px_rgba(66,45,22,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05] sm:p-5">
                 <div className="grid gap-4 sm:grid-cols-[1.2fr,0.8fr]">
-                  <div className="min-h-[260px] rounded-[1.75rem] border border-white/50 bg-cover bg-center p-5 text-white shadow-[0_22px_55px_-35px_rgba(0,0,0,0.55)]" style={{ backgroundImage: "linear-gradient(180deg, rgba(12, 18, 26, 0.08), rgba(12, 18, 26, 0.72)), url('https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=1600&auto=format&fit=crop')" }}>
+                  <div className="min-h-[260px] rounded-[1.75rem] border border-white/50 bg-cover bg-center p-5 text-white shadow-[0_22px_55px_-35px_rgba(0,0,0,0.55)] dark:border-white/10" style={{ backgroundImage: "linear-gradient(180deg, rgba(12, 18, 26, 0.28), rgba(12, 18, 26, 0.88)), url('https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=1600&auto=format&fit=crop')" }}>
                     <div className="flex h-full flex-col justify-between">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] backdrop-blur-md">
+                        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] backdrop-blur-md">
                           Signature suite
                         </span>
-                        <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold backdrop-blur-md">
+                        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold backdrop-blur-md">
                           4.9/5
                         </span>
                       </div>
@@ -192,27 +192,27 @@ export default function Home() {
                   </div>
 
                   <div className="grid gap-4">
-                    <div className="rounded-[1.75rem] border border-border/50 bg-[#f5eee2] p-5 text-[#24170f] shadow-[0_18px_40px_-28px_rgba(66,45,22,0.35)]">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b5e22]">Dịch vụ nổi bật</p>
-                      <div className="mt-4 space-y-4 text-sm text-[#5a493a]">
+                    <div className="rounded-[1.75rem] border border-border/50 bg-[#f5eee2] p-5 text-[#24170f] shadow-[0_18px_40px_-28px_rgba(66,45,22,0.35)] dark:border-white/10 dark:bg-white/[0.05] dark:text-[#f8f1e7]">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b5e22] dark:text-[#d7a25f]">Dịch vụ nổi bật</p>
+                      <div className="mt-4 space-y-4 text-sm text-[#5a493a] dark:text-[#c9b8a4]">
                         <div className="flex items-start gap-3">
-                          <Sparkles className="mt-0.5 h-4 w-4 text-[#8b5e22]" />
+                          <Sparkles className="mt-0.5 h-4 w-4 text-[#8b5e22] dark:text-[#d7a25f]" />
                           <span>Ưu tiên nhận phòng sớm và trả phòng muộn theo tình trạng phòng.</span>
                         </div>
                         <div className="flex items-start gap-3">
-                          <Flower2 className="mt-0.5 h-4 w-4 text-[#8b5e22]" />
+                          <Flower2 className="mt-0.5 h-4 w-4 text-[#8b5e22] dark:text-[#d7a25f]" />
                           <span>Trị liệu spa riêng với âm nhạc, tinh dầu và khu ngâm thư giãn.</span>
                         </div>
                         <div className="flex items-start gap-3">
-                          <CarFront className="mt-0.5 h-4 w-4 text-[#8b5e22]" />
+                          <CarFront className="mt-0.5 h-4 w-4 text-[#8b5e22] dark:text-[#d7a25f]" />
                           <span>Xe đưa đón và concierge hỗ trợ toàn bộ lịch trình của bạn.</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="rounded-[1.75rem] border border-white/60 bg-white/80 p-5 shadow-[0_18px_40px_-28px_rgba(66,45,22,0.35)]">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b5e22]">Đặt lịch nhanh</p>
-                      <p className="mt-3 text-sm leading-6 text-[#5a493a]">
+                    <div className="rounded-[1.75rem] border border-white/60 bg-white/80 p-5 shadow-[0_18px_40px_-28px_rgba(66,45,22,0.35)] dark:border-white/10 dark:bg-white/[0.05]">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b5e22] dark:text-[#d7a25f]">Đặt lịch nhanh</p>
+                      <p className="mt-3 text-sm leading-6 text-[#5a493a] dark:text-[#c9b8a4]">
                         Chọn dịch vụ phù hợp và để đội ngũ của chúng tôi xử lý phần còn lại.
                       </p>
                       <Button href="/#contact" className="mt-4 w-full">
@@ -227,15 +227,15 @@ export default function Home() {
         </Container>
       </section>
 
-      <section className="border-border/60 border-b bg-[#fcfaf5]">
+      <section className="border-border/60 border-b bg-[#fffaf2] dark:bg-[#0f1722]">
         <Container className="py-16 md:py-20">
           <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8b5e22]">Dịch vụ tiêu biểu</p>
-              <h2 className="font-serif text-3xl font-semibold tracking-tight text-[#24170f] sm:text-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8b5e22] dark:text-[#d7a25f]">Dịch vụ tiêu biểu</p>
+              <h2 className="font-serif text-3xl font-semibold tracking-tight text-[#24170f] dark:text-[#f8f1e7] sm:text-4xl">
                 Những trải nghiệm được chọn lọc cho kỳ nghỉ sang trọng.
               </h2>
-              <p className="text-[#5a493a]">
+              <p className="text-[#5a493a] dark:text-[#c9b8a4]">
                 Bố cục lấy cảm hứng từ gallery dịch vụ cao cấp: một điểm nhấn lớn, các thẻ phụ cân bằng và thông tin ngắn gọn, dễ quét.
               </p>
             </div>
@@ -258,14 +258,14 @@ export default function Home() {
         </Container>
       </section>
 
-      <section className="bg-[#f3ece1]">
+      <section className="bg-[#fffaf2] dark:bg-[#0f1722]">
         <Container className="py-16 md:py-20">
           <div className="mb-10 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8b5e22]">Tiện nghi cao cấp</p>
-            <h2 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-[#24170f] sm:text-4xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8b5e22] dark:text-[#d7a25f]">Tiện nghi cao cấp</p>
+            <h2 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-[#24170f] dark:text-[#f8f1e7] sm:text-4xl">
               Nâng tầm trải nghiệm lưu trú
             </h2>
-            <p className="mt-3 text-[#5a493a] max-w-2xl mx-auto">
+            <p className="mt-3 max-w-2xl mx-auto text-[#5a493a] dark:text-[#c9b8a4]">
               Từ chăm sóc sức khỏe, phục vụ phòng đến đội ngũ concierge tận tâm, mọi dịch vụ đều sẵn sàng hỗ trợ bạn.
             </p>
           </div>
@@ -276,13 +276,13 @@ export default function Home() {
               return (
                 <article
                   key={service.title}
-                  className="rounded-[1.75rem] border border-white/70 bg-white/75 p-6 shadow-[0_18px_40px_-30px_rgba(66,45,22,0.35)] backdrop-blur-md"
+                  className="rounded-[1.75rem] border border-white/70 bg-white/75 p-6 shadow-[0_18px_40px_-30px_rgba(66,45,22,0.35)] backdrop-blur-md dark:border-white/10 dark:bg-white/[0.06]"
                 >
-                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#8b5e22]/10 text-[#8b5e22]">
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#8b5e22]/10 text-[#8b5e22] dark:bg-[#d7a25f]/15 dark:text-[#d7a25f]">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-4 text-lg font-semibold text-[#24170f]">{service.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[#5a493a]">{service.description}</p>
+                  <h3 className="mt-4 text-lg font-semibold text-[#24170f] dark:text-[#f8f1e7]">{service.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#5a493a] dark:text-[#c9b8a4]">{service.description}</p>
                 </article>
               );
             })}
@@ -290,18 +290,18 @@ export default function Home() {
         </Container>
       </section>
 
-      <section id="contact" className="scroll-mt-28 border-border/60 border-t bg-[#fcfaf5]">
+      <section id="contact" className="scroll-mt-28 border-border/60 border-t bg-[#fffaf2] dark:bg-[#0f1722]">
         <Container className="flex flex-col gap-10 py-16 md:flex-row md:items-start md:justify-between md:py-20">
           <div className="md:max-w-md">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8b5e22]">Liên hệ concierge</p>
-            <h2 className="mt-3 font-serif text-3xl font-semibold text-[#24170f]">Đặt dịch vụ theo nhu cầu riêng của bạn.</h2>
-            <p className="mt-3 text-[#5a493a]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8b5e22] dark:text-[#d7a25f]">Liên hệ concierge</p>
+            <h2 className="mt-3 font-serif text-3xl font-semibold text-[#24170f] dark:text-[#f8f1e7]">Đặt dịch vụ theo nhu cầu riêng của bạn.</h2>
+            <p className="mt-3 text-[#5a493a] dark:text-[#c9b8a4]">
               Từ ẩm thực, xe đưa đón đến spa và sự kiện riêng, đội ngũ lễ tân sẽ thiết kế lịch trình phù hợp với từng kỳ nghỉ.
             </p>
           </div>
 
           <div className="grid flex-1 gap-4">
-            <article className="rounded-[1.75rem] border border-white/70 bg-[#24170f] p-6 text-white shadow-[0_22px_60px_-35px_rgba(15,10,5,0.75)]">
+            <article className="rounded-[1.75rem] border border-white/70 bg-[#24170f] p-6 text-white shadow-[0_22px_60px_-35px_rgba(15,10,5,0.75)] dark:border-white/10 dark:bg-[#111827]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Ưu tiên hỗ trợ</p>
               <p className="mt-3 text-lg leading-7 text-white/88">
                 Chỉ cần gửi yêu cầu, chúng tôi sẽ phản hồi với gợi ý phù hợp, sắp xếp chi tiết và xác nhận trong thời gian sớm nhất.
@@ -309,13 +309,13 @@ export default function Home() {
             </article>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <article className="rounded-[1.75rem] border border-white/70 bg-white/80 p-5 shadow-[0_18px_40px_-30px_rgba(66,45,22,0.35)]">
+              <article className="rounded-[1.75rem] border border-white/70 bg-white/80 p-5 shadow-[0_18px_40px_-30px_rgba(66,45,22,0.35)] dark:border-white/10 dark:bg-white/[0.06]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8b5e22]">Email</p>
-                <p className="mt-2 text-[#24170f]">concierge@continental.example</p>
+                <p className="mt-2 text-[#24170f] dark:text-[#f8f1e7]">concierge@continental.example</p>
               </article>
-              <article className="rounded-[1.75rem] border border-white/70 bg-white/80 p-5 shadow-[0_18px_40px_-30px_rgba(66,45,22,0.35)]">
+              <article className="rounded-[1.75rem] border border-white/70 bg-white/80 p-5 shadow-[0_18px_40px_-30px_rgba(66,45,22,0.35)] dark:border-white/10 dark:bg-white/[0.06]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8b5e22]">Hotline</p>
-                <p className="mt-2 text-[#24170f]">+84 28 1234 5678</p>
+                <p className="mt-2 text-[#24170f] dark:text-[#f8f1e7]">+84 28 1234 5678</p>
               </article>
             </div>
           </div>

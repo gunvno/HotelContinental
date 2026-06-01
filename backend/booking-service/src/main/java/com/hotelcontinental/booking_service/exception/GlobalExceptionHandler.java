@@ -1,6 +1,6 @@
-package com.hotelcontinental.identity_service.exception;
+package com.hotelcontinental.booking_service.exception;
 
-import com.hotelcontinental.identity_service.dto.ApiResponse;
+import com.hotelcontinental.booking_service.dto.ApiResponse;
 import jakarta.validation.ConstraintViolation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -61,7 +61,7 @@ public class GlobalExceptionHandler {
             errorCode = ErrorCode.valueOf(enumKey);
 
             var constraintViolation =
-                    exception.getBindingResult().getAllErrors().getFirst().unwrap(ConstraintViolation.class);
+                    exception.getBindingResult().getAllErrors().get(0).unwrap(ConstraintViolation.class);
 
             attributes = constraintViolation.getConstraintDescriptor().getAttributes();
 

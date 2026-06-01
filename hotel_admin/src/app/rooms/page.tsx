@@ -2,6 +2,7 @@
 
 import { BedDouble, Camera, CheckCircle2, Hotel, MapPin, Plus, RefreshCw, UploadCloud } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ const statusLabel: Record<string, string> = {
 };
 
 export default function RoomsPage() {
+  const router = useRouter();
   const [view, setView] = useState<"list" | "create">("list");
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
@@ -168,7 +170,7 @@ export default function RoomsPage() {
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.32em] text-[#e8c990]">Room inventory</p>
-            <h2 className="mt-3 font-[var(--font-cormorant)] text-5xl font-bold leading-none tracking-tight lg:text-7xl">
+            <h2 className="mt-3 font-serif text-5xl font-bold leading-none tracking-tight lg:text-7xl">
               Kho phòng
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-[#eadbc4]">
@@ -236,7 +238,7 @@ export default function RoomsPage() {
       {message ? <Alert tone="success">{message}</Alert> : null}
 
       {view === "list" ? (
-        <RoomListView rooms={rooms} isLoading={isLoading} />
+        <RoomListView rooms={rooms} isLoading={isLoading} onOpen={(roomId) => router.push(`/rooms/${roomId}`)} />
       ) : (
         <RoomCreateForm
           form={form}
@@ -336,22 +338,20 @@ function RoomCreateForm({
         </Field>
 
         <Field label="Giá theo ngày (VND) *">
-          <Input
-            type="number"
+          <PriceInput
             min={0}
             value={form.pricePerDay}
-            onChange={(event) => onChange("pricePerDay", event.target.value)}
+            onChange={(value) => onChange("pricePerDay", value)}
             placeholder="4200000"
             className={fieldClassName}
           />
         </Field>
 
         <Field label="Giá theo giờ (VND) *">
-          <Input
-            type="number"
+          <PriceInput
             min={0}
             value={form.pricePerHour}
-            onChange={(event) => onChange("pricePerHour", event.target.value)}
+            onChange={(value) => onChange("pricePerHour", value)}
             placeholder="380000"
             className={fieldClassName}
           />
@@ -453,7 +453,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function RoomListView({ rooms, isLoading }: { rooms: RoomResponse[]; isLoading: boolean }) {
+function RoomListView({
+  rooms,
+  isLoading,
+  onOpen,
+}: {
+  rooms: RoomResponse[];
+  isLoading: boolean;
+  onOpen: (roomId: string) => void;
+}) {
   if (isLoading) {
     return (
       <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-10 text-center font-bold text-[#75695d] dark:border-[#3a2e24] dark:bg-white/[0.05] dark:text-[#b7a99a]">
@@ -466,7 +474,7 @@ function RoomListView({ rooms, isLoading }: { rooms: RoomResponse[]; isLoading: 
     return (
       <div className="rounded-[1.75rem] border border-dashed border-[#cdb99f] bg-white/60 p-12 text-center dark:border-[#3a2e24] dark:bg-white/[0.04]">
         <BedDouble className="mx-auto h-10 w-10 text-[#9b5c24] dark:text-[#d7a25f]" />
-        <h3 className="mt-4 font-[var(--font-cormorant)] text-3xl font-bold">Chưa có phòng</h3>
+        <h3 className="mt-4 font-serif text-3xl font-bold">Chưa có phòng</h3>
         <p className="mt-2 text-sm text-[#75695d] dark:text-[#b7a99a]">Tạo phòng đầu tiên để bắt đầu quản lý kho phòng.</p>
       </div>
     );
@@ -477,7 +485,8 @@ function RoomListView({ rooms, isLoading }: { rooms: RoomResponse[]; isLoading: 
       {rooms.map((room) => (
         <article
           key={room.id || room.name}
-          className="overflow-hidden rounded-[1.75rem] border border-[#decdb9] bg-white/78 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-xl dark:border-[#3a2e24] dark:bg-white/[0.05]"
+          onClick={() => room.id && onOpen(room.id)}
+          className="cursor-pointer overflow-hidden rounded-[1.75rem] border border-[#decdb9] bg-white/78 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-xl dark:border-[#3a2e24] dark:bg-white/[0.05]"
         >
           <div className="relative h-48 bg-[#eadfcd] dark:bg-[#211a14]">
             {room.image ? (
@@ -501,7 +510,7 @@ function RoomListView({ rooms, isLoading }: { rooms: RoomResponse[]; isLoading: 
           <div className="p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="font-[var(--font-cormorant)] text-3xl font-bold leading-none">{room.name}</h3>
+                <h3 className="font-serif text-3xl font-bold leading-none">{room.name}</h3>
                 <p className="mt-2 flex items-center gap-1.5 text-sm text-[#75695d] dark:text-[#b7a99a]">
                   <MapPin className="h-4 w-4" />
                   {room.address}
@@ -531,6 +540,68 @@ function InfoPill({ label, value }: { label: string; value: string }) {
       <p className="mt-1 truncate font-black">{value}</p>
     </div>
   );
+}
+
+function PriceInput({
+  value,
+  onChange,
+  className,
+  placeholder,
+  min,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  placeholder?: string;
+  min?: number;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const suggestions = getPriceSuggestions(value, min);
+
+  return (
+    <div className="relative">
+      <Input
+        value={value}
+        onChange={(event) => onChange(event.target.value.replace(/[^\d]/g, ""))}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setIsOpen(false)}
+        placeholder={placeholder}
+        inputMode="numeric"
+        className={className}
+      />
+      {isOpen && suggestions.length > 0 ? (
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-[#decdb9] bg-white shadow-[0_18px_45px_-28px_rgba(33,23,15,0.65)]">
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onChange(String(suggestion));
+                setIsOpen(false);
+              }}
+              className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold text-[#211a14] transition hover:bg-[#fff4e6]"
+            >
+              <span>{formatCurrency(suggestion)}</span>
+              <span className="text-xs font-bold text-[#9b5c24]">{suggestion}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function getPriceSuggestions(rawValue: string, min?: number) {
+  const base = Number(String(rawValue).replace(/[^\d]/g, ""));
+  if (!Number.isFinite(base) || base <= 0 || (min !== undefined && base < min)) {
+    return [];
+  }
+
+  return [1_000, 10_000, 100_000, 1_000_000]
+    .map((multiplier) => base * multiplier)
+    .filter((suggestion) => suggestion > base)
+    .slice(0, 4);
 }
 
 function Alert({ tone, children }: { tone: "success" | "error"; children: React.ReactNode }) {

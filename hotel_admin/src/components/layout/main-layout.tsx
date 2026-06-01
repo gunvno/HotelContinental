@@ -20,7 +20,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
 import { useAuthStore } from "@/store/auth-store";
@@ -96,11 +95,11 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(236,183,110,0.35),transparent_35%)]" />
           <div className="relative flex items-center justify-between gap-3">
             <Link href="/" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e8c990]/40 bg-[#9b5c24] font-[var(--font-cormorant)] text-2xl font-bold shadow-[0_20px_50px_-28px_rgba(0,0,0,0.95)]">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e8c990]/40 bg-[#9b5c24] font-serif text-2xl font-bold shadow-[0_20px_50px_-28px_rgba(0,0,0,0.95)]">
                 C
               </span>
               <span className="leading-tight">
-                <span className="block font-[var(--font-cormorant)] text-2xl font-bold tracking-wide">
+                <span className="block font-serif text-2xl font-bold tracking-wide">
                   Continental
                 </span>
                 <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d9bf9a]">
@@ -157,7 +156,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <ChevronRight className="h-3.5 w-3.5" />
                 Admin
               </div>
-              <h1 className="mt-1 font-[var(--font-cormorant)] text-3xl font-bold tracking-tight lg:text-4xl">
+              <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight lg:text-4xl">
                 {pageTitle}
               </h1>
             </div>
@@ -169,7 +168,6 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                   year: "numeric",
                 }).format(new Date())}
               </div>
-              <ThemeToggle />
             </div>
           </div>
         </header>

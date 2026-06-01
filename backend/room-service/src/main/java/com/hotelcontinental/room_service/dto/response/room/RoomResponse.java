@@ -1,6 +1,5 @@
 package com.hotelcontinental.room_service.dto.response.room;
 
-import com.hotelcontinental.room_service.dto.response.roomtype.RoomTypeResponse;
 import com.hotelcontinental.room_service.enums.RoomStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -16,7 +15,7 @@ import java.time.LocalDateTime;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RoomResponse {
     String id;
-    RoomTypeResponse roomTypes;
+    String roomTypeId;
     String image;
     String name;
     Float pricePerDay;

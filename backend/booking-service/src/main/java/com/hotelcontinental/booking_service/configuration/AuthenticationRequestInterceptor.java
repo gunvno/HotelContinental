@@ -1,4 +1,4 @@
-package com.hotelcontinental.identity_service.configuration;
+package com.hotelcontinental.booking_service.configuration;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;

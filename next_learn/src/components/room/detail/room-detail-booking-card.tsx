@@ -4,6 +4,7 @@ import { CalendarDays } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/auth-store";
 
 export type RoomDetailBookingCardProps = {
   roomId: string;
@@ -23,6 +24,7 @@ export function RoomDetailBookingCard({
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);
+  const token = useAuthStore((state) => state.token);
 
   const tax = Math.round(pricePerNight * 0.1);
   const total = pricePerNight * 3 + tax;
@@ -43,6 +45,7 @@ export function RoomDetailBookingCard({
 
     return `/payment?${params.toString()}`;
   }, [checkIn, checkOut, guests, pricePerNight, roomId, roomTitle]);
+  const bookingHref = token ? paymentHref : `/login?redirect=${encodeURIComponent(paymentHref)}`;
 
   return (
     <aside className="border-border/60 bg-background sticky top-24 rounded-3xl border p-6 shadow-[0_20px_55px_-35px_rgba(31,41,55,0.4)]">
@@ -117,7 +120,7 @@ export function RoomDetailBookingCard({
         </div>
       </div>
 
-      <Button href={paymentHref} className="mt-6 h-12 w-full rounded-full">Đặt phòng ngay</Button>
+      <Button href={bookingHref} className="mt-6 h-12 w-full rounded-full">Đặt phòng ngay</Button>
       <p className="text-muted-foreground mt-3 text-center text-xs">Không trừ phí hủy phòng trước 48 giờ</p>
     </aside>
   );

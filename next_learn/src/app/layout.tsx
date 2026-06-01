@@ -10,17 +10,20 @@ import { AppProviders } from "@/providers/app-providers";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin", "latin-ext"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin", "latin-ext"],
+  display: "swap",
 });
 
 const playfairDisplay = Playfair_Display({
   variable: "--font-serif",
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {

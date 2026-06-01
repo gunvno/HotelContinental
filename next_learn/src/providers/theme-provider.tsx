@@ -43,6 +43,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
     const root = document.documentElement;
     root.dataset.theme = resolvedTheme;
+    root.classList.toggle("dark", resolvedTheme === "dark");
   }, [isClient, resolvedTheme]);
 
   const toggleTheme = useCallback(() => {

@@ -1,4 +1,4 @@
-package com.hotelmanagement.enums;
+package com.hotelcontinental.booking_service.enums;
 
 public enum RoomBookingStatus {
     PENDING,

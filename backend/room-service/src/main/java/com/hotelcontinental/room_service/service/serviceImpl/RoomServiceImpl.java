@@ -4,7 +4,7 @@ import com.hotelcontinental.room_service.dto.request.room.RoomCreationRequest;
 import com.hotelcontinental.room_service.dto.response.room.RoomForCustomerResponse;
 import com.hotelcontinental.room_service.dto.response.room.RoomImageResponse;
 import com.hotelcontinental.room_service.dto.response.room.RoomResponse;
-import com.hotelcontinental.room_service.dto.response.roomtype.RoomTypeResponse;
+import com.hotelcontinental.room_service.dto.response.room.RoomDetailResponse;
 import com.hotelcontinental.room_service.enums.RoomStatus;
 import com.hotelcontinental.room_service.exception.AppException;
 import com.hotelcontinental.room_service.exception.ErrorCode;
@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class RoomServiceImpl implements RoomService {
@@ -76,7 +77,7 @@ public class RoomServiceImpl implements RoomService {
            return roomRepository.findAllByDeletedFalse(pageable)
                .map(room -> RoomForCustomerResponse.builder()
                    .id(room.getId())
-                   .roomTypes(mapToRoomTypeResponse(room.getRoomTypes()))
+                   .roomTypeId(room.getRoomTypeId())
                    .image(room.getImage())
                    .name(room.getName())
                    .pricePerDay(room.getPricePerDay())
@@ -110,7 +111,7 @@ public class RoomServiceImpl implements RoomService {
                 .description(request.getDescription())
                 .roomSize(request.getRoomSize())
                 .status(RoomStatus.AVAILABLE)
-                .roomTypes(request.getRoomTypes())
+                .roomTypeId(request.getRoomTypeId())
                 .createdTime(LocalDateTime.now())
                 .createdBy(createdBy)
                 .build();
@@ -124,7 +125,7 @@ public class RoomServiceImpl implements RoomService {
                 .description(request.getDescription())
                 .roomSize(request.getRoomSize())
                 .status(RoomStatus.AVAILABLE)
-                .roomTypes(mapToRoomTypeResponse(room.getRoomTypes()))
+                .roomTypeId(room.getRoomTypeId())
                 .createdTime(LocalDateTime.now())
                 .createdBy(createdBy)
                 .modifiedTime(null)
@@ -132,6 +133,58 @@ public class RoomServiceImpl implements RoomService {
                 .deleted(false)
                 .deletedTime(null)
                 .deletedBy(null)
+                .build();
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public RoomResponse updateRoom(String id, RoomCreationRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        Rooms room = roomRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+
+        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
+        String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+
+        RoomStatus status = request.getStatus() != null ? request.getStatus() : room.getStatus();
+        Rooms updated = room.toBuilder()
+                .name(request.getName())
+                .pricePerDay(request.getPricePerDay())
+                .pricePerHour(request.getPricePerHour())
+                .address(request.getAddress())
+                .description(request.getDescription())
+                .roomSize(request.getRoomSize())
+                .status(status)
+                .roomTypeId(request.getRoomTypeId())
+                .modifiedTime(LocalDateTime.now())
+                .modifiedBy(modifiedBy)
+                .build();
+
+        Rooms saved = roomRepository.save(updated);
+        return RoomResponse.builder()
+                .id(saved.getId())
+                .name(saved.getName())
+                .image(saved.getImage())
+                .pricePerDay(saved.getPricePerDay())
+                .pricePerHour(saved.getPricePerHour())
+                .address(saved.getAddress())
+                .description(saved.getDescription())
+                .roomSize(saved.getRoomSize())
+                .status(saved.getStatus())
+                .roomTypeId(saved.getRoomTypeId())
+                .createdTime(saved.getCreatedTime())
+                .createdBy(saved.getCreatedBy())
+                .modifiedTime(saved.getModifiedTime())
+                .modifiedBy(saved.getModifiedBy())
+                .deleted(Boolean.TRUE.equals(saved.getDeleted()))
+                .deletedTime(saved.getDeletedTime())
+                .deletedBy(saved.getDeletedBy())
                 .build();
     }
 
@@ -232,26 +285,42 @@ public class RoomServiceImpl implements RoomService {
         return responses;
     }
 
-    private RoomTypeResponse mapToRoomTypeResponse(com.hotelcontinental.room_service.entity.RoomTypes roomType) {
-        if (roomType == null) {
-            return null;
-        }
+    @Override
+    public RoomDetailResponse getRoomById(String id) {
+        Rooms room = roomRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
 
-        return RoomTypeResponse.builder()
-                .id(roomType.getId())
-                .name(roomType.getName())
-                .description(roomType.getDescription())
-                .maximumOccupancy(roomType.getMaximumOccupancy())
-                .quantity(roomType.getQuantity())
-                .createdTime(roomType.getCreatedTime())
-                .createdBy(roomType.getCreatedBy())
-                .modifiedTime(roomType.getModifiedTime())
-                .modifiedBy(roomType.getModifiedBy())
-                .deleted(roomType.getDeleted())
-                .deletedTime(roomType.getDeletedTime())
-                .deletedBy(roomType.getDeletedBy())
+        List<Images> roomImages = imageRepository.findAllByRoomIdAndDeletedFalse(id);
+        
+        List<RoomImageResponse> imageResponses = roomImages.stream()
+                .map(img -> RoomImageResponse.builder()
+                        .id(img.getId())
+                        .url(img.getUrl())
+                        .publicId(img.getPublicId())
+                        .isCover(img.getIsCover())
+                        .sortOrder(img.getSortOrder())
+                        .build())
+                .collect(Collectors.toList());
+
+        List<String> galleryUrls = roomImages.stream()
+                .map(Images::getUrl)
+                .collect(Collectors.toList());
+
+        return RoomDetailResponse.builder()
+                .id(room.getId())
+                .roomTypeId(room.getRoomTypeId())
+                .name(room.getName())
+                .image(room.getImage())
+                .images(imageResponses)
+                .galleryImages(galleryUrls)
+                .pricePerDay(room.getPricePerDay())
+                .pricePerHour(room.getPricePerHour())
+                .address(room.getAddress())
+                .description(room.getDescription())
+                .roomDescription(room.getDescription()) 
+                .roomSize(room.getRoomSize())
+                .status(room.getStatus())
                 .build();
     }
-
 
 }

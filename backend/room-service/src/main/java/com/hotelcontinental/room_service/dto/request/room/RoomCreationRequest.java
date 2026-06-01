@@ -1,7 +1,6 @@
 package com.hotelcontinental.room_service.dto.request.room;
 
 
-import com.hotelcontinental.room_service.entity.RoomTypes;
 import com.hotelcontinental.room_service.enums.RoomStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -14,7 +13,7 @@ import lombok.experimental.FieldDefaults;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RoomCreationRequest {
-    RoomTypes roomTypes;
+    String roomTypeId;
     String image;
     String name;
     Float pricePerDay;

@@ -108,7 +108,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new RuntimeException("Không tìm thấy Location header trong phản hồi từ Keycloak");
         }
 
-        String location = locationHeader.getFirst();
+        String location = locationHeader.get(0);
         String[] splitedStr = location.split("/");
         return splitedStr[splitedStr.length - 1];
     }

@@ -64,7 +64,7 @@ export default function DashboardPage() {
             <p className="text-xs font-bold uppercase tracking-[0.32em] text-[#e8c990]">
               Daily command center
             </p>
-            <h2 className="mt-3 max-w-3xl font-[var(--font-cormorant)] text-5xl font-bold leading-[0.95] tracking-tight lg:text-7xl">
+            <h2 className="mt-3 max-w-3xl font-serif text-5xl font-bold leading-[0.95] tracking-tight lg:text-7xl">
               Điều hành khách sạn trong một màn hình.
             </h2>
             <p className="mt-5 max-w-2xl text-sm leading-6 text-[#eadbc4]">
@@ -130,7 +130,7 @@ export default function DashboardPage() {
         <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-6 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05]">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-[var(--font-cormorant)] text-3xl font-bold">Việc cần làm</h3>
+              <h3 className="font-serif text-3xl font-bold">Việc cần làm</h3>
               <p className="text-sm text-[#75695d] dark:text-[#b7a99a]">Các tác vụ ảnh hưởng trực tiếp tới vận hành.</p>
             </div>
             <ClipboardCheck className="h-6 w-6 text-[#9b5c24] dark:text-[#d7a25f]" />
@@ -152,7 +152,7 @@ export default function DashboardPage() {
 
         <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-6 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05]">
           <div>
-            <h3 className="font-[var(--font-cormorant)] text-3xl font-bold">Doanh thu 7 ngày</h3>
+            <h3 className="font-serif text-3xl font-bold">Doanh thu 7 ngày</h3>
             <p className="text-sm text-[#75695d] dark:text-[#b7a99a]">Placeholder trực quan, nên thay bằng dữ liệu từ billing/report-service.</p>
           </div>
           <div className="mt-8 flex h-72 items-end gap-3 rounded-[1.5rem] border border-[#eadfcd] bg-[#fbf7ef] p-5 dark:border-[#3a2e24] dark:bg-[#17130f]">
@@ -174,7 +174,7 @@ export default function DashboardPage() {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-[var(--font-cormorant)] text-3xl font-bold">Hoạt động mới</h3>
+              <h3 className="font-serif text-3xl font-bold">Hoạt động mới</h3>
               <p className="text-sm text-[#75695d] dark:text-[#b7a99a]">Booking và dịch vụ gần nhất.</p>
             </div>
           </div>

@@ -1,4 +1,4 @@
-package com.hotelcontinental.identity_service.dto;
+package com.hotelcontinental.booking_service.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;

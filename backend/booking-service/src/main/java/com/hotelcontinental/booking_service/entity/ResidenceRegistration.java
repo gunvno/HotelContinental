@@ -1,13 +1,11 @@
-package com.hotelmanagement.entity;
+package com.hotelcontinental.booking_service.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 @Entity
 @Table(name = "residence_registration")

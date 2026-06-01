@@ -132,7 +132,7 @@ return (
 <div className="lg:col-span-8 space-y-16">
 
 {/* Key Specifications */}
-<div className="grid grid-cols-2 md:grid-cols-4 gap-8 py-8 border-y border-[#d6c3b4]/20">
+<div className="grid grid-cols-2 gap-8 py-8 border-y border-[#d6c3b4]/20">
 {featureSpecs.map((item, idx) => (
 <div key={idx} className="flex flex-col gap-2">
 <span className="text-[10px] sm:text-xs uppercase tracking-widest text-[#514439] font-bold">{item.label}</span>

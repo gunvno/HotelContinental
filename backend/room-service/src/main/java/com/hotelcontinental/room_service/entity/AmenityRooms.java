@@ -19,13 +19,11 @@ public class AmenityRooms {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "amenity_id", nullable = false)
-    Amenities amenity;
+    @Column(name = "amenity_id", nullable = false)
+    String amenityId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_type_id")
-    RoomTypes roomTypes;
+    @Column(name = "room_type_id")
+    String roomTypeId;
 
     @Column(name = "amount")
     float amount;

@@ -20,9 +20,10 @@ public class Rooms {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
-    @ManyToOne
-    @JoinColumn(name = "room_type_id")
-    RoomTypes roomTypes;
+
+    @Column(name = "room_type_id")
+    String roomTypeId;
+
     @Column(name = "image")
     String image;
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)

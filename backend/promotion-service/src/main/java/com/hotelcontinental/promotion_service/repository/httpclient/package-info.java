@@ -1,0 +1,1 @@
+package com.hotelcontinental.promotion_service.repository.httpclient;

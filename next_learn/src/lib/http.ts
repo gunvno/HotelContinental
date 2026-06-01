@@ -58,6 +58,12 @@ function createHttpClient(): KyInstance {
           if (response.status === 401) {
             const authStore = useAuthStore.getState();
             const originalRequest = request;
+            const currentToken = authStore.token;
+            const refreshToken = authStore.refreshToken;
+
+            if (!currentToken && !refreshToken) {
+              return response;
+            }
 
             // Nếu đang refresh thì đợi
             if (isRefreshing) {
@@ -74,12 +80,10 @@ function createHttpClient(): KyInstance {
             }
 
             // Bắt đầu logic refresh Token
-            const refreshToken = authStore.refreshToken;
             
             // Nếu không có refresh token -> Logout luôn
             if (!refreshToken) {
                authStore.logout();
-               if (typeof window !== "undefined") window.location.href = "/login";
                return response;
             }
 
@@ -112,7 +116,6 @@ function createHttpClient(): KyInstance {
               
               // Refresh thất bại (hết hạn cả refresh token) -> Logout
               authStore.logout();
-              if (typeof window !== "undefined") window.location.href = "/login";
               return response; 
             }
           }

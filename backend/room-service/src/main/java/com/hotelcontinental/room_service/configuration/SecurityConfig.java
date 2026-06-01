@@ -18,20 +18,9 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/media/download/**",
-            "/building/get",
-            "/floor/{buildingId}",
-            "/roomType",
-            "/room/roomType",
-            "/amenity",
-            "/room/amenity",
             "/amenityRoom/roomType/**",
             "/room/amenityRoom/roomType/**",
-            "/roomTypeService",
-            "/room/roomTypeService",
-            "/roomTypeService/roomType/**"
-            ,"/room/roomTypeService/roomType/**",
             "/room/room/**"
-
     };
 
     private final CustomJwtDecoder customJwtDecoder;

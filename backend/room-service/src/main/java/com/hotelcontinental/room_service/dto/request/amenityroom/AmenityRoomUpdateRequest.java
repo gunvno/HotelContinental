@@ -9,6 +9,8 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AmenityRoomUpdateRequest {
+    String roomTypeId;
+    String amenityId;
     float amount;
     Boolean deleted;
 }

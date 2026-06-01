@@ -30,7 +30,7 @@ const footerLinks = [
 // Footer tạo khối thông tin ngắn gọn ở cuối trang.
 export function Footer() {
   return (
-    <footer className="border-border/60 bg-muted/20 border-t text-sm">
+    <footer className="border-border/60 bg-muted/20 border-t text-sm dark:bg-[#0b0f17]">
       <Container className="flex flex-col gap-6 py-8 md:flex-row md:items-center md:justify-between">
         <div className="text-muted-foreground space-y-1">
           <p>

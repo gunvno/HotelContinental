@@ -1,4 +1,4 @@
-package com.hotelcontinental.identity_service.exception;
+package com.hotelcontinental.booking_service.exception;
 
 public class AppException extends RuntimeException {
 

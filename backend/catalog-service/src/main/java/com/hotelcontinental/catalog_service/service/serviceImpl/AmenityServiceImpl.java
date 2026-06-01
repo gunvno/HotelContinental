@@ -1,0 +1,145 @@
+package com.hotelcontinental.catalog_service.service.serviceImpl;
+
+import com.hotelcontinental.catalog_service.dto.request.amenity.AmenityCreationRequest;
+import com.hotelcontinental.catalog_service.dto.request.amenity.AmenityUpdateRequest;
+import com.hotelcontinental.catalog_service.dto.response.amenity.AmenityResponse;
+import com.hotelcontinental.catalog_service.entity.Amenities;
+import com.hotelcontinental.catalog_service.enums.AmenityStatus;
+import com.hotelcontinental.catalog_service.exception.AppException;
+import com.hotelcontinental.catalog_service.exception.ErrorCode;
+import com.hotelcontinental.catalog_service.repository.AmenitiesRepository;
+import com.hotelcontinental.catalog_service.service.interfaces.AmenityService;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+
+@Service
+public class AmenityServiceImpl implements AmenityService {
+    @Autowired
+    private AmenitiesRepository amenitiesRepository;
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public AmenityResponse createAmenity(AmenityCreationRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        String createdBy = authentication.getName();
+
+        Amenities amenity = Amenities.builder()
+            .name(request.getName())
+            .description(request.getDescription())
+            .status(AmenityStatus.AVAILABLE)
+            .createdBy(createdBy)
+            .createdTime(LocalDateTime.now())
+            .build();
+
+        Amenities savedAmenity = amenitiesRepository.save(amenity);
+        return mapToAmenityResponse(savedAmenity);
+    }
+
+    @Override
+    public Page<AmenityResponse> getAllAmenities(Pageable pageable) {
+        Page<Amenities> amenities = amenitiesRepository.findAll(pageable);
+        return amenities.map(this::mapToAmenityResponse);
+    }
+
+    @Override
+    public AmenityResponse getAmenity(String id) {
+        Amenities amenity = amenitiesRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+        return mapToAmenityResponse(amenity);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public AmenityResponse updateAmenity(String id, AmenityUpdateRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        String modifiedBy = authentication.getName();
+
+        Amenities amenity = amenitiesRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
+        Amenities updatedAmenity = amenitiesRepository.save(amenity.toBuilder()
+                .name(request.getName() != null ? request.getName() : amenity.getName())
+                .description(request.getDescription() != null ? request.getDescription() : amenity.getDescription())
+                .status(request.getStatus() != null ? request.getStatus() : amenity.getStatus())
+            .deleted(request.getDeleted() != null ? request.getDeleted() : amenity.getDeleted())
+            .deletedTime(Boolean.TRUE.equals(request.getDeleted()) ? LocalDateTime.now() : (Boolean.FALSE.equals(request.getDeleted()) ? null : amenity.getDeletedTime()))
+            .deletedBy(Boolean.TRUE.equals(request.getDeleted()) ? modifiedBy : (Boolean.FALSE.equals(request.getDeleted()) ? null : amenity.getDeletedBy()))
+                .modifiedTime(LocalDateTime.now())
+                .modifiedBy(modifiedBy)
+                .build());
+        return mapToAmenityResponse(updatedAmenity);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public void deleteAmenity(String id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        String deletedBy = authentication.getName();
+
+        Amenities amenity = amenitiesRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
+        amenitiesRepository.save(amenity.toBuilder()
+            .deleted(true)
+            .deletedTime(LocalDateTime.now())
+            .deletedBy(deletedBy)
+            .build());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public void restoreAmenity(String id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        String modifiedBy = authentication.getName();
+
+        Amenities amenity = amenitiesRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
+        amenitiesRepository.save(amenity.toBuilder()
+                .deleted(false)
+                .deletedTime(null)
+                .deletedBy(null)
+                .modifiedTime(LocalDateTime.now())
+                .modifiedBy(modifiedBy)
+                .build());
+    }
+
+    private AmenityResponse mapToAmenityResponse(Amenities amenity) {
+        return AmenityResponse.builder()
+                .id(amenity.getId())
+                .name(amenity.getName())
+                .description(amenity.getDescription())
+                .status(amenity.getStatus())
+                .createdBy(amenity.getCreatedBy())
+                .createdTime(amenity.getCreatedTime())
+                .modifiedBy(amenity.getModifiedBy())
+                .modifiedTime(amenity.getModifiedTime())
+                .deleted(amenity.getDeleted())
+                .build();
+    }
+}
+

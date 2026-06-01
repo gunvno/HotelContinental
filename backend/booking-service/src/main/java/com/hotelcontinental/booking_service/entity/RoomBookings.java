@@ -1,9 +1,12 @@
-package com.hotelmanagement.entity;
+package com.hotelcontinental.booking_service.entity;
 
-import com.hotelmanagement.enums.BookingType;
-import com.hotelmanagement.enums.RoomBookingStatus;
+import com.hotelcontinental.booking_service.enums.BookingType;
+import com.hotelcontinental.booking_service.enums.RoomBookingStatus;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
@@ -21,9 +24,8 @@ public class RoomBookings {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
-    @ManyToOne
-    @JoinColumn(name = "customer_id")
-    User customer;
+    @Column(name = "customer_id")
+    String customerId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "booking_type", nullable = false)
@@ -62,9 +64,5 @@ public class RoomBookings {
     String deletedBy;
 
     @OneToMany(mappedBy = "roomBookings", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<PaymentHistory> paymentHistories;
-    @OneToMany(mappedBy = "roomBookings", cascade = CascadeType.ALL, orphanRemoval = true)
     List<RoomBookingDetails> roomBookingDetails;
-    @OneToMany(mappedBy = "roomBookings", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<VoucherDetails> voucherDetails;
 }

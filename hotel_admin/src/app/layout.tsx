@@ -1,25 +1,28 @@
 import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, JetBrains_Mono, Manrope } from "next/font/google";
+import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 
 import { MainLayout } from "@/components/layout/main-layout";
 import { AppProviders } from "@/providers/app-providers";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
-  variable: "--font-cormorant",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
+const playfairDisplay = Playfair_Display({
+  variable: "--font-serif",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -42,7 +45,7 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body
-        className={`${manrope.variable} ${cormorant.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} bg-background text-foreground antialiased`}
       >
         <AppProviders>
           <MainLayout>{children}</MainLayout>

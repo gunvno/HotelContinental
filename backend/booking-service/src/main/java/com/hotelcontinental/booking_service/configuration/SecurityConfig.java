@@ -1,4 +1,4 @@
-package com.hotelcontinental.identity_service.configuration;
+package com.hotelcontinental.booking_service.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,16 +14,16 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
-    private final String[] PUBLIC_ENDPOINTS = {
-            "/auth/register",
-            "/auth/otp-register",
-            "/auth/otp-verify",
-            "/auth/token",
-            "/auth/introspect",
-            "/auth/logout",
-            "/auth/refresh",
-            "/profileExpand/create" // Sửa tên endpoint
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/actuator/health",
+            "/health"
     };
+
+    private final CustomJwtDecoder customJwtDecoder;
+
+    public SecurityConfig(CustomJwtDecoder customJwtDecoder) {
+        this.customJwtDecoder = customJwtDecoder;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
@@ -32,8 +32,9 @@ public class SecurityConfig {
                 .anyRequest()
                 .authenticated());
 
-        httpSecurity.oauth2ResourceServer(oauth2 -> oauth2.jwt(
-                jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+        httpSecurity.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwtConfigurer -> jwtConfigurer
+                        .decoder(customJwtDecoder)
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 .authenticationEntryPoint(new JwtAuthenticationEntryPoint()));
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
         httpSecurity.cors(AbstractHttpConfigurer::disable); // Tắt hoàn toàn CORS ở service con để Gateway xử lý

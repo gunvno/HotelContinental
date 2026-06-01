@@ -1,4 +1,4 @@
-package com.hotelcontinental.identity_service.exception;
+package com.hotelcontinental.booking_service.exception;
 
 import lombok.Getter;
 import org.springframework.http.HttpStatus;

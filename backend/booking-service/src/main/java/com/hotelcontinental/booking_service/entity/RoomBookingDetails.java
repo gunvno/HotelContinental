@@ -1,8 +1,11 @@
-package com.hotelmanagement.entity;
+package com.hotelcontinental.booking_service.entity;
 
-import com.hotelmanagement.enums.RoomBookingDetailStatus;
+import com.hotelcontinental.booking_service.enums.RoomBookingDetailStatus;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
@@ -19,9 +22,10 @@ public class RoomBookingDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
-    @ManyToOne
-    @JoinColumn(name = "room_id")
-    Rooms rooms;
+
+    @Column(name = "room_id")
+    String roomId;
+
     @ManyToOne
     @JoinColumn(name = "room_booking_id")
     RoomBookings roomBookings;
@@ -68,8 +72,5 @@ public class RoomBookingDetails {
     List<ResidenceRegistration> residenceRegistrations;
     @OneToMany(mappedBy = "roomBookingDetails", cascade = CascadeType.ALL, orphanRemoval = true)
     List<EditHistory> editHistories;
-    @OneToMany(mappedBy = "roomBookingDetails", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<Feedbacks> feedbacks;
-    @OneToMany(mappedBy = "roomBookingDetails", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<ServiceOrderDetails> serviceOrderDetails;
+
 }

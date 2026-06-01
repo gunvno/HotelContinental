@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -18,11 +18,11 @@ import {
 } from "@/store/auth-store";
 import { BadgeInfo, ChevronDown, LogOut, Mail, UserRound } from "lucide-react";
 
-const navItems = [
+const navItems: Array<{ label: string; href: string; hash?: string }> = [
   { label: "Trang chủ", href: "/" },
   { label: "Phòng & Suite", href: "/room/listroom" },
   { label: "Tiện nghi", href: "/amenities" },
-  { label: "Liên hệ", href: "/#contact", hash: "#contact" },
+  { label: "Liên hệ", href: "/contact" },
 ];
 
 const PENDING_HOME_HASH_KEY = "next_learn:pending-home-hash";

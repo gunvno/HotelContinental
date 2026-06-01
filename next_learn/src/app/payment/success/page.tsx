@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
 
   const data = useMemo(() => {
@@ -172,5 +172,13 @@ export default function PaymentSuccessPage() {
         </section>
       </section>
     </main>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<main className="bg-background min-h-screen p-10 text-center">Đang tải xác nhận...</main>}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

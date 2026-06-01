@@ -72,7 +72,8 @@ export function LoginForm() {
         permissions: [] 
       }, data.rememberMe);
 
-      router.replace("/");
+      const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/";
+      router.replace(redirectTo);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Đăng nhập không thành công. Vui lòng thử lại.";
       setError(errorMessage);

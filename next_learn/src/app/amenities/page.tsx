@@ -20,23 +20,23 @@ const amenities = [
 
 export default function AmenitiesPage() {
   return (
-    <div className="min-h-screen bg-[#faf8f5] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header section */}
       <section className="pt-24 pb-16">
         <Container className="relative">
           <div className="max-w-2xl">
-            <nav className="mb-8 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#d6af7a]">
+            <nav className="mb-8 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-ring">
               <span>TRANG CHỦ</span>
               <span>›</span>
               <span>TRẢI NGHIỆM</span>
               <span>›</span>
-              <span className="text-[#8c8277]">DỊCH VỤ CAO CẤP</span>
+              <span className="text-muted-foreground">DỊCH VỤ CAO CẤP</span>
             </nav>
 
-            <h1 className="font-serif text-[48px] font-bold leading-[1.1] text-[#1f1a17] sm:text-[56px] md:text-[64px]">
+            <h1 className="font-serif text-[48px] font-bold leading-[1.1] text-foreground sm:text-[56px] md:text-[64px]">
               Nâng tầm kỳ nghỉ của bạn
             </h1>
-            <p className="mt-8 text-[15px] leading-relaxed text-[#6c6054] md:max-w-xl">
+            <p className="mt-8 text-[15px] leading-relaxed text-muted-foreground md:max-w-xl">
               Từ những buổi trị liệu Spa thư giãn đến tinh hoa ẩm thực đẳng cấp, hãy để chúng tôi biến chuyến đi của bạn thành một hành trình đáng nhớ.
             </p>
           </div>
@@ -81,7 +81,7 @@ export default function AmenitiesPage() {
             </div>
 
             {/* Card 2: Ẩm thực */}
-            <div className="relative overflow-hidden rounded-3xl bg-[#f2ece4] flex flex-col md:row-span-2 h-full shadow-sm">
+            <div className="relative overflow-hidden rounded-3xl bg-muted flex flex-col md:row-span-2 h-full shadow-sm border border-border">
               <div className="h-64 shrink-0 lg:h-[360px] w-full relative overflow-hidden">
                  <img 
                   src="https://images.unsplash.com/photo-1544025162-88229b4ddb36?q=80&w=600&auto=format&fit=crop" 
@@ -91,18 +91,18 @@ export default function AmenitiesPage() {
               </div>
               <div className="flex flex-1 flex-col justify-between p-8">
                 <div>
-                  <h3 className="font-serif text-[28px] font-bold text-[#1f1a17]">Ẩm thực Fine-dining</h3>
-                  <p className="mt-4 text-[13px] leading-relaxed text-[#6c6054]">
+                  <h3 className="font-serif text-[28px] font-bold text-foreground">Ẩm thực Fine-dining</h3>
+                  <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
                     Thưởng thức thực đơn nếm thử (tasting menu) được chế biến bởi các đầu bếp danh tiếng thế giới.
                   </p>
                 </div>
                 
                 <div className="flex items-end justify-between mt-8">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#8c8277]">MỖI KHÁCH</p>
-                    <p className="mt-1 font-serif text-[24px] font-bold text-[#9e7039]">2.500.000<span className="text-xl underline underline-offset-4 decoration-1">đ</span></p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">MỖI KHÁCH</p>
+                    <p className="mt-1 font-serif text-[24px] font-bold text-ring">2.500.000<span className="text-xl underline underline-offset-4 decoration-1">đ</span></p>
                   </div>
-                  <button className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8b5e34] text-white shadow-md transition-transform hover:scale-105">
+                  <button className="flex h-10 w-10 items-center justify-center rounded-full bg-ring text-white shadow-md transition-transform hover:scale-105">
                     <span className="text-xl font-light mb-[2px]">+</span>
                   </button>
                 </div>
@@ -110,7 +110,7 @@ export default function AmenitiesPage() {
             </div>
 
             {/* Card 3: Hồ bơi vô cực */}
-            <div className="overflow-hidden rounded-3xl bg-white shadow-sm flex flex-col sm:flex-row h-[280px]">
+            <div className="overflow-hidden rounded-3xl bg-background border border-border shadow-sm flex flex-col sm:flex-row h-[280px]">
               <div className="w-full sm:w-[45%] h-full relative">
                  <img 
                   src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=400&auto=format&fit=crop" 
@@ -122,33 +122,33 @@ export default function AmenitiesPage() {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#00897b] mb-3 flex items-center gap-2">
                   <span className="h-4 w-4 shrink-0 inline-flex border border-current items-center justify-center rounded-sm">≈</span> HỒ BƠI VÔ CỰC
                 </p>
-                <h3 className="font-serif text-[26px] font-bold text-[#1f1a17] mb-3">Thư giãn bên hồ</h3>
-                <p className="text-[12px] leading-relaxed text-[#6c6054] mb-6">
+                <h3 className="font-serif text-[26px] font-bold text-foreground mb-3">Thư giãn bên hồ</h3>
+                <p className="text-[12px] leading-relaxed text-muted-foreground mb-6">
                   Tận hưởng tầm nhìn panorama toàn thành phố và những ly cocktail đặc sắc tại quầy bar tầng thượng.
                 </p>
                 <div className="flex items-center justify-between">
-                  <p className="font-serif text-[20px] font-bold text-[#b98446]">650.000<span className="text-[14px]">đ</span> <span className="text-[11px] font-normal font-sans text-[#8c8277]">/ ngày</span></p>
+                  <p className="font-serif text-[20px] font-bold text-ring">650.000<span className="text-[14px]">đ</span> <span className="text-[11px] font-normal font-sans text-muted-foreground">/ ngày</span></p>
                 </div>
-                <button className="mt-4 w-full rounded-full border border-[#d6af7a] bg-transparent py-2 text-[12px] font-bold text-[#b98446] transition-colors hover:bg-[#faf8f5]">
+                <button className="mt-4 w-full rounded-full border border-ring bg-transparent py-2 text-[12px] font-bold text-ring transition-colors hover:bg-muted">
                   Đặt chỗ ngay
                 </button>
               </div>
             </div>
 
             {/* Card 4: Đưa đón */}
-            <div className="overflow-hidden rounded-3xl bg-[#faf8f5] border border-[#f0ece5] shadow-sm flex flex-col sm:flex-row h-[280px]">
-              <div className="flex flex-col justify-center p-8 sm:w-[55%] border-r border-[#f0ece5]/50">
+            <div className="overflow-hidden rounded-3xl bg-muted border border-border shadow-sm flex flex-col sm:flex-row h-[280px]">
+              <div className="flex flex-col justify-center p-8 sm:w-[55%] border-r border-border/50">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#2e7d32] mb-3 flex items-center gap-2">
                   <span className="mr-1">🚕</span> ĐƯA ĐÓN
                 </p>
-                <h3 className="font-serif text-[26px] font-bold text-[#1f1a17] mb-3">Đưa đón sân bay</h3>
-                <p className="text-[12px] leading-relaxed text-[#6c6054] mb-6">
+                <h3 className="font-serif text-[26px] font-bold text-foreground mb-3">Đưa đón sân bay</h3>
+                <p className="text-[12px] leading-relaxed text-muted-foreground mb-6">
                   Dịch vụ xe Limousine sang trọng với tài xế riêng, đảm bảo sự riêng tư và thoải mái tuyệt đối cho quý khách.
                 </p>
                 <div className="flex items-center justify-between">
-                  <p className="font-serif text-[20px] font-bold text-[#b98446]">1.200.000<span className="text-[14px]">đ</span> <span className="text-[11px] font-normal font-sans text-[#8c8277]">/ lượt</span></p>
+                  <p className="font-serif text-[20px] font-bold text-ring">1.200.000<span className="text-[14px]">đ</span> <span className="text-[11px] font-normal font-sans text-muted-foreground">/ lượt</span></p>
                 </div>
-                <button className="mt-4 w-full rounded-full border border-[#d6af7a] bg-transparent py-2 text-[12px] font-bold text-[#b98446] transition-colors hover:bg-white">
+                <button className="mt-4 w-full rounded-full border border-ring bg-transparent py-2 text-[12px] font-bold text-ring transition-colors hover:bg-background">
                   Thêm dịch vụ
                 </button>
               </div>

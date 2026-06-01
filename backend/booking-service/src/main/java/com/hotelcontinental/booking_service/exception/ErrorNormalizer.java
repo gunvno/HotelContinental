@@ -1,8 +1,9 @@
-package com.hotelcontinental.identity_service.exception;
+package com.hotelcontinental.booking_service.exception;
 
-import com.hotelcontinental.identity_service.dto.identity.KeyCloakError;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hotelcontinental.booking_service.exception.AppException;
+import com.hotelcontinental.booking_service.exception.ErrorCode;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,19 +27,4 @@ public class ErrorNormalizer {
         errorCodeMap.put("User name is missing", ErrorCode.USERNAME_IS_MISSING);
     }
 
-    public AppException handleKeyCloakException(FeignException exception) {
-        try {
-            log.warn("Cannot complete request", exception);
-            var response = objectMapper.readValue(exception.contentUTF8(), KeyCloakError.class);
-
-            if (Objects.nonNull(response.getErrorMessage())
-                    && Objects.nonNull(errorCodeMap.get(response.getErrorMessage()))) {
-                return new AppException(errorCodeMap.get(response.getErrorMessage()));
-            }
-        } catch (JsonProcessingException e) {
-            log.error("Cannot deserialize content", e);
-        }
-
-        return new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-    }
 }

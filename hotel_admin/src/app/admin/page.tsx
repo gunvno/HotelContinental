@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -107,7 +109,7 @@ function PaginationBar({
       <div className="flex items-center gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => onChange(Math.max(0, page - 1))}
           disabled={page === 0}
           className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
@@ -116,7 +118,7 @@ function PaginationBar({
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
           disabled={page >= totalPages - 1}
           className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
@@ -128,8 +130,15 @@ function PaginationBar({
   );
 }
 
+type DeleteTarget = {
+  id: string;
+  title: string;
+  description: string;
+};
+
 // ============= ROOM TYPES SECTION =============
 export function RoomTypesSection() {
+  const router = useRouter();
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -139,6 +148,7 @@ export function RoomTypesSection() {
   const [formData, setFormData] = useState({ name: "", description: "", maximumOccupancy: 1, quantity: 0, deleted: false });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   useEffect(() => {
     loadRoomTypes(page);
@@ -196,15 +206,14 @@ export function RoomTypesSection() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa loại phòng này?")) {
-      try {
-        await deleteRoomType(id);
-        setSuccess("Xóa loại phòng thành công");
-        await loadRoomTypes(page);
-      } catch (e) {
-        setError("Lỗi xóa loại phòng");
-        console.error(e);
-      }
+    try {
+      await deleteRoomType(id);
+      setDeleteTarget(null);
+      setSuccess("Xóa loại phòng thành công");
+      await loadRoomTypes(page);
+    } catch (e) {
+      setError("Lỗi xóa loại phòng");
+      console.error(e);
     }
   };
 
@@ -245,14 +254,18 @@ export function RoomTypesSection() {
                   <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Tên Loại</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Mô Tả</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Max Khách</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Số Lượng</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Số Phòng</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Trạng Thái</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
                 </tr>
               </thead>
               <tbody>
                 {roomTypes.map((rt) => (
-                  <tr key={rt.id} className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${rt.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                  <tr
+                    key={rt.id}
+                    onClick={() => router.push(`/admin/room-types/${rt.id}`)}
+                    className={`cursor-pointer border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${rt.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}
+                  >
                     <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{rt.name}</td>
                     <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{rt.description || "-"}</td>
                     <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{rt.maximumOccupancy}</td>
@@ -263,12 +276,21 @@ export function RoomTypesSection() {
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
                         <Button type="button" variant="outline" onClick={() => handleEdit(rt)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
                           Sửa
                         </Button>
                         {!rt.deleted && (
-                          <Button type="button" variant="outline" onClick={() => handleDelete(rt.id)} className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDeleteTarget({
+                              id: rt.id,
+                              title: "Xóa loại phòng",
+                              description: `Bạn chắc chắn muốn xóa loại phòng "${rt.name}"?`,
+                            })}
+                            className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                          >
                             Xóa
                           </Button>
                         )}
@@ -330,16 +352,21 @@ export function RoomTypesSection() {
                 />
               </div>
 
-              <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Số Lượng</Label>
-                <Input
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-                  min="0"
-                  className="mt-1"
-                />
-              </div>
+              {editingId && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Số Phòng</Label>
+                  <Input
+                    type="number"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    className="mt-1"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Nên đồng bộ theo số phòng vật lý thuộc loại này.
+                  </p>
+                </div>
+              )}
 
               {editingId && (
                 <div>
@@ -370,12 +397,21 @@ export function RoomTypesSection() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={deleteTarget?.title}
+        description={deleteTarget?.description ?? ""}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+      />
     </div>
   );
 }
 
 // ============= AMENITIES SECTION =============
 export function AmenitiesSection() {
+  const router = useRouter();
   const [amenities, setAmenities] = useState<AmenityResponse[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -385,6 +421,7 @@ export function AmenitiesSection() {
   const [formData, setFormData] = useState({ name: "", description: "", deleted: false });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   useEffect(() => {
     loadAmenities(page);
@@ -435,15 +472,14 @@ export function AmenitiesSection() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa cơ sở vật chất này?")) {
-      try {
-        await deleteAmenity(id);
-        setSuccess("Xóa cơ sở vật chất thành công");
-        await loadAmenities(page);
-      } catch (e) {
-        setError("Lỗi xóa cơ sở vật chất");
-        console.error(e);
-      }
+    try {
+      await deleteAmenity(id);
+      setDeleteTarget(null);
+      setSuccess("Xóa cơ sở vật chất thành công");
+      await loadAmenities(page);
+    } catch (e) {
+      setError("Lỗi xóa cơ sở vật chất");
+      console.error(e);
     }
   };
 
@@ -488,7 +524,11 @@ export function AmenitiesSection() {
               </thead>
               <tbody>
                 {amenities.map((amenity) => (
-                  <tr key={amenity.id} className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${amenity.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                  <tr
+                    key={amenity.id}
+                    onClick={() => router.push(`/admin/amenities/${amenity.id}`)}
+                    className={`cursor-pointer border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${amenity.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}
+                  >
                     <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{amenity.name}</td>
                     <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{amenity.description || "-"}</td>
                     <td className="py-3 px-4">
@@ -502,12 +542,21 @@ export function AmenitiesSection() {
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
                         <Button type="button" variant="outline" onClick={() => handleEdit(amenity)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
                           Sửa
                         </Button>
                         {!amenity.deleted && (
-                          <Button type="button" variant="outline" onClick={() => handleDelete(amenity.id)} className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDeleteTarget({
+                              id: amenity.id,
+                              title: "Xóa cơ sở vật chất",
+                              description: `Bạn chắc chắn muốn xóa cơ sở vật chất "${amenity.name}"?`,
+                            })}
+                            className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                          >
                             Xóa
                           </Button>
                         )}
@@ -582,12 +631,21 @@ export function AmenitiesSection() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={deleteTarget?.title}
+        description={deleteTarget?.description ?? ""}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+      />
     </div>
   );
 }
 
 // ============= AMENITY ROOMS SECTION =============
 export function AmenityRoomsSection() {
+  const router = useRouter();
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
   const [amenityRooms, setAmenityRooms] = useState<AmenityRoomResponse[]>([]);
@@ -600,6 +658,7 @@ export function AmenityRoomsSection() {
   const [formData, setFormData] = useState({ roomTypeId: "", amenityId: "", amount: 1, deleted: false });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   useEffect(() => {
     loadInitialData();
@@ -683,20 +742,19 @@ export function AmenityRoomsSection() {
 
   const handleEdit = (item: AmenityRoomResponse) => {
     setEditingId(item.id);
-    setFormData({ roomTypeId: item.roomTypeId || selectedRoomTypeId, amenityId: item.amenity.id, amount: item.amount, deleted: !!item.deleted });
+    setFormData({ roomTypeId: item.roomTypeId || selectedRoomTypeId, amenityId: item.amenityId || item.amenity?.id || "", amount: item.amount, deleted: !!item.deleted });
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa cơ sở vật chất này?")) {
-      try {
-        await deleteAmenityRoom(id);
-        setSuccess("Xóa cơ sở vật chất thành công");
-        await loadAmenityRooms(page);
-      } catch (e) {
-        setError("Lỗi xóa cơ sở vật chất");
-        console.error(e);
-      }
+    try {
+      await deleteAmenityRoom(id);
+      setDeleteTarget(null);
+      setSuccess("Xóa cơ sở vật chất thành công");
+      await loadAmenityRooms(page);
+    } catch (e) {
+      setError("Lỗi xóa cơ sở vật chất");
+      console.error(e);
     }
   };
 
@@ -741,7 +799,7 @@ export function AmenityRoomsSection() {
             <Button
               onClick={() => {
                 setEditingId(null);
-                setFormData({ amenityId: "", amount: 1, deleted: false });
+                setFormData({ roomTypeId: selectedRoomTypeId, amenityId: "", amount: 1, deleted: false });
                 setIsModalOpen(true);
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -763,8 +821,12 @@ export function AmenityRoomsSection() {
                 </thead>
                 <tbody>
                   {amenityRooms.map((ar) => (
-                    <tr key={ar.id} className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${ar.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
-                      <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{ar.amenity.name}</td>
+                    <tr
+                      key={ar.id}
+                      onClick={() => router.push(`/admin/amenity-rooms/${ar.id}`)}
+                      className={`cursor-pointer border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${ar.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}
+                    >
+                      <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{ar.amenity?.name || ar.amenityId}</td>
                       <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{ar.amount}</td>
                       <td className="py-3 px-4">
                         <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${ar.deleted ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"}`}>
@@ -772,12 +834,21 @@ export function AmenityRoomsSection() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
                           <Button type="button" variant="outline" onClick={() => handleEdit(ar)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
                             Sửa
                           </Button>
                           {!ar.deleted && (
-                            <Button type="button" variant="outline" onClick={() => handleDelete(ar.id)} className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setDeleteTarget({
+                                id: ar.id,
+                                title: "Xóa gán cơ sở vật chất",
+                                description: `Bạn chắc chắn muốn xóa "${ar.amenity?.name || ar.amenityId}" khỏi loại phòng này?`,
+                              })}
+                              className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                            >
                               Xóa
                             </Button>
                           )}
@@ -892,12 +963,21 @@ export function AmenityRoomsSection() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={deleteTarget?.title}
+        description={deleteTarget?.description ?? ""}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+      />
     </div>
   );
 }
 
 // ============= ROOM TYPE SERVICES SECTION =============
 export function RoomTypeServicesSection() {
+  const router = useRouter();
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
   const [roomTypeServices, setRoomTypeServices] = useState<RoomTypeServiceResponse[]>([]);
@@ -909,6 +989,7 @@ export function RoomTypeServicesSection() {
   const [formData, setFormData] = useState({ roomTypeId: "", serviceId: "", amount: 1, deleted: false });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   useEffect(() => {
     loadInitialData();
@@ -1001,15 +1082,14 @@ export function RoomTypeServicesSection() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Bạn chắc chắn muốn xóa dịch vụ bổ sung này?")) {
-      try {
-        await deleteRoomTypeService(id);
-        setSuccess("Xóa dịch vụ bổ sung thành công");
-        await loadRoomTypeServices(page);
-      } catch (deleteError) {
-        console.error(deleteError);
-        setError("Lỗi xóa dịch vụ bổ sung");
-      }
+    try {
+      await deleteRoomTypeService(id);
+      setDeleteTarget(null);
+      setSuccess("Xóa dịch vụ bổ sung thành công");
+      await loadRoomTypeServices(page);
+    } catch (deleteError) {
+      console.error(deleteError);
+      setError("Lỗi xóa dịch vụ bổ sung");
     }
   };
 
@@ -1073,7 +1153,11 @@ export function RoomTypeServicesSection() {
                 </thead>
                 <tbody>
                   {roomTypeServices.map((item) => (
-                    <tr key={item.id} className={`border-b border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/50 ${item.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                    <tr
+                      key={item.id}
+                      onClick={() => router.push(`/admin/room-type-services/${item.id}`)}
+                      className={`cursor-pointer border-b border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/50 ${item.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}
+                    >
                       <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{item.serviceId}</td>
                       <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{item.amount}</td>
                       <td className="px-4 py-3">
@@ -1082,12 +1166,21 @@ export function RoomTypeServicesSection() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
                           <Button type="button" variant="outline" onClick={() => handleEdit(item)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
                             Sửa
                           </Button>
                           {!item.deleted && (
-                            <Button type="button" variant="outline" onClick={() => handleDelete(item.id)} className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setDeleteTarget({
+                                id: item.id,
+                                title: "Xóa dịch vụ bổ sung",
+                                description: `Bạn chắc chắn muốn xóa dịch vụ "${item.serviceId}" khỏi loại phòng này?`,
+                              })}
+                              className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                            >
                               Xóa
                             </Button>
                           )}
@@ -1194,6 +1287,14 @@ export function RoomTypeServicesSection() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={deleteTarget?.title}
+        description={deleteTarget?.description ?? ""}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
+      />
     </div>
   );
 }

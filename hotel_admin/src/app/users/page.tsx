@@ -56,7 +56,7 @@ export default function UsersPage() {
                   </span>
                 </td>
                 <td className="px-4 py-4">
-                  <Button variant="outline" size="sm">Chi tiết</Button>
+                  <Button variant="secondary" size="sm">Chi tiết</Button>
                 </td>
               </tr>
             ))}
