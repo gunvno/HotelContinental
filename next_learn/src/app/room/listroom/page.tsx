@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 
 
+import { Pagination } from "@/components/ui/pagination";
 import { getAllRooms, type RoomResponse } from "@/services/room-service";
 
 const priceFormatter = new Intl.NumberFormat("vi-VN");
+const ROOM_PAGE_SIZE = 8;
 
 /* ─── mock room data for display ─── */
 const mockRooms = [
@@ -402,23 +404,30 @@ export default function RoomListPage() {
   const [guestCount, setGuestCount] = useState("2");
   const [priceRange, setPriceRange] = useState("all");
   const [displayRooms, setDisplayRooms] = useState<MockRoom[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalRooms, setTotalRooms] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
-    getAllRooms(0, 20)
-      .then(({ data }) => {
+    getAllRooms(currentPage, ROOM_PAGE_SIZE)
+      .then(({ data, total }) => {
         if (data.length > 0) {
           setDisplayRooms(convertApiRooms(data));
+          setTotalRooms(total);
         } else {
           setDisplayRooms(mockRooms);
+          setTotalRooms(mockRooms.length);
         }
+        setSelectedRoom(0);
       })
       .catch(() => {
         setDisplayRooms(mockRooms);
+        setTotalRooms(mockRooms.length);
+        setSelectedRoom(0);
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [currentPage]);
 
   const current = displayRooms[selectedRoom] ?? displayRooms[0];
 
@@ -533,13 +542,15 @@ export default function RoomListPage() {
                   ))}
             </div>
 
-            {/* Load More */}
-            <div className="flex justify-center pt-2">
-              <button className="flex items-center gap-2 text-sm font-semibold text-[#8b6a3e] dark:text-[#d7a25f] hover:text-[#c47a34] dark:hover:text-[#f6c86f] transition-colors">
-                Xem thêm loại phòng
-                <ChevronDown className="h-4 w-4" />
-              </button>
-            </div>
+            {!isLoading ? (
+              <Pagination
+                page={currentPage}
+                total={totalRooms}
+                pageSize={ROOM_PAGE_SIZE}
+                itemLabel="phòng"
+                onPageChange={setCurrentPage}
+              />
+            ) : null}
           </div>
 
           {/* ═══ RIGHT COLUMN (Sidebar) ═══ */}

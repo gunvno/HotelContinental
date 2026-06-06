@@ -74,6 +74,19 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
     void loadDetail();
   }, [id, kind]);
 
+  useEffect(() => {
+    if (!message && !error) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setMessage(null);
+      setError(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [error, message]);
+
   const loadDetail = async () => {
     try {
       setIsLoading(true);

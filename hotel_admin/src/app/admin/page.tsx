@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Pagination } from "@/components/ui/pagination";
 import {
   type AmenityResponse,
   type AmenityRoomResponse,
@@ -86,48 +87,24 @@ export default function AdminPage() {
 
 const PAGE_SIZE = 10;
 
-function PaginationBar({
-  page,
-  totalPages,
-  total,
-  onChange,
-}: {
-  page: number;
-  totalPages: number;
-  total: number;
-  onChange: (nextPage: number) => void;
-}) {
-  if (totalPages <= 1) {
-    return null;
-  }
+function useAutoDismissAlerts(
+  error: string | null,
+  setError: (value: string | null) => void,
+  success: string | null,
+  setSuccess: (value: string | null) => void,
+) {
+  useEffect(() => {
+    if (!error && !success) {
+      return;
+    }
 
-  return (
-    <div className="mt-5 flex flex-col gap-3 border-t border-gray-200 pt-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300 md:flex-row md:items-center md:justify-between">
-      <p>
-        Đang hiển thị trang {page + 1} / {totalPages} trên {total} bản ghi
-      </p>
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => onChange(Math.max(0, page - 1))}
-          disabled={page === 0}
-          className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
-        >
-          Trước
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
-          disabled={page >= totalPages - 1}
-          className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
-        >
-          Sau
-        </Button>
-      </div>
-    </div>
-  );
+    const timeoutId = window.setTimeout(() => {
+      setError(null);
+      setSuccess(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [error, setError, setSuccess, success]);
 }
 
 type DeleteTarget = {
@@ -149,6 +126,8 @@ export function RoomTypesSection() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+
+  useAutoDismissAlerts(error, setError, success, setSuccess);
 
   useEffect(() => {
     loadRoomTypes(page);
@@ -217,7 +196,6 @@ export function RoomTypesSection() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="p-6">
@@ -303,7 +281,7 @@ export function RoomTypesSection() {
           </div>
           {roomTypes.length === 0 && <div className="py-10 text-center text-gray-500">Không có dữ liệu</div>}
           <div className="px-4 pb-4">
-            <PaginationBar page={page} totalPages={totalPages} total={total} onChange={setPage} />
+            <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
           </div>
         </div>
       )}
@@ -423,6 +401,8 @@ export function AmenitiesSection() {
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
+  useAutoDismissAlerts(error, setError, success, setSuccess);
+
   useEffect(() => {
     loadAmenities(page);
   }, [page]);
@@ -483,7 +463,6 @@ export function AmenitiesSection() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="p-6">
@@ -569,7 +548,7 @@ export function AmenitiesSection() {
           </div>
           {amenities.length === 0 && <div className="py-10 text-center text-gray-500">Không có dữ liệu</div>}
           <div className="px-4 pb-4">
-            <PaginationBar page={page} totalPages={totalPages} total={total} onChange={setPage} />
+            <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
           </div>
         </div>
       )}
@@ -659,6 +638,8 @@ export function AmenityRoomsSection() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+
+  useAutoDismissAlerts(error, setError, success, setSuccess);
 
   useEffect(() => {
     loadInitialData();
@@ -758,7 +739,6 @@ export function AmenityRoomsSection() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const activeRoomTypes = roomTypes.filter((roomType) => !roomType.deleted);
   const activeAmenities = amenities.filter((amenity) => !amenity.deleted);
 
@@ -861,7 +841,7 @@ export function AmenityRoomsSection() {
               {amenityRooms.length === 0 && <div className="py-8 text-center text-gray-500">Không có cơ sở vật chất nào</div>}
             </div>
             <div className="px-4 pb-4">
-              <PaginationBar page={page} totalPages={totalPages} total={total} onChange={setPage} />
+              <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
             </div>
           </div>
         </>
@@ -991,6 +971,8 @@ export function RoomTypeServicesSection() {
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
+  useAutoDismissAlerts(error, setError, success, setSuccess);
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -1093,7 +1075,6 @@ export function RoomTypeServicesSection() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const activeRoomTypes = roomTypes.filter((roomType) => !roomType.deleted);
 
   return (
@@ -1193,7 +1174,7 @@ export function RoomTypeServicesSection() {
               {roomTypeServices.length === 0 && <div className="py-8 text-center text-gray-500">Chưa có dịch vụ bổ sung nào</div>}
             </div>
             <div className="px-4 pb-4">
-              <PaginationBar page={page} totalPages={totalPages} total={total} onChange={setPage} />
+              <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
             </div>
           </div>
         </>

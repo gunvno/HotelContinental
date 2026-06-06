@@ -65,6 +65,19 @@ export default function BuildingsPage() {
     void loadData();
   }, []);
 
+  useEffect(() => {
+    if (!message && !error) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setMessage(null);
+      setError(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [error, message]);
+
   const loadData = async () => {
     try {
       setIsLoading(true);
