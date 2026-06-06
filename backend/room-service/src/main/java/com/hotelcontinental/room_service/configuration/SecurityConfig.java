@@ -20,7 +20,9 @@ public class SecurityConfig {
             "/media/download/**",
             "/amenityRoom/roomType/**",
             "/room/amenityRoom/roomType/**",
-            "/room/room/**"
+            "/room/room/**",
+            "/room/customer",
+            "/room/customer/**"
     };
 
     private final CustomJwtDecoder customJwtDecoder;

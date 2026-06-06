@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ImagePlus, UploadCloud, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  deleteRoomImage,
   getAmenities,
   getAmenity,
   getAmenityRoom,
@@ -25,6 +27,7 @@ import {
   updateRoom,
   updateRoomType,
   updateRoomTypeService,
+  uploadRoomImages,
 } from "@/services/room-service";
 
 type EntityKind = "room-type" | "amenity" | "amenity-room" | "room-type-service" | "room";
@@ -60,6 +63,10 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedImageFiles, setSelectedImageFiles] = useState<File[]>([]);
+  const [coverIndex, setCoverIndex] = useState(0);
+  const [activeRoomImageIndex, setActiveRoomImageIndex] = useState(0);
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +87,9 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
       setForm(toForm(kind, detail));
       setRoomTypes(roomTypeResult.data);
       setAmenities(amenityResult.data);
+      setSelectedImageFiles([]);
+      setCoverIndex(0);
+      setActiveRoomImageIndex(0);
     } catch (loadError) {
       console.error(loadError);
       setError("Không tải được dữ liệu chi tiết.");
@@ -89,20 +99,121 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
   };
 
   const fields = useMemo(() => buildFields(kind, form, roomTypes, amenities), [amenities, form, kind, roomTypes]);
+  const selectedImagePreviews = useMemo(
+    () =>
+      selectedImageFiles.map((file) => ({
+        name: file.name,
+        size: Math.round(file.size / 1024),
+        previewUrl: URL.createObjectURL(file),
+      })),
+    [selectedImageFiles],
+  );
+  const roomImages = useMemo(() => {
+    if (kind !== "room" || !entity) {
+      return [];
+    }
+
+    const room = entity as RoomResponse;
+    const imageMap = new Map<string, { id?: string; url: string; label: string; isCover?: boolean }>();
+    const addImage = (url?: string, label = "Ảnh phòng", isCover = false, id?: string) => {
+      if (!url) {
+        return;
+      }
+      const existingImage = imageMap.get(url);
+      imageMap.set(url, {
+        id: id ?? existingImage?.id,
+        url,
+        label: existingImage?.label ?? label,
+        isCover: isCover || existingImage?.isCover,
+      });
+    };
+
+    addImage(room.image, "Ảnh cover", true);
+    [...(room.images ?? [])]
+      .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
+      .forEach((image, index) => addImage(image.url, image.isCover ? "Ảnh cover" : `Ảnh ${index + 1}`, image.isCover, image.id));
+    (room.galleryImages ?? []).forEach((url, index) => addImage(url, `Ảnh ${index + 1}`));
+
+    return Array.from(imageMap.values());
+  }, [entity, kind]);
+  const activeRoomImage = roomImages[Math.min(activeRoomImageIndex, Math.max(roomImages.length - 1, 0))];
+
+  useEffect(() => {
+    return () => {
+      selectedImagePreviews.forEach((file) => URL.revokeObjectURL(file.previewUrl));
+    };
+  }, [selectedImagePreviews]);
+
+  useEffect(() => {
+    if (activeRoomImageIndex >= roomImages.length) {
+      setActiveRoomImageIndex(0);
+    }
+  }, [activeRoomImageIndex, roomImages.length]);
 
   const setValue = (key: string, value: string | number | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleImageFiles = (files: File[]) => {
+    const maxImageSize = 30 * 1024 * 1024;
+    const imageFiles = files
+      .filter((file) => file.type.startsWith("image/") && file.size <= maxImageSize)
+      .slice(0, 10);
+
+    if (files.length > 0 && imageFiles.length === 0) {
+      setError("Vui lòng chọn file ảnh đúng định dạng jpg, jpeg, png và dung lượng không quá 30MB.");
+      return;
+    }
+
+    if (files.length > imageFiles.length) {
+      setError("Một số file không hợp lệ đã bị bỏ qua. Chỉ nhận tối đa 10 ảnh jpg, jpeg, png, mỗi ảnh không quá 30MB.");
+    } else {
+      setError(null);
+    }
+
+    setSelectedImageFiles(imageFiles);
+    setCoverIndex(0);
+  };
+
+  const handleDeleteExistingImage = async (imageId: string) => {
+    if (deletingImageId) {
+      return;
+    }
+
+    try {
+      setDeletingImageId(imageId);
+      setError(null);
+      await deleteRoomImage(id, imageId);
+      const updated = await loadEntity(kind, id);
+      setEntity(updated);
+      setForm(toForm(kind, updated));
+      setActiveRoomImageIndex(0);
+      setMessage("Đã xóa ảnh phòng thành công.");
+      router.refresh();
+    } catch (deleteError) {
+      console.error(deleteError);
+      setError("Không thể xóa ảnh phòng. Kiểm tra quyền ADMIN và API room-service.");
+    } finally {
+      setDeletingImageId(null);
+    }
   };
 
   const handleSave = async () => {
     try {
       setIsSaving(true);
       setError(null);
-      const updated = await saveEntity(kind, id, form);
+      const shouldUploadImages = kind === "room" && selectedImageFiles.length > 0;
+      let updated = await saveEntity(kind, id, form);
+      if (shouldUploadImages) {
+        await uploadRoomImages(id, selectedImageFiles, coverIndex);
+        updated = await loadEntity(kind, id);
+        setSelectedImageFiles([]);
+        setCoverIndex(0);
+      }
       setEntity(updated);
       setForm(toForm(kind, updated));
       setIsEditing(false);
-      setMessage("Đã cập nhật thành công.");
+      setMessage(shouldUploadImages ? "Đã cập nhật thông tin và ảnh phòng thành công." : "Đã cập nhật thành công.");
       router.refresh();
     } catch (saveError) {
       console.error(saveError);
@@ -142,7 +253,20 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
           <p className="mt-2 text-sm text-[#75695d]">ID: {id}</p>
         </div>
         <div className="flex gap-3">
-          <Button type="button" variant="secondary" onClick={() => setIsEditing((value) => !value)}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setIsEditing((value) => {
+                const nextValue = !value;
+                if (!nextValue) {
+                  setSelectedImageFiles([]);
+                  setCoverIndex(0);
+                }
+                return nextValue;
+              });
+            }}
+          >
             {isEditing ? "Hủy sửa" : "Chỉnh sửa"}
           </Button>
           {isEditing ? (
@@ -171,12 +295,157 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
         ))}
       </section>
 
-      {"image" in entity && entity.image ? (
+      {kind === "room" ? (
+        <section className="rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm">
+          <h3 className="font-serif text-2xl font-bold text-[#211a14]">Ảnh phòng</h3>
+          {activeRoomImage ? (
+            <div className="mt-4 space-y-4">
+              <img src={activeRoomImage.url} alt={activeRoomImage.label} className="max-h-[420px] w-full rounded-2xl object-cover" />
+              {roomImages.length > 0 ? (
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {roomImages.map((image, index) => (
+                    <div
+                      key={image.url}
+                      className={`relative h-24 w-32 shrink-0 overflow-hidden rounded-xl border bg-[#fffaf2] transition ${
+                        activeRoomImageIndex === index ? "border-[#c47a34] ring-2 ring-[#c47a34]/25" : "border-[#decdb9] hover:border-[#c47a34]/70"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setActiveRoomImageIndex(index)}
+                        className="block size-full"
+                      >
+                        <img src={image.url} alt={image.label} className="size-full object-cover" />
+                      </button>
+                      {image.isCover ? (
+                        <span className="absolute left-2 top-2 rounded-full bg-[#21170f]/85 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                          Cover
+                        </span>
+                      ) : null}
+                      {isEditing && image.id ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteExistingImage(image.id!)}
+                          disabled={deletingImageId === image.id}
+                          className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-white/92 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label="Xóa ảnh phòng"
+                        >
+                          {deletingImageId === image.id ? (
+                            <span className="text-[10px] font-black">...</span>
+                          ) : (
+                            <X className="h-4 w-4" />
+                          )}
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-dashed border-[#decdb9] bg-[#fffaf2] px-4 py-12 text-center text-sm font-bold text-[#75695d]">
+              Chưa có ảnh phòng.
+            </div>
+          )}
+
+          {isEditing ? (
+            <div className="mt-5 rounded-[1.5rem] border border-[#dce8f5] bg-white p-5 shadow-[0_14px_40px_-30px_rgba(21,42,74,0.5)]">
+              <div className="flex items-start gap-3">
+                <UploadCloud className="mt-0.5 h-6 w-6 text-[#0ea5e9]" />
+                <div>
+                  <h4 className="text-base font-black text-[#07152b]">Hình ảnh phòng</h4>
+                  <p className="mt-1 flex items-center gap-1 text-sm font-medium text-[#5c6f8d]">
+                    <UploadCloud className="h-4 w-4 text-[#0ea5e9]" />
+                    Tải ảnh từ máy tính
+                  </p>
+                </div>
+              </div>
+
+              <label
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  handleImageFiles(Array.from(event.dataTransfer.files));
+                }}
+                className="mt-5 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#8fc7ff] bg-[#f8fcff] px-6 py-8 text-center transition hover:border-[#0ea5e9] hover:bg-[#f2f9ff]"
+              >
+                <span className="grid size-14 place-items-center rounded-full border-4 border-[#d8e3ef] bg-white text-[#738095]">
+                  <ImagePlus className="h-8 w-8" />
+                </span>
+                <span className="mt-4 text-lg font-semibold text-[#243654]">
+                  Kéo thả tối thiểu 1 ảnh vào đây hoặc
+                </span>
+                <span className="mt-3 rounded-full border border-[#75bfff] bg-white px-5 py-2 text-sm font-bold text-[#0284c7] shadow-sm">
+                  Chọn tệp ảnh
+                </span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  multiple
+                  className="sr-only"
+                  onChange={(event) => handleImageFiles(Array.from(event.target.files ?? []))}
+                />
+              </label>
+
+              <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-[#536989]">
+                <li>Hỗ trợ jpg, jpeg, png. Tối đa 10 ảnh.</li>
+                <li>Kích thước mỗi ảnh tối đa 30MB. Ảnh cover sẽ thay ảnh đại diện phòng.</li>
+              </ul>
+
+              {selectedImagePreviews.length > 0 ? (
+                <div className="mt-5">
+                  <p className="text-base font-black text-[#07152b]">Ảnh đã chọn ({selectedImagePreviews.length})</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                    {selectedImagePreviews.map((file, index) => (
+                      <div
+                        key={`${file.name}-${index}`}
+                        className={`group relative overflow-hidden rounded-xl border bg-[#f8fbff] ${
+                          coverIndex === index ? "border-[#0ea5e9] ring-2 ring-[#0ea5e9]/20" : "border-[#d7e4f2]"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextFiles = selectedImageFiles.filter((_, fileIndex) => fileIndex !== index);
+                            setSelectedImageFiles(nextFiles);
+                            setCoverIndex(Math.max(0, Math.min(coverIndex, nextFiles.length - 1)));
+                          }}
+                          className="absolute right-2 top-2 z-10 grid size-7 place-items-center rounded-full bg-white/90 text-[#243654] shadow transition hover:bg-red-50 hover:text-red-600"
+                          aria-label="Bỏ ảnh"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCoverIndex(index)}
+                          className="block w-full text-left"
+                        >
+                          <img src={file.previewUrl} alt={file.name} className="h-28 w-full object-cover" />
+                          <div className="space-y-1 px-3 py-2">
+                            <p className="truncate text-sm font-semibold text-[#243654]">{file.name}</p>
+                            <p className="text-xs text-[#6b7f9e]">{file.size} KB</p>
+                            <p className={`text-xs font-bold ${coverIndex === index ? "text-[#0284c7]" : "text-[#8ca0bd]"}`}>
+                              {coverIndex === index ? "Ảnh cover" : "Bấm để chọn cover"}
+                            </p>
+                          </div>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {kind !== "room" && "image" in entity && entity.image ? (
         <section className="rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm">
           <h3 className="font-serif text-2xl font-bold text-[#211a14]">Ảnh phòng</h3>
           <img src={entity.image} alt={entity.name} className="mt-4 max-h-[360px] w-full rounded-2xl object-cover" />
         </section>
       ) : null}
+
     </div>
   );
 }

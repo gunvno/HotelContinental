@@ -68,6 +68,12 @@ public class RoomController {
                 .build();
     }
 
+    @DeleteMapping("/{roomId}/images/{imageId}")
+    public ApiResponse<Void> deleteRoomImage(@PathVariable String roomId, @PathVariable String imageId) {
+        roomService.deleteRoomImage(roomId, imageId);
+        return ApiResponse.<Void>builder().build();
+    }
+
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteRoom(@PathVariable String id) {
         roomService.deleteRoom(id);

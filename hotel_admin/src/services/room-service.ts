@@ -452,6 +452,10 @@ export async function uploadRoomImages(roomId: string, files: File[], coverIndex
   }
 }
 
+export async function deleteRoomImage(roomId: string, imageId: string): Promise<void> {
+  await http.delete(`room/room/${roomId}/images/${imageId}`);
+}
+
 export async function getAllRooms(page = 0,
   size = 20): Promise<{ data: RoomResponse[]; total: number }> {
   const res = await http

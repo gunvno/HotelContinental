@@ -127,6 +127,104 @@ function getAmenityIcon(icon: string) {
   }
 }
 
+/* ─── API data conversion helpers ─── */
+const fallbackImages = [
+  "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=400&q=80",
+];
+
+function mapAmenityIcon(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes("wifi") || lower.includes("wi-fi") || lower.includes("internet")) return "wifi";
+  if (lower.includes("bed") || lower.includes("giường") || lower.includes("nệm")) return "bed";
+  if (lower.includes("bath") || lower.includes("tắm") || lower.includes("bồn")) return "bath";
+  if (lower.includes("tv") || lower.includes("tivi") || lower.includes("truyền hình")) return "tv";
+  if (lower.includes("minibar") || lower.includes("bar") || lower.includes("rượu")) return "minibar";
+  if (lower.includes("điều hòa") || lower.includes("máy lạnh") || lower.includes("ac")) return "ac";
+  if (lower.includes("két") || lower.includes("safe") || lower.includes("an toàn")) return "safe";
+  if (lower.includes("coffee") || lower.includes("cà phê") || lower.includes("ấm") || lower.includes("nước")) return "coffee";
+  return "wifi";
+}
+
+function convertApiRooms(rooms: RoomResponse[]): MockRoom[] {
+  return rooms.map((room, index) => {
+    const mainImage = room.image || fallbackImages[index % fallbackImages.length];
+    const amenityRooms = room.roomTypes?.amenityRooms ?? [];
+    const amenityNames = amenityRooms
+      .map((ar) => ar.amenity?.name)
+      .filter((n): n is string => Boolean(n));
+
+    return {
+      id: room.id,
+      name: room.name || `Phòng ${index + 1}`,
+      image: mainImage,
+      pricePerDay: room.pricePerDay || 0,
+      maxGuests: room.roomTypes?.maximumOccupancy ?? 2,
+      available: room.roomTypes?.quantity ?? 5,
+      badge: index === 0 ? "Phổ biến" : undefined,
+      amenities: amenityNames.length > 0 ? amenityNames.slice(0, 4) : ["Wi-Fi"],
+      description: room.roomTypes?.description || room.description || "Trải nghiệm nghỉ dưỡng cao cấp",
+      detailDescription: room.description || room.roomTypes?.description || "Không gian nghỉ dưỡng sang trọng với đầy đủ tiện nghi chuẩn 5 sao.",
+      gallery: [mainImage, ...fallbackImages.filter((img) => img !== mainImage).slice(0, 3)],
+      detailAmenities: amenityNames.length > 0
+        ? amenityNames.map((name) => ({ icon: mapAmenityIcon(name), label: name }))
+        : [
+            { icon: "wifi", label: "Wi-Fi" },
+            { icon: "bed", label: "Giường" },
+            { icon: "bath", label: "Phòng tắm" },
+          ],
+    } as MockRoom;
+  });
+}
+
+/* ─── Loading Skeletons ─── */
+function RoomCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-[#e8ddd0] dark:border-white/10 bg-white dark:bg-white/[0.05] overflow-hidden animate-pulse">
+      <div className="aspect-[4/3] bg-[#e8ddd0] dark:bg-white/10" />
+      <div className="p-4 space-y-3">
+        <div className="h-5 bg-[#e8ddd0] dark:bg-white/10 rounded w-2/3" />
+        <div className="h-5 bg-[#e8ddd0] dark:bg-white/10 rounded w-1/2" />
+        <div className="h-4 bg-[#e8ddd0] dark:bg-white/10 rounded w-3/4" />
+        <div className="flex gap-1.5">
+          <div className="h-5 bg-[#e8ddd0] dark:bg-white/10 rounded w-16" />
+          <div className="h-5 bg-[#e8ddd0] dark:bg-white/10 rounded w-14" />
+        </div>
+        <div className="h-10 bg-[#e8ddd0] dark:bg-white/10 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+function SidebarSkeleton() {
+  return (
+    <aside className="lg:sticky lg:top-20">
+      <div className="rounded-2xl border border-[#e8ddd0] dark:border-white/10 bg-white dark:bg-white/[0.05] overflow-hidden animate-pulse">
+        <div className="px-5 pt-5 pb-2"><div className="h-6 bg-[#e8ddd0] dark:bg-white/10 rounded-full w-24" /></div>
+        <div className="px-5 pb-4 space-y-2">
+          <div className="h-6 bg-[#e8ddd0] dark:bg-white/10 rounded w-2/3" />
+          <div className="h-4 bg-[#e8ddd0] dark:bg-white/10 rounded w-full" />
+          <div className="h-6 bg-[#e8ddd0] dark:bg-white/10 rounded w-1/2" />
+        </div>
+        <div className="px-5"><div className="aspect-[4/3] bg-[#e8ddd0] dark:bg-white/10 rounded-xl" /></div>
+        <div className="px-5 py-3 flex gap-2">
+          {[1,2,3,4].map((i) => <div key={i} className="w-16 h-12 bg-[#e8ddd0] dark:bg-white/10 rounded-lg shrink-0" />)}
+        </div>
+        <div className="px-5 pb-5 space-y-2">
+          <div className="h-4 bg-[#e8ddd0] dark:bg-white/10 rounded w-1/3" />
+          <div className="grid grid-cols-2 gap-2">
+            {[1,2,3,4].map((i) => <div key={i} className="h-5 bg-[#e8ddd0] dark:bg-white/10 rounded" />)}
+          </div>
+        </div>
+        <div className="px-5 pb-5"><div className="h-12 bg-[#e8ddd0] dark:bg-white/10 rounded-xl" /></div>
+      </div>
+    </aside>
+  );
+}
+
 /* ─── Sidebar Detail Card ─── */
 function SidebarDetail({ room }: { room: MockRoom }) {
   const [mainImg, setMainImg] = useState(0);
@@ -303,14 +401,26 @@ export default function RoomListPage() {
   const [checkOut, setCheckOut] = useState("2026-06-17");
   const [guestCount, setGuestCount] = useState("2");
   const [priceRange, setPriceRange] = useState("all");
-  const [apiRooms, setApiRooms] = useState<RoomResponse[]>([]);
+  const [displayRooms, setDisplayRooms] = useState<MockRoom[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getAllRooms(0, 20).then(({ data }) => setApiRooms(data)).catch(() => {});
+    setIsLoading(true);
+    getAllRooms(0, 20)
+      .then(({ data }) => {
+        if (data.length > 0) {
+          setDisplayRooms(convertApiRooms(data));
+        } else {
+          setDisplayRooms(mockRooms);
+        }
+      })
+      .catch(() => {
+        setDisplayRooms(mockRooms);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const displayRooms = mockRooms;
-  const current = displayRooms[selectedRoom];
+  const current = displayRooms[selectedRoom] ?? displayRooms[0];
 
   return (
     <section className="min-h-screen bg-[#fdfaf5] dark:bg-[#0b0f17] pt-20 pb-20">
@@ -411,14 +521,16 @@ export default function RoomListPage() {
 
             {/* Room Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {displayRooms.map((room, i) => (
-                <RoomGridCard
-                  key={room.id}
-                  room={room}
-                  isSelected={selectedRoom === i}
-                  onSelect={() => setSelectedRoom(i)}
-                />
-              ))}
+              {isLoading
+                ? Array.from({ length: 4 }).map((_, i) => <RoomCardSkeleton key={i} />)
+                : displayRooms.map((room, i) => (
+                    <RoomGridCard
+                      key={room.id}
+                      room={room}
+                      isSelected={selectedRoom === i}
+                      onSelect={() => setSelectedRoom(i)}
+                    />
+                  ))}
             </div>
 
             {/* Load More */}
@@ -432,7 +544,10 @@ export default function RoomListPage() {
 
           {/* ═══ RIGHT COLUMN (Sidebar) ═══ */}
           <div className="hidden lg:block">
-            <SidebarDetail room={current} />
+            {isLoading || !current
+              ? <SidebarSkeleton />
+              : <SidebarDetail room={current} />
+            }
           </div>
         </div>
       </div>

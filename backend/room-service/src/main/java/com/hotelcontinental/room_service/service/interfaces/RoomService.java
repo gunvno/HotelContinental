@@ -17,5 +17,6 @@ public interface RoomService {
     RoomResponse createRoom(RoomCreationRequest request);
     RoomResponse updateRoom(String id, RoomCreationRequest request);
     List<RoomImageResponse> uploadRoomImages(String roomId, List<MultipartFile> files, Integer coverIndex);
+    void deleteRoomImage(String roomId, String imageId);
     RoomDetailResponse getRoomById(String id);
 }

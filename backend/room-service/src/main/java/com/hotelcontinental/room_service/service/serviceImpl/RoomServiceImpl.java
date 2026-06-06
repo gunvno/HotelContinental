@@ -285,6 +285,70 @@ public class RoomServiceImpl implements RoomService {
         return responses;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    @Override
+    public void deleteRoomImage(String roomId, String imageId) {
+        Rooms room = roomRepository.findByIdAndDeletedFalse(roomId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
+        String username = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+
+        Images image = imageRepository.findByIdAndRoomIdAndDeletedFalse(imageId, roomId)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
+        boolean shouldReplaceCover = Boolean.TRUE.equals(image.getIsCover()) || image.getUrl().equals(room.getImage());
+        Images deletedImage = image.toBuilder()
+                .isCover(false)
+                .deleted(true)
+                .deletedTime(LocalDateTime.now())
+                .deletedBy(username)
+                .modifiedTime(LocalDateTime.now())
+                .modifiedBy(username)
+                .build();
+        imageRepository.save(deletedImage);
+
+        if (shouldReplaceCover) {
+            List<Images> remainingImages = imageRepository.findAllByRoomIdAndDeletedFalse(roomId);
+            Images nextCover = remainingImages.stream()
+                    .filter(item -> !item.getId().equals(imageId))
+                    .sorted((first, second) -> Integer.compare(
+                            first.getSortOrder() != null ? first.getSortOrder() : 0,
+                            second.getSortOrder() != null ? second.getSortOrder() : 0))
+                    .findFirst()
+                    .orElse(null);
+
+            if (nextCover != null) {
+                imageRepository.save(nextCover.toBuilder()
+                        .isCover(true)
+                        .modifiedTime(LocalDateTime.now())
+                        .modifiedBy(username)
+                        .build());
+
+                room = room.toBuilder()
+                        .image(nextCover.getUrl())
+                        .modifiedTime(LocalDateTime.now())
+                        .modifiedBy(username)
+                        .build();
+            } else {
+                room = room.toBuilder()
+                        .image(null)
+                        .modifiedTime(LocalDateTime.now())
+                        .modifiedBy(username)
+                        .build();
+            }
+
+            roomRepository.save(room);
+        }
+    }
+
     @Override
     public RoomDetailResponse getRoomById(String id) {
         Rooms room = roomRepository.findByIdAndDeletedFalse(id)
