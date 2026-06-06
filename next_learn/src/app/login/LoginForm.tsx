@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getRolesFromToken, hasAdminRole } from "@/lib/auth-roles";
 import { cn } from "@/lib/utils";
 import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
 import { getUserInfoKeycloak, loginWithKeycloakDirect } from "@/services/keycloak-direct-service";
@@ -18,6 +19,7 @@ import { type LoginSchema,loginSchema } from "./login-schema";
 export function LoginForm() {
   const router = useRouter();
   const doLogin = useAuthStore((s) => s.login);
+  const logout = useAuthStore((s) => s.logout);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { keycloak } = useKeycloakAuth();
@@ -53,6 +55,13 @@ export function LoginForm() {
     setLoading(true);
     try {
       const result = await loginWithKeycloakDirect(data.username, data.password);
+      const roles = getRolesFromToken(result.access_token);
+
+      if (hasAdminRole(roles)) {
+        logout();
+        setError("Tài khoản ADMIN chỉ được đăng nhập ở trang quản trị.");
+        return;
+      }
       
       // Lấy thêm thông tin user (First Name, Last Name) từ Keycloak
       let userProfile = { given_name: "", family_name: "" };
@@ -69,7 +78,7 @@ export function LoginForm() {
         userName: data.username, 
         firstName: userProfile.given_name,
         lastName: userProfile.family_name,
-        permissions: [] 
+        permissions: roles 
       }, data.rememberMe);
 
       const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/";

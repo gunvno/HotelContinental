@@ -5,6 +5,7 @@ import Keycloak from "keycloak-js";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { getRolesFromToken, hasAdminRole } from "@/lib/auth-roles";
 import { getMyProfile } from "@/services/profile-service";
 
 interface UserInfo {
@@ -73,13 +74,23 @@ export function KeycloakAuthProvider({ children }: KeycloakAuthProviderProps) {
 
            // Sync to Zustand store when Keycloak login (e.g. from Google redirect)
            if (keycloakInstance.token) {
+            const roles = getRolesFromToken(keycloakInstance.token);
+
+            if (hasAdminRole(roles)) {
+              keycloakInstance.clearToken();
+              setAuthenticated(false);
+              setToken(null);
+              setUserInfo(null);
+              return;
+            }
+
             doLogin({
               token: keycloakInstance.token,
               refreshToken: keycloakInstance.refreshToken || null,
               userName: userInfo?.preferred_username || userInfo?.name || null,
               firstName: userInfo?.given_name || null,
               lastName: userInfo?.family_name || null,
-              permissions: [], // Keycloak roles mapping would go here if needed
+              permissions: roles,
             }, true);
 
             // Check if user has profile

@@ -39,7 +39,7 @@ export type RoomEntity = {
   roomSize: string;
   pricePerDay: number;
   pricePerHour: number;
-  address: string;
+  address?: string | null;
   status: string;
   roomTypes?: RoomTypeEntity | null;
 };
@@ -162,7 +162,7 @@ export function RoomCard({
                   </span>
                 </div>
                 <p className="text-muted-foreground text-sm">/ đêm</p>
-                <p className="text-muted-foreground mt-2 text-sm">{room.address}</p>
+                <p className="text-muted-foreground mt-2 text-sm">{room.address || "Vị trí theo tòa nhà"}</p>
               </div>
 
               <Link

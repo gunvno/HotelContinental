@@ -16,11 +16,11 @@ import java.time.LocalDateTime;
 public class RoomResponse {
     String id;
     String roomTypeId;
+    String floorId;
     String image;
     String name;
     Float pricePerDay;
     Float pricePerHour;
-    String address;
     String description;
     String roomSize;
     RoomStatus status;

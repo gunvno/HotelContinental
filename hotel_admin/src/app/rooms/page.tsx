@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, Camera, CheckCircle2, Hotel, MapPin, Plus, RefreshCw, UploadCloud } from "lucide-react";
+import { BedDouble, Camera, CheckCircle2, Hotel, Layers3, MapPin, Plus, RefreshCw, UploadCloud } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -10,8 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   createRoom,
+  type BuildingResponse,
   type CreateRoomPayload,
+  type FloorResponse,
   getAllRooms,
+  getBuildings,
+  getFloorsByBuilding,
   getRoomTypes,
   type RoomResponse,
   type RoomTypeResponse,
@@ -19,21 +23,23 @@ import {
 } from "@/services/room-service";
 
 type FormState = {
+  buildingId: string;
+  floorId: string;
   roomTypeId: string;
   name: string;
   pricePerDay: string;
   pricePerHour: string;
-  address: string;
   description: string;
   roomSize: string;
 };
 
 const defaultFormState: FormState = {
+  buildingId: "",
+  floorId: "",
   roomTypeId: "",
   name: "",
   pricePerDay: "",
   pricePerHour: "",
-  address: "",
   description: "",
   roomSize: "",
 };
@@ -47,9 +53,10 @@ const statusLabel: Record<string, string> = {
 
 export default function RoomsPage() {
   const router = useRouter();
-  const [view, setView] = useState<"list" | "create">("list");
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
+  const [buildings, setBuildings] = useState<BuildingResponse[]>([]);
+  const [floors, setFloors] = useState<FloorResponse[]>([]);
   const [form, setForm] = useState<FormState>(defaultFormState);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [coverIndex, setCoverIndex] = useState(0);
@@ -58,6 +65,7 @@ export default function RoomsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const selectedBuildingFloors = floors.filter((floor) => floor.buildingId === form.buildingId);
   const filePreviews = useMemo(
     () => selectedFiles.map((file) => ({ name: file.name, size: Math.round(file.size / 1024) })),
     [selectedFiles],
@@ -77,11 +85,26 @@ export default function RoomsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const [roomResult, roomTypeResult] = await Promise.all([getAllRooms(0, 100), getRoomTypes(0, 100)]);
+      const [roomResult, roomTypeResult, buildingResult] = await Promise.all([
+        getAllRooms(0, 200),
+        getRoomTypes(0, 200),
+        getBuildings(),
+      ]);
+      const floorEntries = await Promise.all(
+        buildingResult.map(async (building) => [building.id, await getFloorsByBuilding(building.id)] as const),
+      );
+      const allFloors = floorEntries.flatMap(([, buildingFloors]) => buildingFloors);
+      const firstBuildingId = buildingResult[0]?.id || "";
+      const firstFloorId = allFloors.find((floor) => floor.buildingId === firstBuildingId)?.id || "";
+
       setRooms(roomResult.data);
       setRoomTypes(roomTypeResult.data);
+      setBuildings(buildingResult);
+      setFloors(allFloors);
       setForm((prev) => ({
         ...prev,
+        buildingId: prev.buildingId || firstBuildingId,
+        floorId: prev.floorId || firstFloorId,
         roomTypeId: prev.roomTypeId || roomTypeResult.data[0]?.id || "",
       }));
     } catch (loadError) {
@@ -93,7 +116,23 @@ export default function RoomsPage() {
   };
 
   const onChange = (key: keyof FormState, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      if (key === "buildingId") {
+        const nextFloorId = floors.find((floor) => floor.buildingId === value)?.id || "";
+        return {
+          ...prev,
+          buildingId: value,
+          floorId: nextFloorId,
+        };
+      }
+      if (key === "floorId") {
+        return {
+          ...prev,
+          floorId: value,
+        };
+      }
+      return { ...prev, [key]: value };
+    });
   };
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -101,8 +140,12 @@ export default function RoomsPage() {
     setError(null);
     setMessage(null);
 
-    if (!form.roomTypeId || !form.name.trim() || !form.address.trim() || !form.roomSize.trim()) {
-      setError("Vui lòng chọn loại phòng và nhập tên phòng, vị trí, diện tích.");
+    if (!form.buildingId || !form.floorId) {
+      setError("Vui lòng chọn tòa nhà và tầng trước khi tạo phòng.");
+      return;
+    }
+    if (!form.roomTypeId || !form.name.trim() || !form.roomSize.trim()) {
+      setError("Vui lòng chọn loại phòng và nhập tên phòng, diện tích.");
       return;
     }
 
@@ -115,11 +158,11 @@ export default function RoomsPage() {
     }
 
     const payload: CreateRoomPayload = {
-      roomTypes: { id: form.roomTypeId },
+      floorId: form.floorId,
+      roomTypeId: form.roomTypeId,
       name: form.name.trim(),
       pricePerDay,
       pricePerHour,
-      address: form.address.trim(),
       description: form.description.trim() || undefined,
       roomSize: form.roomSize.trim(),
       status: "AVAILABLE",
@@ -145,12 +188,16 @@ export default function RoomsPage() {
       setMessage(
         uploadWarning
           ? `Đã tạo phòng "${result.name}" nhưng chưa upload ảnh thành công.`
-          : `Đã tạo phòng "${result.name}"${selectedFiles.length ? ` và upload ${selectedFiles.length} ảnh` : ""}.`
+          : `Đã tạo phòng "${result.name}"${selectedFiles.length ? ` và upload ${selectedFiles.length} ảnh` : ""}.`,
       );
-      setForm({ ...defaultFormState, roomTypeId: roomTypes[0]?.id || "" });
+      setForm({
+        ...defaultFormState,
+        buildingId: buildings[0]?.id || "",
+        floorId: floors.find((floor) => floor.buildingId === buildings[0]?.id)?.id || "",
+        roomTypeId: roomTypes[0]?.id || "",
+      });
       setSelectedFiles([]);
       setCoverIndex(0);
-      setView("list");
       await loadInitialData();
       if (uploadWarning) {
         setError(uploadWarning);
@@ -165,7 +212,7 @@ export default function RoomsPage() {
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-[2rem] border border-[#decdb9] bg-[#21170f] p-6 text-white shadow-[0_30px_80px_-52px_rgba(33,23,15,0.95)] dark:border-[#3a2e24] lg:p-8">
+      <section className="relative overflow-hidden rounded-[2rem] border border-[#decdb9] bg-[#21170f] p-6 text-white shadow-[0_30px_80px_-52px_rgba(33,23,15,0.95)] lg:p-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(232,201,144,0.33),transparent_28%),radial-gradient(circle_at_88%_6%,rgba(255,255,255,0.12),transparent_24%)]" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -174,74 +221,36 @@ export default function RoomsPage() {
               Kho phòng
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-[#eadbc4]">
-              Màn hình này nên dùng để tạo phòng vật lý, gắn loại phòng, giá bán và ảnh cover.
-              Các nghiệp vụ sửa trạng thái, bảo trì, xóa mềm nên bổ sung ở bước tiếp theo.
+              Trang này chỉ quản lý phòng vật lý. Cấu trúc tòa nhà và tầng được setup riêng ở màn Tòa nhà & tầng.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void loadInitialData()}
-              className="border-white/15 bg-white/10 text-white hover:bg-white/15"
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Làm mới
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                setView("create");
-                setError(null);
-                setMessage(null);
-              }}
-              className="bg-[#e8c990] text-[#21170f] hover:bg-[#f2d9aa]"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Thêm phòng
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void loadInitialData()}
+            className="border-white/15 bg-white/10 text-white hover:bg-white/15"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Làm mới
+          </Button>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <MetricCard icon={<Hotel className="h-5 w-5" />} label="Tổng phòng" value={String(rooms.length)} />
+      <section className="grid gap-4 md:grid-cols-4">
+        <MetricCard icon={<Hotel className="h-5 w-5" />} label="Tòa nhà" value={String(buildings.length)} />
+        <MetricCard icon={<Layers3 className="h-5 w-5" />} label="Tầng" value={String(floors.length)} />
         <MetricCard icon={<CheckCircle2 className="h-5 w-5" />} label="Sẵn sàng bán" value={String(availableRooms)} />
-        <MetricCard icon={<BedDouble className="h-5 w-5" />} label="Giá trung bình/ngày" value={formatCurrency(averageDailyPrice)} />
+        <MetricCard icon={<BedDouble className="h-5 w-5" />} label="Giá TB/ngày" value={formatCurrency(averageDailyPrice)} />
       </section>
-
-      <div className="flex flex-wrap gap-2 rounded-full border border-[#decdb9] bg-white/60 p-1 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05]">
-        {[
-          { key: "list", label: "Danh sách phòng" },
-          { key: "create", label: "Tạo phòng mới" },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => {
-              setView(tab.key as "list" | "create");
-              setError(null);
-              setMessage(null);
-            }}
-            className={`rounded-full px-5 py-2 text-sm font-bold transition ${
-              view === tab.key
-                ? "bg-[#21170f] text-white shadow-md dark:bg-[#e8c990] dark:text-[#21170f]"
-                : "text-[#75695d] hover:bg-white/70 dark:text-[#b7a99a] dark:hover:bg-white/10"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       {error ? <Alert tone="error">{error}</Alert> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
 
-      {view === "list" ? (
-        <RoomListView rooms={rooms} isLoading={isLoading} onOpen={(roomId) => router.push(`/rooms/${roomId}`)} />
-      ) : (
+      <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <RoomCreateForm
           form={form}
+          buildings={buildings}
+          floors={selectedBuildingFloors}
           roomTypes={roomTypes}
           filePreviews={filePreviews}
           coverIndex={coverIndex}
@@ -252,36 +261,24 @@ export default function RoomsPage() {
             setSelectedFiles(files);
             setCoverIndex(0);
           }}
-          onReset={() => {
-            setForm({ ...defaultFormState, roomTypeId: roomTypes[0]?.id || "" });
-            setSelectedFiles([]);
-            setCoverIndex(0);
-            setError(null);
-            setMessage(null);
-          }}
           onSubmit={onSubmit}
         />
-      )}
-    </div>
-  );
-}
-
-function MetricCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="rounded-[1.5rem] border border-[#decdb9] bg-white/72 p-5 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05]">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm font-bold text-[#75695d] dark:text-[#b7a99a]">{label}</p>
-        <div className="rounded-2xl bg-[#eadfcd] p-3 text-[#9b5c24] dark:bg-[#2a211a] dark:text-[#d7a25f]">
-          {icon}
-        </div>
+        <RoomListView
+          rooms={rooms}
+          buildings={buildings}
+          floors={floors}
+          isLoading={isLoading}
+          onOpen={(roomId) => router.push(`/rooms/${roomId}`)}
+        />
       </div>
-      <p className="mt-4 text-3xl font-black tracking-tight">{value}</p>
     </div>
   );
 }
 
 function RoomCreateForm({
   form,
+  buildings,
+  floors,
   roomTypes,
   filePreviews,
   coverIndex,
@@ -289,10 +286,11 @@ function RoomCreateForm({
   onChange,
   onCoverChange,
   onFilesChange,
-  onReset,
   onSubmit,
 }: {
   form: FormState;
+  buildings: BuildingResponse[];
+  floors: FloorResponse[];
   roomTypes: RoomTypeResponse[];
   filePreviews: Array<{ name: string; size: number }>;
   coverIndex: number;
@@ -300,24 +298,50 @@ function RoomCreateForm({
   onChange: (key: keyof FormState, value: string) => void;
   onCoverChange: (index: number) => void;
   onFilesChange: (files: File[]) => void;
-  onReset: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }) {
-  const fieldClassName =
-    "border-[#decdb9] bg-[#fffaf2] text-[#211a14] placeholder:text-[#9b8c7d] focus-visible:ring-[#9b5c24] dark:border-[#3a2e24] dark:bg-[#17130f] dark:text-[#f8f1e7]";
+  const fieldClassName = "border-[#decdb9] bg-[#fffaf2] text-[#211a14] placeholder:text-[#9b8c7d] focus-visible:ring-[#9b5c24]";
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="grid gap-6 rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-5 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05] lg:p-7"
-    >
-      <div className="grid gap-5 lg:grid-cols-2">
+    <form onSubmit={onSubmit} className="rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm">
+      <p className="text-xs font-black uppercase tracking-[0.28em] text-[#9b5c24]">Thêm phòng vật lý</p>
+      <h3 className="mt-2 font-serif text-4xl font-bold">Gán phòng vào tầng thật</h3>
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <Field label="Tòa nhà *">
+          <select
+            value={form.buildingId}
+            onChange={(event) => onChange("buildingId", event.target.value)}
+            className={`h-10 w-full rounded-md border px-3 text-sm outline-none ${fieldClassName}`}
+          >
+            {buildings.length === 0 ? <option value="">Chưa có tòa nhà</option> : null}
+            {buildings.map((building) => (
+              <option key={building.id} value={building.id}>
+                {building.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Tầng *">
+          <select
+            value={form.floorId}
+            onChange={(event) => onChange("floorId", event.target.value)}
+            className={`h-10 w-full rounded-md border px-3 text-sm outline-none ${fieldClassName}`}
+          >
+            {floors.length === 0 ? <option value="">Chưa có tầng</option> : null}
+            {floors.map((floor) => (
+              <option key={floor.id} value={floor.id}>
+                Tầng {floor.floorNumber}
+              </option>
+            ))}
+          </select>
+        </Field>
+
         <Field label="Loại phòng *">
           <select
             value={form.roomTypeId}
             onChange={(event) => onChange("roomTypeId", event.target.value)}
             className={`h-10 w-full rounded-md border px-3 text-sm outline-none ${fieldClassName}`}
-            disabled={roomTypes.length === 0}
           >
             {roomTypes.length === 0 ? <option value="">Chưa có loại phòng</option> : null}
             {roomTypes.map((roomType) => (
@@ -329,58 +353,26 @@ function RoomCreateForm({
         </Field>
 
         <Field label="Tên phòng *">
-          <Input
-            value={form.name}
-            onChange={(event) => onChange("name", event.target.value)}
-            placeholder="VD: Deluxe City View 601"
-            className={fieldClassName}
-          />
+          <Input value={form.name} onChange={(event) => onChange("name", event.target.value)} placeholder="VD: 601" className={fieldClassName} />
         </Field>
 
         <Field label="Giá theo ngày (VND) *">
-          <PriceInput
-            min={0}
-            value={form.pricePerDay}
-            onChange={(value) => onChange("pricePerDay", value)}
-            placeholder="4200000"
-            className={fieldClassName}
-          />
+          <PriceInput value={form.pricePerDay} onChange={(value) => onChange("pricePerDay", value)} placeholder="1200000" className={fieldClassName} />
         </Field>
 
         <Field label="Giá theo giờ (VND) *">
-          <PriceInput
-            min={0}
-            value={form.pricePerHour}
-            onChange={(value) => onChange("pricePerHour", value)}
-            placeholder="380000"
-            className={fieldClassName}
-          />
-        </Field>
-
-        <Field label="Vị trí phòng *">
-          <Input
-            value={form.address}
-            onChange={(event) => onChange("address", event.target.value)}
-            placeholder="VD: Tầng 6, cánh Đông"
-            className={fieldClassName}
-          />
+          <PriceInput value={form.pricePerHour} onChange={(value) => onChange("pricePerHour", value)} placeholder="180000" className={fieldClassName} />
         </Field>
 
         <Field label="Diện tích *">
-          <Input
-            value={form.roomSize}
-            onChange={(event) => onChange("roomSize", event.target.value)}
-            placeholder="VD: 45 m2"
-            className={fieldClassName}
-          />
+          <Input value={form.roomSize} onChange={(event) => onChange("roomSize", event.target.value)} placeholder="32m2" className={fieldClassName} />
         </Field>
 
-        <div className="lg:col-span-2">
+        <div className="md:col-span-2">
           <Field label="Ảnh phòng">
-            <label className="flex cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#cdb99f] bg-[#fffaf2] px-4 py-8 text-center transition hover:bg-[#f8eddd] dark:border-[#3a2e24] dark:bg-[#17130f] dark:hover:bg-[#211a14]">
-              <UploadCloud className="h-8 w-8 text-[#9b5c24] dark:text-[#d7a25f]" />
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#cdb99f] bg-[#fffaf2] px-4 py-7 text-center transition hover:bg-[#f8eddd]">
+              <UploadCloud className="h-8 w-8 text-[#9b5c24]" />
               <span className="mt-2 text-sm font-bold">Chọn một hoặc nhiều ảnh</span>
-              <span className="mt-1 text-xs text-[#75695d] dark:text-[#b7a99a]">Ảnh đầu tiên sẽ là cover nếu bạn không chọn lại.</span>
               <input
                 type="file"
                 accept="image/*"
@@ -393,33 +385,25 @@ function RoomCreateForm({
         </div>
 
         {filePreviews.length > 0 ? (
-          <div className="rounded-[1.5rem] border border-[#eadfcd] bg-[#fbf7ef] p-4 dark:border-[#3a2e24] dark:bg-[#17130f] lg:col-span-2">
+          <div className="rounded-[1.5rem] border border-[#eadfcd] bg-[#fbf7ef] p-4 md:col-span-2">
             <div className="mb-3 flex items-center gap-2 text-sm font-black">
-              <Camera className="h-4 w-4 text-[#9b5c24] dark:text-[#d7a25f]" />
+              <Camera className="h-4 w-4 text-[#9b5c24]" />
               Chọn ảnh cover
             </div>
-            <div className="grid gap-2 md:grid-cols-2">
+            <div className="grid gap-2">
               {filePreviews.map((file, index) => (
-                <label
-                  key={`${file.name}-${index}`}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-[#eadfcd] bg-white/80 px-4 py-3 text-sm dark:border-[#3a2e24] dark:bg-white/[0.04]"
-                >
+                <label key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl border border-[#eadfcd] bg-white/80 px-4 py-3 text-sm">
                   <span className="truncate">
-                    {file.name} <span className="text-[#75695d] dark:text-[#b7a99a]">({file.size} KB)</span>
+                    {file.name} <span className="text-[#75695d]">({file.size} KB)</span>
                   </span>
-                  <input
-                    type="radio"
-                    name="coverImage"
-                    checked={coverIndex === index}
-                    onChange={() => onCoverChange(index)}
-                  />
+                  <input type="radio" name="coverImage" checked={coverIndex === index} onChange={() => onCoverChange(index)} />
                 </label>
               ))}
             </div>
           </div>
         ) : null}
 
-        <div className="lg:col-span-2">
+        <div className="md:col-span-2">
           <Field label="Mô tả">
             <textarea
               value={form.description}
@@ -432,11 +416,8 @@ function RoomCreateForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-        <Button type="button" variant="secondary" onClick={onReset}>
-          Xóa form
-        </Button>
-        <Button type="submit" disabled={isSubmitting || roomTypes.length === 0}>
+      <div className="mt-6 flex justify-end">
+        <Button type="submit" disabled={isSubmitting || buildings.length === 0 || floors.length === 0 || roomTypes.length === 0}>
           {isSubmitting ? "Đang tạo..." : "Tạo phòng"}
         </Button>
       </div>
@@ -444,27 +425,22 @@ function RoomCreateForm({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <Label className="text-sm font-black text-[#4d4035] dark:text-[#eadbc4]">{label}</Label>
-      {children}
-    </div>
-  );
-}
-
 function RoomListView({
   rooms,
+  buildings,
+  floors,
   isLoading,
   onOpen,
 }: {
   rooms: RoomResponse[];
+  buildings: BuildingResponse[];
+  floors: FloorResponse[];
   isLoading: boolean;
   onOpen: (roomId: string) => void;
 }) {
   if (isLoading) {
     return (
-      <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-10 text-center font-bold text-[#75695d] dark:border-[#3a2e24] dark:bg-white/[0.05] dark:text-[#b7a99a]">
+      <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-10 text-center font-bold text-[#75695d]">
         Đang tải danh sách phòng...
       </div>
     );
@@ -472,35 +448,28 @@ function RoomListView({
 
   if (rooms.length === 0) {
     return (
-      <div className="rounded-[1.75rem] border border-dashed border-[#cdb99f] bg-white/60 p-12 text-center dark:border-[#3a2e24] dark:bg-white/[0.04]">
-        <BedDouble className="mx-auto h-10 w-10 text-[#9b5c24] dark:text-[#d7a25f]" />
+      <div className="rounded-[1.75rem] border border-dashed border-[#cdb99f] bg-white/60 p-12 text-center">
+        <BedDouble className="mx-auto h-10 w-10 text-[#9b5c24]" />
         <h3 className="mt-4 font-serif text-3xl font-bold">Chưa có phòng</h3>
-        <p className="mt-2 text-sm text-[#75695d] dark:text-[#b7a99a]">Tạo phòng đầu tiên để bắt đầu quản lý kho phòng.</p>
+        <p className="mt-2 text-sm text-[#75695d]">Hãy tạo tòa nhà và tầng trước, sau đó thêm phòng vật lý ở đây.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid content-start gap-5 md:grid-cols-2">
       {rooms.map((room) => (
         <article
           key={room.id || room.name}
           onClick={() => room.id && onOpen(room.id)}
-          className="cursor-pointer overflow-hidden rounded-[1.75rem] border border-[#decdb9] bg-white/78 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-xl dark:border-[#3a2e24] dark:bg-white/[0.05]"
+          className="cursor-pointer overflow-hidden rounded-[1.75rem] border border-[#decdb9] bg-white/78 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl"
         >
-          <div className="relative h-48 bg-[#eadfcd] dark:bg-[#211a14]">
+          <div className="relative h-44 bg-[#eadfcd]">
             {room.image ? (
-              <Image
-                src={room.image}
-                alt={room.name}
-                fill
-                unoptimized
-                sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
-                className="object-cover"
-              />
+              <Image src={room.image} alt={room.name} fill unoptimized sizes="(min-width: 1280px) 25vw, 100vw" className="object-cover" />
             ) : (
               <div className="flex h-full items-center justify-center">
-                <Camera className="h-10 w-10 text-[#9b5c24]/60 dark:text-[#d7a25f]/60" />
+                <Camera className="h-10 w-10 text-[#9b5c24]/60" />
               </div>
             )}
             <span className="absolute left-4 top-4 rounded-full bg-[#21170f]/88 px-3 py-1 text-xs font-black text-white backdrop-blur">
@@ -508,22 +477,15 @@ function RoomListView({
             </span>
           </div>
           <div className="p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="font-serif text-3xl font-bold leading-none">{room.name}</h3>
-                <p className="mt-2 flex items-center gap-1.5 text-sm text-[#75695d] dark:text-[#b7a99a]">
-                  <MapPin className="h-4 w-4" />
-                  {room.address}
-                </p>
-              </div>
-            </div>
-            <p className="mt-4 line-clamp-2 text-sm leading-6 text-[#5f5144] dark:text-[#d8c9b7]">
-              {room.description || "Chưa có mô tả cho phòng này."}
+            <h3 className="font-serif text-3xl font-bold leading-none">{room.name}</h3>
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-[#75695d]">
+              <MapPin className="h-4 w-4" />
+              {resolveRoomLocation(room, buildings, floors)}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-              <InfoPill label="Loại phòng" value={room.roomTypes?.name || "Chưa gắn"} />
+              <InfoPill label="Loại phòng" value={room.roomTypes?.name || "Chưa gán"} />
               <InfoPill label="Diện tích" value={room.roomSize} />
-              <InfoPill label="Tối đa" value={`${room.roomTypes?.maximumOccupancy ?? "-"} khách`} />
+              <InfoPill label="Tầng" value={room.floorId ? "Đã gán" : "Chưa gán"} />
               <InfoPill label="Giá/ngày" value={formatCurrency(room.pricePerDay)} />
             </div>
           </div>
@@ -533,10 +495,42 @@ function RoomListView({
   );
 }
 
+function resolveRoomLocation(room: RoomResponse, buildings: BuildingResponse[], floors: FloorResponse[]) {
+  const floor = floors.find((item) => item.id === room.floorId);
+  const building = buildings.find((item) => item.id === floor?.buildingId);
+
+  if (!floor || !building) {
+    return "Chưa gán tòa/tầng";
+  }
+
+  return `${building.name} - Tầng ${floor.floorNumber}`;
+}
+
+function MetricCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-[1.5rem] border border-[#decdb9] bg-white/72 p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm font-bold text-[#75695d]">{label}</p>
+        <div className="rounded-2xl bg-[#eadfcd] p-3 text-[#9b5c24]">{icon}</div>
+      </div>
+      <p className="mt-4 text-3xl font-black tracking-tight">{value}</p>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-black text-[#4d4035]">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
 function InfoPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[#eadfcd] bg-[#fbf7ef] p-3 dark:border-[#3a2e24] dark:bg-[#17130f]">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9b8c7d] dark:text-[#b7a99a]">{label}</p>
+    <div className="rounded-2xl border border-[#eadfcd] bg-[#fbf7ef] p-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9b8c7d]">{label}</p>
       <p className="mt-1 truncate font-black">{value}</p>
     </div>
   );
@@ -547,16 +541,14 @@ function PriceInput({
   onChange,
   className,
   placeholder,
-  min,
 }: {
   value: string;
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
-  min?: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const suggestions = getPriceSuggestions(value, min);
+  const suggestions = getPriceSuggestions(value);
 
   return (
     <div className="relative">
@@ -592,9 +584,9 @@ function PriceInput({
   );
 }
 
-function getPriceSuggestions(rawValue: string, min?: number) {
+function getPriceSuggestions(rawValue: string) {
   const base = Number(String(rawValue).replace(/[^\d]/g, ""));
-  if (!Number.isFinite(base) || base <= 0 || (min !== undefined && base < min)) {
+  if (!Number.isFinite(base) || base <= 0) {
     return [];
   }
 
@@ -608,9 +600,7 @@ function Alert({ tone, children }: { tone: "success" | "error"; children: React.
   return (
     <div
       className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
-        tone === "success"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200"
-          : "border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200"
+        tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"
       }`}
     >
       {children}

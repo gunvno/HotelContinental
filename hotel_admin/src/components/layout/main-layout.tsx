@@ -2,6 +2,7 @@
 
 import {
   BedDouble,
+  Building2,
   CalendarCheck,
   ChevronRight,
   ClipboardList,
@@ -26,6 +27,7 @@ import { useAuthStore } from "@/store/auth-store";
 
 const primaryNav = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Tòa nhà & tầng", href: "/buildings", icon: Building2 },
   { label: "Phòng", href: "/rooms", icon: BedDouble },
   { label: "Đặt phòng", href: "/bookings", icon: CalendarCheck },
   { label: "Khách hàng", href: "/users", icon: Users },
@@ -241,5 +243,6 @@ function getPathTitle(pathname: string) {
   if (pathname.startsWith("/bookings")) return "Đặt phòng";
   if (pathname.startsWith("/users")) return "Khách hàng";
   if (pathname.startsWith("/settings")) return "Cài đặt";
+  if (pathname.startsWith("/buildings")) return "Tòa nhà & tầng";
   return "Hotel Admin";
 }

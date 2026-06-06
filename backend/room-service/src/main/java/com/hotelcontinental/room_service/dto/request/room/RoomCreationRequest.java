@@ -14,11 +14,11 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RoomCreationRequest {
     String roomTypeId;
+    String floorId;
     String image;
     String name;
     Float pricePerDay;
     Float pricePerHour;
-    String address;
     String description;
     String roomSize;
     RoomStatus status;

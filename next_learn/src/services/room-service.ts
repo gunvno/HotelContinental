@@ -31,7 +31,7 @@ export type RoomResponse = {
   image?: string;
   pricePerDay: number;
   pricePerHour: number;
-  address: string;
+  address?: string;
   description?: string;
   roomSize: string;
   status: string;
@@ -242,7 +242,7 @@ export async function getRoomDetail(id: string): Promise<RoomDetailData | null> 
       label: room.roomTypes?.name || "Suite Cao Cấp",
       title: room.name || "Tên phòng",
       description: room.roomTypes?.description || "Không gian nghỉ dưỡng tuyệt vời kết hợp hoàn hảo giữa tiện nghi hiện đại và thiết kế tinh tế.",
-      location: room.address || "Tọa lạc tại vị trí riêng tư",
+      location: room.address || "Vị trí theo tòa nhà",
       pricePerNight: room.pricePerDay || 8500000,
       maxOccupancy: room.roomTypes?.maximumOccupancy || 2,
       galleryImages: {

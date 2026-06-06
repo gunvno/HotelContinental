@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface RoomRepository extends JpaRepository<Rooms, String> {
-    boolean existsByNameAndAddress(String name, String address);
+    boolean existsByNameAndFloorId(String name, String floorId);
 
     Page<Rooms> findAllByDeletedFalse(Pageable pageable);
 

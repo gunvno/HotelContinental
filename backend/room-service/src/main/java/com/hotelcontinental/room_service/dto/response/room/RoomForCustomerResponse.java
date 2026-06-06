@@ -14,11 +14,11 @@ import lombok.experimental.FieldDefaults;
 public class RoomForCustomerResponse {
     String id;
     String roomTypeId;
+    String floorId;
     String image;
     String name;
     Float pricePerDay;
     Float pricePerHour;
-    String address;
     String description;
     String roomSize;
     RoomStatus status;

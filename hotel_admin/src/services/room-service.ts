@@ -89,6 +89,7 @@ export type RoomTypeServiceResponse = {
 // ============= ROOMS =============
 export type CreateRoomPayload = {
   roomTypeId?: string;
+  floorId?: string;
   roomTypes?: {
     id: string;
   };
@@ -96,7 +97,6 @@ export type CreateRoomPayload = {
   name: string;
   pricePerDay: number;
   pricePerHour: number;
-  address: string;
   description?: string;
   roomSize: string;
   status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "MAINTENANCE";
@@ -106,9 +106,9 @@ export type RoomResponse = {
   id?: string;
   name: string;
   image?: string;
+  floorId?: string;
   pricePerDay: number;
   pricePerHour: number;
-  address: string;
   description?: string;
   roomSize: string;
   status: string;
@@ -118,6 +118,48 @@ export type RoomResponse = {
   images?: RoomImageResponse[];
   galleryImages?: string[];
 };
+
+export type BuildingSetupPayload = {
+  buildingName: string;
+  description?: string;
+  address?: string;
+  floorStart: number;
+  floorEnd: number;
+  roomsPerFloor: number;
+  roomNumberPattern: string;
+  defaultRoomTypeId: string;
+  defaultPricePerDay: number;
+  defaultPricePerHour: number;
+  defaultRoomSize: string;
+  skipRoomNumbers?: string[];
+};
+
+export type BuildingSetupResponse = {
+  building: {
+    id: string;
+    name: string;
+    description?: string;
+    address?: string;
+    status: string;
+  };
+  floors: Array<{
+    id: string;
+    buildingId: string;
+    name: string;
+    floorNumber: number;
+    status: string;
+  }>;
+  rooms: RoomResponse[];
+  createdFloorCount: number;
+  createdRoomCount: number;
+};
+
+export type BuildingResponse = BuildingSetupResponse["building"] & {
+  createdTime?: string;
+  createdBy?: string;
+};
+
+export type FloorResponse = BuildingSetupResponse["floors"][number];
 
 export type RoomImageResponse = {
   id: string;
@@ -360,6 +402,21 @@ export async function updateRoom(id: string, payload: CreateRoomPayload): Promis
   };
   const res = await http.put(`room/room/${id}`, { json }).json<ApiResponse<RoomResponse>>();
   return enrichRoom((res.result ?? res.content) as RoomResponse);
+}
+
+export async function setupBuilding(payload: BuildingSetupPayload): Promise<BuildingSetupResponse> {
+  const res = await http.post("room/building/setup", { json: payload }).json<ApiResponse<BuildingSetupResponse>>();
+  return (res.result ?? res.content) as BuildingSetupResponse;
+}
+
+export async function getBuildings(): Promise<BuildingResponse[]> {
+  const res = await http.get("room/building").json<ApiResponse<BuildingResponse[]>>();
+  return (res.result ?? res.content) as BuildingResponse[];
+}
+
+export async function getFloorsByBuilding(buildingId: string): Promise<FloorResponse[]> {
+  const res = await http.get(`room/building/${buildingId}/floors`).json<ApiResponse<FloorResponse[]>>();
+  return (res.result ?? res.content) as FloorResponse[];
 }
 
 export async function uploadRoomImages(roomId: string, files: File[], coverIndex = 0): Promise<void> {

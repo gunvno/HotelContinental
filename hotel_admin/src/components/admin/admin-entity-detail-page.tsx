@@ -292,7 +292,6 @@ function buildFields(kind: EntityKind, form: FormState, roomTypes: RoomTypeRespo
     { key: "name", label: "Tên phòng" },
     { key: "pricePerDay", label: "Giá theo ngày", type: "number" },
     { key: "pricePerHour", label: "Giá theo giờ", type: "number" },
-    { key: "address", label: "Vị trí" },
     { key: "roomSize", label: "Diện tích" },
     { key: "status", label: "Trạng thái", type: "select", options: [
       { label: "Sẵn sàng", value: "AVAILABLE" },
@@ -332,10 +331,10 @@ function toForm(kind: EntityKind, entity: DetailEntity): FormState {
   const item = entity as RoomResponse;
   return {
     roomTypeId: item.roomTypeId ?? item.roomTypes?.id ?? "",
+    floorId: item.floorId ?? "",
     name: item.name ?? "",
     pricePerDay: item.pricePerDay ?? 0,
     pricePerHour: item.pricePerHour ?? 0,
-    address: item.address ?? "",
     description: item.description ?? "",
     roomSize: item.roomSize ?? "",
     status: item.status ?? "AVAILABLE",
@@ -378,10 +377,10 @@ async function saveEntity(kind: EntityKind, id: string, form: FormState): Promis
   }
   return updateRoom(id, {
     roomTypeId: String(form.roomTypeId ?? ""),
+    floorId: String(form.floorId ?? ""),
     name: String(form.name ?? ""),
     pricePerDay: Number(form.pricePerDay ?? 0),
     pricePerHour: Number(form.pricePerHour ?? 0),
-    address: String(form.address ?? ""),
     description: String(form.description ?? ""),
     roomSize: String(form.roomSize ?? ""),
     status: String(form.status ?? "AVAILABLE") as "AVAILABLE" | "OCCUPIED" | "RESERVED" | "MAINTENANCE",
