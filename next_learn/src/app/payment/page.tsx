@@ -15,10 +15,18 @@ function PaymentContent() {
     const checkOut = searchParams.get("checkOut") || "18/04/2026";
     const guests = Number(searchParams.get("guests") || 2);
     const pricePerNight = Number(searchParams.get("pricePerNight") || 4_500_000);
+    const stayType = searchParams.get("stayType") || "night";
+    const checkInTime = searchParams.get("checkInTime") || "14:00";
+    const stayHours = Number(searchParams.get("stayHours") || 3);
     const bookingId = `BK-${roomId.toUpperCase()}-${new Date().getFullYear()}`;
 
-    const nights = 3;
-    const roomAmount = pricePerNight * nights;
+    const start = new Date(`${checkIn}T00:00:00`);
+    const end = new Date(`${checkOut}T00:00:00`);
+    const nights = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+    const stayDuration = stayType === "hour" ? stayHours : nights;
+    const stayUnit = stayType === "hour" ? "giờ" : "đêm";
+    const unitPrice = stayType === "hour" ? Math.round(pricePerNight / 8) : pricePerNight;
+    const roomAmount = unitPrice * stayDuration;
     const tax = Math.round(roomAmount * 0.1);
     const memberDiscount = Math.round(roomAmount * 0.05);
     const total = roomAmount + tax - memberDiscount;
@@ -31,6 +39,12 @@ function PaymentContent() {
       checkOut,
       guests,
       nights,
+      stayType,
+      checkInTime,
+      stayHours,
+      stayDuration,
+      stayUnit,
+      unitPrice,
       roomAmount,
       tax,
       memberDiscount,
@@ -241,19 +255,19 @@ function PaymentContent() {
                   </div>
                   <div>
                     <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase">
-                      Ngày trả phòng
+                      {paymentData.stayType === "hour" ? "Giờ bắt đầu" : "Ngày trả phòng"}
                     </p>
-                    <p className="text-foreground mt-1 text-sm">{paymentData.checkOut}</p>
+                    <p className="text-foreground mt-1 text-sm">{paymentData.stayType === "hour" ? paymentData.checkInTime : paymentData.checkOut}</p>
                   </div>
                 </div>
-                <p className="text-muted-foreground pt-2 text-sm">Tổng thời gian: {paymentData.nights} Đêm</p>
+                <p className="text-muted-foreground pt-2 text-sm">Tổng thời gian: {paymentData.stayDuration} {paymentData.stayUnit}</p>
               </div>
             </div>
 
             <div className="mt-5 space-y-2 text-sm">
               <div className="text-muted-foreground flex items-center justify-between">
                 <span>
-                  Giá phòng ({paymentData.nights} đêm x {currencyFormatter.format(paymentData.roomAmount / paymentData.nights)}đ)
+                  Giá phòng ({paymentData.stayDuration} {paymentData.stayUnit} x {currencyFormatter.format(paymentData.unitPrice)}đ)
                 </span>
                 <span>{currencyFormatter.format(paymentData.roomAmount)}đ</span>
               </div>

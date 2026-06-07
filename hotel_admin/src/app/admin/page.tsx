@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -20,6 +20,7 @@ import {
   deleteAmenityRoom,
   deleteRoomType,
   deleteRoomTypeService,
+  getCatalogServices,
   getAmenities,
   getAmenityRoomsByRoomTypePaged,
   getRoomTypes,
@@ -27,6 +28,7 @@ import {
   getRoomTypeServicesByRoomTypePaged,
   type RoomTypeResponse,
   type RoomTypeServiceResponse,
+  type ServiceResponse,
   updateAmenityRoom,
   updateAmenity,
   updateRoomType,
@@ -686,7 +688,7 @@ export function AmenityRoomsSection() {
   };
 
   const handleSave = async () => {
-    const roomTypeId = formData.roomTypeId || selectedRoomTypeId;
+    const roomTypeId = formData.roomTypeId || (selectedRoomTypeId !== ALL_ROOM_TYPES_VALUE ? selectedRoomTypeId : "");
     if (!roomTypeId) {
       setError("Vui lòng chọn loại phòng");
       return;
@@ -956,10 +958,13 @@ export function AmenityRoomsSection() {
 }
 
 // ============= ROOM TYPE SERVICES SECTION =============
+const ALL_ROOM_TYPES_VALUE = "all";
+
 export function RoomTypeServicesSection() {
   const router = useRouter();
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
-  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
+  const [services, setServices] = useState<ServiceResponse[]>([]);
+  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>(ALL_ROOM_TYPES_VALUE);
   const [roomTypeServices, setRoomTypeServices] = useState<RoomTypeServiceResponse[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -979,23 +984,28 @@ export function RoomTypeServicesSection() {
 
   useEffect(() => {
     if (selectedRoomTypeId) {
-      loadRoomTypeServices(page);
+      loadRoomTypeServices(page, selectedRoomTypeId);
     }
   }, [selectedRoomTypeId, page]);
 
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
-      const [roomTypeResult, serviceResult] = await Promise.all([getRoomTypes(0, 100), getRoomTypeServices(0, 100)]);
+      const [roomTypeResult, roomTypeServiceResult] = await Promise.all([
+        getRoomTypes(0, 100),
+        getRoomTypeServices(0, PAGE_SIZE),
+      ]);
+      const catalogServiceResult = await getCatalogServices(0, 500).catch(() => ({ data: [], total: 0 }));
+
       setRoomTypes(roomTypeResult.data);
-      setRoomTypeServices(serviceResult.data);
-      const activeRoomTypes = roomTypeResult.data.filter((roomType) => !roomType.deleted);
-      if (activeRoomTypes.length > 0) {
-        setSelectedRoomTypeId(activeRoomTypes[0].id);
-        setFormData((prev) => ({ ...prev, roomTypeId: prev.roomTypeId || activeRoomTypes[0].id }));
-      } else if (roomTypeResult.data.length > 0) {
-        setSelectedRoomTypeId(roomTypeResult.data[0].id);
-        setFormData((prev) => ({ ...prev, roomTypeId: prev.roomTypeId || roomTypeResult.data[0].id }));
+      setServices(catalogServiceResult.data);
+      setRoomTypeServices(roomTypeServiceResult.data);
+      setTotal(roomTypeServiceResult.total);
+      setSelectedRoomTypeId(ALL_ROOM_TYPES_VALUE);
+
+      const firstRoomType = roomTypeResult.data.find((roomType) => !roomType.deleted) ?? roomTypeResult.data[0];
+      if (firstRoomType) {
+        setFormData((prev) => ({ ...prev, roomTypeId: prev.roomTypeId || firstRoomType.id }));
       }
     } catch (loadError) {
       console.error(loadError);
@@ -1005,34 +1015,41 @@ export function RoomTypeServicesSection() {
     }
   };
 
-  const loadRoomTypeServices = async (pageIndex = page) => {
-    if (!selectedRoomTypeId) {
+  const loadRoomTypeServices = async (pageIndex = page, roomTypeId = selectedRoomTypeId) => {
+    if (!roomTypeId) {
       return;
     }
 
     try {
-      const { data, total: totalCount } = await getRoomTypeServicesByRoomTypePaged(selectedRoomTypeId, pageIndex, PAGE_SIZE);
+      const { data, total: totalCount } = roomTypeId === ALL_ROOM_TYPES_VALUE
+        ? await getRoomTypeServices(pageIndex, PAGE_SIZE)
+        : await getRoomTypeServicesByRoomTypePaged(roomTypeId, pageIndex, PAGE_SIZE);
       setRoomTypeServices(data);
       setTotal(totalCount);
     } catch (loadError) {
       console.error(loadError);
-      setError("Lỗi tải danh sách dịch vụ bổ sung của loại phòng");
+      setError("Lỗi tải danh sách dịch vụ bổ sung theo loại phòng");
     }
   };
 
   const handleEdit = (item: RoomTypeServiceResponse) => {
     setEditingId(item.id);
-    setFormData({ roomTypeId: item.roomTypeId || selectedRoomTypeId, serviceId: item.serviceId, amount: item.amount, deleted: !!item.deleted });
+    setFormData({
+      roomTypeId: item.roomTypeId || selectedRoomTypeId,
+      serviceId: item.serviceId,
+      amount: item.amount,
+      deleted: !!item.deleted,
+    });
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
     if (!formData.serviceId.trim()) {
-      setError("Mã dịch vụ không được để trống");
+      setError("Vui lòng chọn dịch vụ");
       return;
     }
 
-    const roomTypeId = formData.roomTypeId || selectedRoomTypeId;
+    const roomTypeId = formData.roomTypeId || (selectedRoomTypeId !== ALL_ROOM_TYPES_VALUE ? selectedRoomTypeId : "");
     if (!roomTypeId) {
       setError("Vui lòng chọn loại phòng");
       return;
@@ -1040,7 +1057,12 @@ export function RoomTypeServicesSection() {
 
     try {
       if (editingId) {
-        await updateRoomTypeService(editingId, formData);
+        await updateRoomTypeService(editingId, {
+          roomTypeId,
+          serviceId: formData.serviceId,
+          amount: formData.amount,
+          deleted: formData.deleted,
+        });
         setSuccess("Cập nhật dịch vụ bổ sung thành công");
       } else {
         await createRoomTypeService({
@@ -1055,8 +1077,9 @@ export function RoomTypeServicesSection() {
       setIsModalOpen(false);
       setEditingId(null);
       setFormData({ roomTypeId, serviceId: "", amount: 1, deleted: false });
-      setSelectedRoomTypeId(roomTypeId);
-      await loadRoomTypeServices(page);
+      const nextSelectedRoomTypeId = selectedRoomTypeId === ALL_ROOM_TYPES_VALUE ? ALL_ROOM_TYPES_VALUE : roomTypeId;
+      setSelectedRoomTypeId(nextSelectedRoomTypeId);
+      await loadRoomTypeServices(page, nextSelectedRoomTypeId);
     } catch (saveError) {
       console.error(saveError);
       setError("Lỗi lưu dịch vụ bổ sung");
@@ -1076,23 +1099,34 @@ export function RoomTypeServicesSection() {
   };
 
   const activeRoomTypes = roomTypes.filter((roomType) => !roomType.deleted);
+  const getRoomTypeName = (item: RoomTypeServiceResponse) =>
+    item.roomTypeName || roomTypes.find((roomType) => roomType.id === item.roomTypeId)?.name || item.roomTypeId;
+  const getServiceName = (item: RoomTypeServiceResponse) =>
+    item.serviceName || item.service?.name || services.find((service) => service.id === item.serviceId)?.name || item.serviceId;
 
   return (
     <div className="p-6">
       <div className="mb-6 rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-900/80 md:flex md:items-end md:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Bảng Trung Gian Dịch Vụ Bổ Sung Theo Loại Phòng</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Danh sách gán dịch vụ cho loại phòng. Khi thêm mới sẽ luôn ở trạng thái hoạt động.</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Bảng trung gian dịch vụ bổ sung theo loại phòng</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Quản lý dịch vụ bán thêm được áp dụng cho từng loại phòng.
+          </p>
         </div>
         <Button
           onClick={() => {
             setEditingId(null);
-            setFormData({ roomTypeId: selectedRoomTypeId, serviceId: "", amount: 1, deleted: false });
+            setFormData({
+              roomTypeId: selectedRoomTypeId !== ALL_ROOM_TYPES_VALUE ? selectedRoomTypeId : "",
+              serviceId: "",
+              amount: 1,
+              deleted: false,
+            });
             setIsModalOpen(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-blue-600 text-white hover:bg-blue-700"
         >
-          + Thêm Dịch Vụ Bổ Sung
+          + Thêm dịch vụ bổ sung
         </Button>
       </div>
 
@@ -1104,15 +1138,16 @@ export function RoomTypeServicesSection() {
       ) : (
         <>
           <div className="mb-6">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Chọn Loại Phòng</Label>
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Lọc theo loại phòng</Label>
             <select
               value={selectedRoomTypeId}
-              onChange={(e) => {
+              onChange={(event) => {
                 setPage(0);
-                setSelectedRoomTypeId(e.target.value);
+                setSelectedRoomTypeId(event.target.value);
               }}
               className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
             >
+              <option value={ALL_ROOM_TYPES_VALUE}>Tất cả loại phòng</option>
               {activeRoomTypes.map((roomType) => (
                 <option key={roomType.id} value={roomType.id}>
                   {roomType.name}
@@ -1126,10 +1161,11 @@ export function RoomTypeServicesSection() {
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-800/80">
                   <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Mã Dịch Vụ</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Số Lượng</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Trạng Thái</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Hành Động</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Loại phòng</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Dịch vụ</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Số lượng</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Trạng thái</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1139,7 +1175,11 @@ export function RoomTypeServicesSection() {
                       onClick={() => router.push(`/admin/room-type-services/${item.id}`)}
                       className={`cursor-pointer border-b border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/50 ${item.deleted ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}
                     >
-                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{item.serviceId}</td>
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{getRoomTypeName(item)}</td>
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
+                        <div className="font-medium">{getServiceName(item)}</div>
+                        <div className="text-xs text-gray-400">{item.serviceId}</div>
+                      </td>
                       <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{item.amount}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${item.deleted ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"}`}>
@@ -1158,7 +1198,7 @@ export function RoomTypeServicesSection() {
                               onClick={() => setDeleteTarget({
                                 id: item.id,
                                 title: "Xóa dịch vụ bổ sung",
-                                description: `Bạn chắc chắn muốn xóa dịch vụ "${item.serviceId}" khỏi loại phòng này?`,
+                                description: `Bạn chắc chắn muốn xóa dịch vụ "${getServiceName(item)}" khỏi loại phòng này?`,
                               })}
                               className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
                             >
@@ -1184,19 +1224,19 @@ export function RoomTypeServicesSection() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
             <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-              {editingId ? "Cập Nhật Dịch Vụ Bổ Sung" : "Thêm Dịch Vụ Bổ Sung"}
+              {editingId ? "Cập nhật dịch vụ bổ sung" : "Thêm dịch vụ bổ sung"}
             </h3>
 
             <div className="space-y-4">
               {!editingId && (
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Chọn Loại Phòng</Label>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Loại phòng</Label>
                   <select
-                    value={formData.roomTypeId || selectedRoomTypeId}
-                    onChange={(e) => setFormData({ ...formData, roomTypeId: e.target.value })}
+                    value={formData.roomTypeId || (selectedRoomTypeId !== ALL_ROOM_TYPES_VALUE ? selectedRoomTypeId : "")}
+                    onChange={(event) => setFormData({ ...formData, roomTypeId: event.target.value })}
                     className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                   >
-                    <option value="">-- Chọn Loại Phòng --</option>
+                    <option value="">-- Chọn loại phòng --</option>
                     {activeRoomTypes.map((roomType) => (
                       <option key={roomType.id} value={roomType.id}>
                         {roomType.name}
@@ -1208,31 +1248,45 @@ export function RoomTypeServicesSection() {
 
               {editingId && (
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Loại Phòng</Label>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Loại phòng</Label>
                   <Input value={roomTypes.find((roomType) => roomType.id === (formData.roomTypeId || selectedRoomTypeId))?.name || selectedRoomTypeId} disabled className="mt-1" />
                 </div>
               )}
 
               <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Mã Dịch Vụ</Label>
-                <Input
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Dịch vụ</Label>
+                <select
                   value={formData.serviceId}
-                  onChange={(e) => setFormData({ ...formData, serviceId: e.target.value })}
-                  placeholder="VD: breakfast, parking, airport-pickup"
-                  className="mt-1"
-                />
+                  disabled={services.length === 0}
+                  onChange={(event) => setFormData({ ...formData, serviceId: event.target.value })}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:disabled:bg-gray-800"
+                >
+                  <option value="">
+                    {services.length === 0 ? "-- Chưa tải được danh sách dịch vụ --" : "-- Chọn dịch vụ --"}
+                  </option>
+                  {services.filter((service) => !service.deleted).map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} {service.price ? `- ${Number(service.price).toLocaleString("vi-VN")}đ` : ""}
+                    </option>
+                  ))}
+                </select>
+                {services.length === 0 && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-300">
+                    Không tải được danh sách dịch vụ. Kiểm tra catalog-service và api-gateway đã chạy bản mới.
+                  </p>
+                )}
               </div>
 
               <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Số Lượng</Label>
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Số lượng</Label>
                 <Input
                   type="number"
                   min="1"
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: parseInt(e.target.value) || 1 })}
-                  onFocus={(e) => {
-                    if (e.currentTarget.value === "1") {
-                      e.currentTarget.select();
+                  onChange={(event) => setFormData({ ...formData, amount: parseInt(event.target.value) || 1 })}
+                  onFocus={(event) => {
+                    if (event.currentTarget.value === "1") {
+                      event.currentTarget.select();
                     }
                   }}
                   className="mt-1"
@@ -1241,10 +1295,10 @@ export function RoomTypeServicesSection() {
 
               {editingId && (
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Trạng Thái Xóa</Label>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Trạng thái xóa</Label>
                   <select
                     value={formData.deleted ? "deleted" : "active"}
-                    onChange={(e) => setFormData({ ...formData, deleted: e.target.value === "deleted" })}
+                    onChange={(event) => setFormData({ ...formData, deleted: event.target.value === "deleted" })}
                     className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                   >
                     <option value="active">Hoạt động</option>
@@ -1279,3 +1333,4 @@ export function RoomTypeServicesSection() {
     </div>
   );
 }
+

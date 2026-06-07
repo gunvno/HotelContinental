@@ -89,10 +89,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         Accounts account = accountsRepository.findByUsernameOrEmail(request.getUsername())
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+                .orElseThrow(() -> new AppException(ErrorCode.LOGIN_FAILED));
 
         if (!isActiveAccount(account) || !passwordEncoder.matches(request.getPassword(), account.getPassword())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+            throw new AppException(ErrorCode.LOGIN_FAILED);
         }
 
         return buildAuthenticationResponse(account);

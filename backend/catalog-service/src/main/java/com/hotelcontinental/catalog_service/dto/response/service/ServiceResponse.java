@@ -1,5 +1,6 @@
-package com.hotelcontinental.catalog_service.dto.response.roomtypeservice;
+package com.hotelcontinental.catalog_service.dto.response.service;
 
+import com.hotelcontinental.catalog_service.enums.ServiceStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -10,17 +11,16 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class RoomTypeServiceResponse {
+public class ServiceResponse {
     String id;
-    String roomTypeId;
-    String roomTypeName;
-    String serviceId;
-    String serviceName;
-    int amount;
+    String name;
+    String description;
+    float price;
+    String image;
+    ServiceStatus status;
+    Boolean deleted;
     LocalDateTime createdTime;
     String createdBy;
     LocalDateTime modifiedTime;
     String modifiedBy;
-    Boolean deleted;
 }
-

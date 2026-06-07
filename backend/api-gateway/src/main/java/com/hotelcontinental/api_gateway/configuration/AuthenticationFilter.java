@@ -61,6 +61,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             PublicEndpoint.get("/catalog/roomType/.*"),
             PublicEndpoint.get("/catalog/amenity"),
             PublicEndpoint.get("/catalog/amenity/.*"),
+            PublicEndpoint.get("/catalog/service"),
+            PublicEndpoint.get("/catalog/service/.*"),
             PublicEndpoint.get("/catalog/roomTypeService"),
             PublicEndpoint.get("/catalog/roomTypeService/.*"),
     };

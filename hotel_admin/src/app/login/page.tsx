@@ -21,6 +21,18 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+function normalizeLoginError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return LOGIN_ERROR_MESSAGE;
+  }
+
+  if (error.message === "Unauthenticated" || error.message === "Unauthorized") {
+    return LOGIN_ERROR_MESSAGE;
+  }
+
+  return error.message || LOGIN_ERROR_MESSAGE;
+}
+
 export default function AdminLoginPage() {
   const router = useRouter();
   const doLogin = useAuthStore((state) => state.login);
@@ -63,7 +75,7 @@ export default function AdminLoginPage() {
       );
       router.replace("/");
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : LOGIN_ERROR_MESSAGE);
+      setError(normalizeLoginError(loginError));
     } finally {
       setLoading(false);
     }

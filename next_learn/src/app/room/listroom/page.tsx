@@ -135,6 +135,19 @@ function buildSearchWindow(filter: RoomSearchFilter) {
   };
 }
 
+function buildRoomDetailHref(roomId: string, filter: RoomSearchFilter) {
+  const params = new URLSearchParams({
+    stayType: filter.stayType,
+    checkIn: filter.checkIn,
+    checkOut: filter.checkOut,
+    checkInTime: filter.checkInTime,
+    stayHours: filter.stayHours,
+    guests: filter.guestCount,
+  });
+
+  return `/room/roomdetail/${roomId}?${params.toString()}`;
+}
+
 function matchesPriceRange(room: MockRoom, stayType: string, priceRange: string) {
   if (priceRange === "all") {
     return true;
@@ -392,7 +405,7 @@ function SidebarSkeleton() {
 }
 
 /* ─── Sidebar Detail Card ─── */
-function SidebarDetail({ room }: { room: MockRoom }) {
+function SidebarDetail({ room, bookingHref }: { room: MockRoom; bookingHref: string }) {
   const [mainImg, setMainImg] = useState(0);
   const thumbRef = useRef<HTMLDivElement>(null);
 
@@ -485,7 +498,7 @@ function SidebarDetail({ room }: { room: MockRoom }) {
         {/* CTA */}
         <div className="px-5 pb-5">
           <Link
-            href={`/room/roomdetail/${room.id}`}
+            href={bookingHref}
             className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#865316] to-[#c68948] text-white font-bold text-sm shadow-lg shadow-[#865316]/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
           >
             <CalendarDays className="h-4 w-4" />
@@ -502,10 +515,12 @@ function RoomGridCard({
   room,
   isSelected,
   onSelect,
+  bookingHref,
 }: {
   room: MockRoom;
   isSelected: boolean;
   onSelect: () => void;
+  bookingHref: string;
 }) {
   return (
     <article
@@ -550,7 +565,7 @@ function RoomGridCard({
         </div>
 
         <Link
-          href={`/room/roomdetail/${room.id}`}
+          href={bookingHref}
           onClick={(e) => e.stopPropagation()}
           className="mt-1 flex w-full items-center justify-center rounded-lg border border-[#c47a34] py-2.5 text-sm font-semibold text-[#c47a34] transition-all hover:bg-[#c47a34] hover:text-white dark:border-[#f6c86f] dark:text-[#f6c86f] dark:hover:bg-[#f6c86f] dark:hover:text-[#0b0f17]"
         >
@@ -922,6 +937,15 @@ export default function RoomListPage() {
   };
 
   const current = displayRooms[selectedRoom] ?? displayRooms[0];
+  const bookingFilter: RoomSearchFilter = activeFilter ?? {
+    stayType,
+    checkIn,
+    checkOut,
+    checkInTime,
+    stayHours,
+    guestCount,
+    priceRange,
+  };
 
   return (
     <section className="min-h-screen bg-[#fdfaf5] dark:bg-[#0b0f17] pt-20 pb-20">
@@ -1156,6 +1180,7 @@ export default function RoomListPage() {
                       room={room}
                       isSelected={selectedRoom === i}
                       onSelect={() => setSelectedRoom(i)}
+                      bookingHref={buildRoomDetailHref(room.id, bookingFilter)}
                     />
                   ))}
             </div>
@@ -1175,7 +1200,7 @@ export default function RoomListPage() {
           <div className="hidden lg:block">
             {isLoading || !current
               ? <SidebarSkeleton />
-              : <SidebarDetail room={current} />
+              : <SidebarDetail room={current} bookingHref={buildRoomDetailHref(current.id, bookingFilter)} />
             }
           </div>
         </div>

@@ -1,3 +1,5 @@
+import { HTTPError } from "ky";
+
 import { http } from "@/lib/http";
 
 export type AuthContent = {
@@ -10,6 +12,8 @@ export type AuthContent = {
 };
 
 type ApiResponse<T> = {
+  code?: number;
+  message?: string;
   result?: T;
   content?: T;
 };
@@ -19,12 +23,31 @@ export type LoginPayload = {
   password: string;
 };
 
-export async function login(payload: LoginPayload) {
-  const response = await http
-    .post("identity/auth/login", { json: payload })
-    .json<ApiResponse<AuthContent>>();
+const LOGIN_ERROR_MESSAGE = "Tài khoản hoặc mật khẩu không chính xác";
 
-  return response.result ?? response.content;
+function normalizeAuthMessage(message?: string) {
+  if (!message || message === "Unauthenticated" || message === "Unauthorized") {
+    return LOGIN_ERROR_MESSAGE;
+  }
+
+  return message;
+}
+
+export async function login(payload: LoginPayload) {
+  try {
+    const response = await http
+      .post("identity/auth/login", { json: payload })
+      .json<ApiResponse<AuthContent>>();
+
+    return response.result ?? response.content;
+  } catch (error) {
+    if (error instanceof HTTPError) {
+      const body = await error.response.clone().json().catch(() => null) as ApiResponse<unknown> | null;
+      throw new Error(normalizeAuthMessage(body?.message));
+    }
+
+    throw error;
+  }
 }
 
 export async function logoutAuthToken(token: string) {

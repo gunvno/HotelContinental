@@ -2,7 +2,7 @@
 
 import { Bath, BedDouble, Calendar, CalendarOff,Coffee, Eye, MapPin, Ruler, Shirt, Tv, Users, Wifi, Wine } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { getRoomDetail, type RoomDetailData } from "@/services/room-service";
@@ -32,14 +32,18 @@ default: return <Wifi className="h-8 w-8 text-[#865316]" />;
 
 export default function RoomDetailPage() {
 const params = useParams();
+const searchParams = useSearchParams();
 const roomId = params?.id as string;
 const token = useAuthStore((state) => state.token);
 const [roomData, setRoomData] = useState<RoomDetailData | null>(null);
 const [isLoading, setIsLoading] = useState(true);
 const [error, setError] = useState<string | null>(null);
-const [checkIn, setCheckIn] = useState("2026-06-15");
-const [checkOut, setCheckOut] = useState("2026-06-18");
-const [guests, setGuests] = useState(2);
+const checkIn = searchParams.get("checkIn") || "2026-06-15";
+const checkOut = searchParams.get("checkOut") || "2026-06-18";
+const guests = Number(searchParams.get("guests") || 2);
+const stayType = searchParams.get("stayType") || "night";
+const checkInTime = searchParams.get("checkInTime") || "14:00";
+const stayHours = Number(searchParams.get("stayHours") || 3);
 
 useEffect(() => {
 async function loadRoomDetail() {
@@ -82,6 +86,9 @@ pricePerNight,
 checkIn,
 checkOut,
 guests,
+stayType,
+checkInTime,
+stayHours,
 token,
 }: {
 roomId: string;
@@ -90,6 +97,9 @@ pricePerNight: number;
 checkIn: string;
 checkOut: string;
 guests: number;
+stayType: string;
+checkInTime: string;
+stayHours: number;
 token: string | null;
 }) {
 const paymentParams = new URLSearchParams({
@@ -99,9 +109,28 @@ pricePerNight: String(pricePerNight),
 checkIn,
 checkOut,
 guests: String(guests),
+stayType,
+checkInTime,
+stayHours: String(stayHours),
 });
 const paymentHref = `/payment?${paymentParams.toString()}`;
 return token ? paymentHref : `/login?redirect=${encodeURIComponent(paymentHref)}`;
+}
+
+function calculateNightCount(checkIn: string, checkOut: string) {
+const start = new Date(`${checkIn}T00:00:00`);
+const end = new Date(`${checkOut}T00:00:00`);
+const diff = end.getTime() - start.getTime();
+return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function formatDate(value: string) {
+const date = new Date(`${value}T00:00:00`);
+return new Intl.DateTimeFormat("vi-VN", {
+day: "2-digit",
+month: "2-digit",
+year: "numeric",
+}).format(date);
 }
 
 if (error || !roomData) {
@@ -116,6 +145,13 @@ return (
 }
 
 const { label, title, description, location, pricePerNight, galleryImages, featureSpecs, amenities, roomDescription } = roomData;
+const nightCount = stayType === "night" ? calculateNightCount(checkIn, checkOut) : 0;
+const roomSubtotal = stayType === "hour"
+? Math.round((pricePerNight / 8) * stayHours)
+: pricePerNight * nightCount;
+const serviceFee = Math.round(roomSubtotal * 0.1);
+const totalPrice = roomSubtotal + serviceFee;
+const stayLabel = stayType === "hour" ? `${stayHours} giờ` : `${nightCount} đêm`;
 const bookingHref = buildBookingHref({
 roomId: roomData.id,
 roomTitle: title,
@@ -123,6 +159,9 @@ pricePerNight,
 checkIn,
 checkOut,
 guests,
+stayType,
+checkInTime,
+stayHours,
 token,
 });
 
@@ -216,46 +255,57 @@ return (
 {/* Booking Card (Sticky) */}
 <aside className="lg:col-span-4 sticky top-32">
 <div className="bg-[#ffffff] p-6 lg:p-8 rounded-2xl shadow-[0_20px_40px_rgba(28,28,25,0.06)] border border-[#d6c3b4]/10">
-<h3 className="text-2xl font-serif font-bold mb-8">Kiểm tra tình trạng phòng</h3>
-<div className="space-y-6">
-<div className="space-y-2">
-<label className="text-xs uppercase tracking-widest text-[#514439] font-bold px-1">Ngày nhận phòng</label>
-<div className="relative group">
-<input type="date" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} className="w-full bg-[#f1ede8] border-none rounded-xl py-4 px-4 text-[#1c1c19] focus:ring-2 focus:ring-[#865316]/20 transition-all appearance-none outline-none" />
-<Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-[#514439] pointer-events-none w-5 h-5" />
+<div className="mb-7">
+<p className="mb-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#865316]">Đặt phòng</p>
+<h3 className="text-2xl font-serif font-bold">Thông tin lưu trú</h3>
+<p className="mt-2 text-sm text-[#514439]">Phòng đã được lọc theo thời gian bạn chọn. Xác nhận thông tin trước khi thanh toán.</p>
+</div>
+
+<div className="space-y-5">
+<div className="grid grid-cols-2 gap-3">
+<div className="rounded-xl bg-[#f7f3ee] p-4">
+<div className="mb-3 flex items-center justify-between">
+<span className="text-[11px] uppercase tracking-widest text-[#514439] font-bold">Nhận phòng</span>
+<Calendar className="w-4 h-4 text-[#865316]" />
+</div>
+<p className="text-sm font-semibold text-[#1c1c19]">{formatDate(checkIn)}</p>
+<p className="mt-1 text-xs text-[#514439]">{stayType === "hour" ? checkInTime : "14:00"}</p>
+</div>
+
+<div className="rounded-xl bg-[#f7f3ee] p-4">
+<div className="mb-3 flex items-center justify-between">
+<span className="text-[11px] uppercase tracking-widest text-[#514439] font-bold">{stayType === "hour" ? "Thời lượng" : "Trả phòng"}</span>
+<CalendarOff className="w-4 h-4 text-[#865316]" />
+</div>
+<p className="text-sm font-semibold text-[#1c1c19]">{stayType === "hour" ? stayLabel : formatDate(checkOut)}</p>
+<p className="mt-1 text-xs text-[#514439]">{stayType === "hour" ? "Theo giờ" : "12:00"}</p>
 </div>
 </div>
 
-<div className="space-y-2">
-<label className="text-xs uppercase tracking-widest text-[#514439] font-bold px-1">Ngày trả phòng</label>
-<div className="relative group">
-<input type="date" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} className="w-full bg-[#f1ede8] border-none rounded-xl py-4 px-4 text-[#1c1c19] focus:ring-2 focus:ring-[#865316]/20 transition-all appearance-none outline-none" />
-<CalendarOff className="absolute right-4 top-1/2 -translate-y-1/2 text-[#514439] pointer-events-none w-5 h-5" />
+<div className="flex items-center justify-between rounded-xl border border-[#d6c3b4]/30 px-4 py-3">
+<div>
+<p className="text-[11px] uppercase tracking-widest text-[#514439] font-bold">Số lượng khách</p>
+<p className="mt-1 text-sm font-semibold">{guests} Người lớn</p>
 </div>
-</div>
-
-<div className="space-y-2 pb-6 border-b border-[#d6c3b4]/20">
-<label className="text-xs uppercase tracking-widest text-[#514439] font-bold px-1">Số lượng khách</label>
-<select value={guests} onChange={(event) => setGuests(Number(event.target.value))} className="w-full bg-[#f1ede8] border-none rounded-xl py-4 px-4 text-[#1c1c19] focus:ring-2 focus:ring-[#865316]/20 transition-all outline-none appearance-none">
-{Array.from({ length: Math.max(1, roomData.maxOccupancy) }).map((_, index) => {
-const value = index + 1;
-return <option key={value} value={value}>{value} Người lớn</option>;
-})}
-</select>
+<Users className="w-5 h-5 text-[#865316]" />
 </div>
 
-<div className="space-y-3">
+<Link href="/room/listroom" className="block text-sm font-semibold text-[#865316] hover:underline">
+Thay đổi ngày hoặc số khách
+</Link>
+
+<div className="space-y-3 border-t border-[#d6c3b4]/20 pt-5">
 <div className="flex justify-between text-[#514439] text-sm sm:text-base">
-<span>Giá phòng (3 đêm)</span>
-<span>{(pricePerNight * 3).toLocaleString("vi-VN")} VNĐ</span>
+<span>Giá phòng ({stayLabel})</span>
+<span>{roomSubtotal.toLocaleString("vi-VN")} VNĐ</span>
 </div>
 <div className="flex justify-between text-[#514439] text-sm sm:text-base">
 <span>Phí dịch vụ & Thuế (10%)</span>
-<span>{((pricePerNight * 3) * 0.1).toLocaleString("vi-VN")} VNĐ</span>
+<span>{serviceFee.toLocaleString("vi-VN")} VNĐ</span>
 </div>
 <div className="flex justify-between text-lg sm:text-xl font-bold pt-4">
 <span>Tổng cộng</span>
-<span className="text-[#865316]">{(pricePerNight * 3 * 1.1).toLocaleString("vi-VN")} VNĐ</span>
+<span className="text-[#865316]">{totalPrice.toLocaleString("vi-VN")} VNĐ</span>
 </div>
 </div>
 

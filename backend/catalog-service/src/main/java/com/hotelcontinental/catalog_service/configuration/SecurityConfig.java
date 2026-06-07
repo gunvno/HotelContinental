@@ -21,6 +21,8 @@ public class SecurityConfig {
             "/roomType/**",
             "/amenity",
             "/amenity/**",
+            "/service",
+            "/service/**",
             "/roomTypeService",
             "/roomTypeService/**"
     };

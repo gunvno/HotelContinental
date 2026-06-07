@@ -119,11 +119,11 @@ function createHttpClient(): KyInstance {
             }
           }
 
-          if (!response.ok) {
+          if (!response.ok && process.env.NODE_ENV === "development") {
             const errRes = response.clone();
             try {
               const body = await errRes.text();
-              console.error("[http] Request failed", {
+              console.warn("[http] Request failed", {
                 url: request.url,
                 status: response.status,
                 body,

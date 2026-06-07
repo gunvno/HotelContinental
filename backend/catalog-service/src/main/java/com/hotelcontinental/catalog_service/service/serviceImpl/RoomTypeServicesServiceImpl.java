@@ -9,6 +9,7 @@ import com.hotelcontinental.catalog_service.exception.AppException;
 import com.hotelcontinental.catalog_service.exception.ErrorCode;
 import com.hotelcontinental.catalog_service.repository.RoomTypeRepository;
 import com.hotelcontinental.catalog_service.repository.RoomTypeServicesRepository;
+import com.hotelcontinental.catalog_service.repository.ServicesRepository;
 import com.hotelcontinental.catalog_service.service.interfaces.RoomTypeServicesService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,8 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
     private RoomTypeServicesRepository roomTypeServicesRepository;
     @Autowired
     private RoomTypeRepository roomTypeRepository;
+    @Autowired
+    private ServicesRepository servicesRepository;
 
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
@@ -148,7 +151,11 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
         return RoomTypeServiceResponse.builder()
                 .id(entity.getId())
                 .roomTypeId(entity.getRoomTypes().getId())
+                .roomTypeName(entity.getRoomTypes().getName())
                 .serviceId(entity.getServiceId())
+                .serviceName(servicesRepository.findById(entity.getServiceId())
+                        .map(service -> service.getName())
+                        .orElse(entity.getServiceId()))
                 .amount(entity.getAmount())
                 .createdTime(entity.getCreatedTime())
                 .createdBy(entity.getCreatedBy())
