@@ -107,7 +107,7 @@ const testimonials = [
 
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
+    <section className="relative flex min-h-[calc(100svh-5rem)] flex-col overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         <img
@@ -120,7 +120,7 @@ function HeroSection() {
       </div>
 
       {/* Content */}
-      <div className="relative w-full px-6 sm:px-8 lg:px-16 xl:px-20 pt-32 pb-20">
+      <div className="relative z-10 flex flex-1 items-center px-6 pb-12 pt-20 sm:px-8 sm:pt-24 lg:px-16 lg:pb-14 xl:px-20">
         <div className="max-w-3xl space-y-8">
           <div className="flex items-center gap-3">
             <span className="h-px w-12 bg-[#d7a25f]" />
@@ -138,7 +138,7 @@ function HeroSection() {
             Nơi hội tụ tinh hoa của sự sang trọng, thanh lịch và dịch vụ đỉnh cao – mang đến trải nghiệm nghỉ dưỡng không thể quên giữa lòng thành phố.
           </p>
 
-          <div className="flex flex-wrap gap-4 pt-2">
+          <div className="relative z-10 flex flex-wrap gap-4 pt-2">
             <Link
               href="/room/listroom"
               className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-[#865316] to-[#c68948] px-8 py-4 text-white font-bold text-sm uppercase tracking-widest shadow-2xl shadow-[#865316]/30 hover:-translate-y-1 hover:shadow-[#865316]/50 transition-all duration-300"
@@ -157,12 +157,12 @@ function HeroSection() {
       </div>
 
       {/* Stats Bar */}
-      <div className="absolute bottom-0 left-0 right-0">
-        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-xl border-t border-white/15">
+      <div className="relative z-10">
+        <div className="border-t border-white/15 bg-[#0c0a07]/55 backdrop-blur-xl">
           <div className="px-6 sm:px-8 lg:px-16 xl:px-20">
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/15">
               {heroStats.map((stat) => (
-                <div key={stat.label} className="py-6 md:py-8 px-4 md:px-8 text-center">
+                <div key={stat.label} className="px-4 py-5 text-center md:px-8 md:py-7">
                   <p className="text-white text-3xl md:text-4xl font-serif font-bold">
                     {stat.value}<span className="text-[#d7a25f] text-lg">{stat.suffix || ""}</span>
                   </p>

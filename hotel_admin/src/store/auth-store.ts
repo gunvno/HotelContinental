@@ -6,6 +6,8 @@ export interface UserInfo {
   preferred_username?: string;
   email?: string;
   sub?: string;
+  firstName?: string | null;
+  lastName?: string | null;
   [key: string]: unknown;
 }
 
@@ -13,9 +15,10 @@ interface AuthState {
   token: string | null;
   refreshToken: string | null;
   userInfo: UserInfo | null;
+  permissions: string[];
   isAuthenticated: boolean;
   
-  login: (token: string, refreshToken: string, userInfo: UserInfo) => void;
+  login: (token: string, refreshToken: string | null, userInfo: UserInfo, permissions?: string[]) => void;
   logout: () => void;
 }
 
@@ -25,13 +28,15 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       refreshToken: null,
       userInfo: null,
+      permissions: [],
       isAuthenticated: false,
 
-      login: (token, refreshToken, userInfo) =>
+      login: (token, refreshToken, userInfo, permissions = []) =>
         set({
           token,
           refreshToken,
           userInfo,
+          permissions,
           isAuthenticated: true,
         }),
 
@@ -40,6 +45,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           refreshToken: null,
           userInfo: null,
+          permissions: [],
           isAuthenticated: false,
         }),
     }),
@@ -58,6 +64,9 @@ export const selectFirstName = (state: AuthState) => {
   return name ? name.split(" ")[0] : null;
 };
 export const selectLastName = (state: AuthState) => {
+  if (state.userInfo?.lastName) {
+    return state.userInfo.lastName;
+  }
   const name = state.userInfo?.name;
   if (!name) {
     return state.userInfo?.preferred_username || null;
@@ -65,3 +74,4 @@ export const selectLastName = (state: AuthState) => {
 
   return name.split(" ").slice(1).join(" ") || name;
 };
+export const selectPermissions = (state: AuthState) => state.permissions;

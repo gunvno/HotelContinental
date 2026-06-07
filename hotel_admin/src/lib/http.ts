@@ -1,20 +1,46 @@
 import ky, { type KyInstance } from "ky";
 
 import { clientEnv } from "@/lib/env";
+import type { AuthContent } from "@/services/auth-service";
 import { useAuthStore } from "@/store/auth-store";
 
-/*
-HTTP client dùng chung (client-side) dựa trên ky:
-- prefixUrl: base URL từ env
-- headers mặc định: gửi/nhận JSON
-- beforeRequest: tự gắn Authorization: Bearer <token> từ Zustand (nếu có) + log khi dev
-- afterResponse: log lỗi chi tiết khi response !ok
-*/
+type ApiResponse<T> = {
+  result?: T;
+  content?: T;
+};
 
-// Header mặc định giúp ky gửi JSON nhất quán.
 const defaultHeaders = new Headers({
   "Content-Type": "application/json",
 });
+
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((promise) => {
+    if (error) {
+      promise.reject(error);
+    } else if (token) {
+      promise.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+async function refreshAuthToken(refreshToken: string) {
+  const response = await ky
+    .post("identity/auth/refresh", {
+      prefixUrl: clientEnv.NEXT_PUBLIC_API_BASE_URL,
+      headers: defaultHeaders,
+      json: { token: refreshToken },
+    })
+    .json<ApiResponse<AuthContent>>();
+
+  return response.result ?? response.content;
+}
 
 function createHttpClient(): KyInstance {
   return ky.create({
@@ -35,28 +61,76 @@ function createHttpClient(): KyInstance {
       ],
       afterResponse: [
         async (request, options, response) => {
-          // Chỉ xử lý khi gặp lỗi 401 Unauthorized
           if (response.status === 401) {
-             // Token hết hạn hoặc không hợp lệ -> Logout
-             // authStore.logout(); // Logout action
-             // if (typeof window !== "undefined") window.location.href = "/"; // Redirect to home (which redirects to Keycloak)
-             // return response;
-             console.warn("[http] 401 Unauthorized - Token might be expired");
+            const authStore = useAuthStore.getState();
+            const refreshToken = authStore.refreshToken;
+
+            if (!authStore.token && !refreshToken) {
+              return response;
+            }
+
+            if (isRefreshing) {
+              try {
+                const newToken = await new Promise<string>((resolve, reject) => {
+                  failedQueue.push({ resolve, reject });
+                });
+                request.headers.set("Authorization", `Bearer ${newToken}`);
+                return ky(request, options);
+              } catch {
+                return response;
+              }
+            }
+
+            if (!refreshToken) {
+              authStore.logout();
+              return response;
+            }
+
+            isRefreshing = true;
+
+            try {
+              const data = await refreshAuthToken(refreshToken);
+              if (!data?.token) {
+                throw new Error("Refresh token response is invalid");
+              }
+
+              authStore.login(
+                data.token,
+                data.refreshToken,
+                {
+                  name: [data.firstName, data.lastName].filter(Boolean).join(" ") || data.userName || undefined,
+                  preferred_username: data.userName || undefined,
+                  firstName: data.firstName,
+                  lastName: data.lastName,
+                },
+                data.permissions ?? authStore.permissions,
+              );
+
+              isRefreshing = false;
+              processQueue(null, data.token);
+
+              request.headers.set("Authorization", `Bearer ${data.token}`);
+              return ky(request, options);
+            } catch (refreshError) {
+              isRefreshing = false;
+              processQueue(refreshError, null);
+              authStore.logout();
+              return response;
+            }
           }
 
-          // Khi !ok khác (không phải 401), log debug
           if (!response.ok) {
-            // Clone response vì .text() chỉ đọc được 1 lần
             const errRes = response.clone();
             try {
-               const body = await errRes.text();
-               console.error("[http] Request failed", {
-                 url: request.url,
-                 status: response.status,
-                 body,
-               });
+              const body = await errRes.text();
+              console.error("[http] Request failed", {
+                url: request.url,
+                status: response.status,
+                body,
+              });
             } catch {}
           }
+
           return response;
         },
       ],

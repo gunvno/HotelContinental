@@ -1,15 +1,159 @@
 "use client";
 
-import { Bookmark, BedDouble, Bath, Wifi, Tv, Wine, Snowflake, Shield, Coffee, Users, ChevronRight, CalendarDays, ChevronDown } from "lucide-react";
+import { Bookmark, BedDouble, Bath, Wifi, Tv, Wine, Snowflake, Shield, Coffee, Users, ChevronRight, ChevronLeft, CalendarDays, ChevronDown, Clock } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 
 
 import { Pagination } from "@/components/ui/pagination";
-import { getAllRooms, type RoomResponse } from "@/services/room-service";
+import { getAllRooms, getBusyRoomIds, type RoomResponse } from "@/services/room-service";
 
 const priceFormatter = new Intl.NumberFormat("vi-VN");
 const ROOM_PAGE_SIZE = 8;
+
+type FilterOption = {
+  value: string;
+  label: string;
+  hint?: string;
+};
+
+type RoomSearchFilter = {
+  stayType: string;
+  checkIn: string;
+  checkOut: string;
+  checkInTime: string;
+  stayHours: string;
+  guestCount: string;
+  priceRange: string;
+};
+
+const stayTypeOptions: FilterOption[] = [
+  { value: "night", label: "Theo đêm", hint: "Nhận phòng - trả phòng" },
+  { value: "hour", label: "Theo giờ", hint: "Chọn giờ bắt đầu" },
+];
+
+const guestOptions: FilterOption[] = [
+  { value: "1", label: "1 khách" },
+  { value: "2", label: "2 khách" },
+  { value: "3", label: "3 khách" },
+  { value: "4", label: "4 khách" },
+  { value: "8", label: "8 khách" },
+];
+
+const priceOptions: FilterOption[] = [
+  { value: "all", label: "Tất cả" },
+  { value: "low", label: "Dưới 1 triệu" },
+  { value: "mid", label: "1 - 2 triệu" },
+  { value: "high", label: "Trên 2 triệu" },
+];
+
+const hourOptions: FilterOption[] = [
+  { value: "2", label: "2 giờ" },
+  { value: "3", label: "3 giờ" },
+  { value: "4", label: "4 giờ" },
+  { value: "6", label: "6 giờ" },
+  { value: "8", label: "8 giờ" },
+];
+
+const monthNames = [
+  "Tháng 1",
+  "Tháng 2",
+  "Tháng 3",
+  "Tháng 4",
+  "Tháng 5",
+  "Tháng 6",
+  "Tháng 7",
+  "Tháng 8",
+  "Tháng 9",
+  "Tháng 10",
+  "Tháng 11",
+  "Tháng 12",
+];
+
+const weekDays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toLocalDateTimeValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+}
+
+function parseDateInput(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDateLabel(value: string) {
+  const date = parseDateInput(value);
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+function getCalendarDays(monthDate: Date) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const startDate = new Date(year, month, 1 - startOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + index);
+    return date;
+  });
+}
+
+function buildSearchWindow(filter: RoomSearchFilter) {
+  if (filter.stayType === "hour") {
+    const start = new Date(`${filter.checkIn}T${filter.checkInTime}:00`);
+    const end = new Date(start);
+    end.setHours(end.getHours() + Number(filter.stayHours || 1));
+
+    return {
+      start: toLocalDateTimeValue(start),
+      end: toLocalDateTimeValue(end),
+    };
+  }
+
+  return {
+    start: `${filter.checkIn}T14:00:00`,
+    end: `${filter.checkOut}T12:00:00`,
+  };
+}
+
+function matchesPriceRange(room: MockRoom, stayType: string, priceRange: string) {
+  if (priceRange === "all") {
+    return true;
+  }
+
+  const price = stayType === "hour"
+    ? Number((room as MockRoom & { pricePerHour?: number }).pricePerHour ?? room.pricePerDay)
+    : room.pricePerDay;
+
+  if (priceRange === "low") {
+    return price < 1000000;
+  }
+
+  if (priceRange === "mid") {
+    return price >= 1000000 && price <= 2000000;
+  }
+
+  return price > 2000000;
+}
 
 /* ─── mock room data for display ─── */
 const mockRooms = [
@@ -153,7 +297,8 @@ function mapAmenityIcon(name: string): string {
 
 function convertApiRooms(rooms: RoomResponse[]): MockRoom[] {
   return rooms.map((room, index) => {
-    const mainImage = room.image || fallbackImages[index % fallbackImages.length];
+    const galleryImages = buildRoomGallery(room, index);
+    const mainImage = galleryImages[0];
     const amenityRooms = room.roomTypes?.amenityRooms ?? [];
     const amenityNames = amenityRooms
       .map((ar) => ar.amenity?.name)
@@ -170,7 +315,7 @@ function convertApiRooms(rooms: RoomResponse[]): MockRoom[] {
       amenities: amenityNames.length > 0 ? amenityNames.slice(0, 4) : ["Wi-Fi"],
       description: room.roomTypes?.description || room.description || "Trải nghiệm nghỉ dưỡng cao cấp",
       detailDescription: room.description || room.roomTypes?.description || "Không gian nghỉ dưỡng sang trọng với đầy đủ tiện nghi chuẩn 5 sao.",
-      gallery: [mainImage, ...fallbackImages.filter((img) => img !== mainImage).slice(0, 3)],
+      gallery: galleryImages,
       detailAmenities: amenityNames.length > 0
         ? amenityNames.map((name) => ({ icon: mapAmenityIcon(name), label: name }))
         : [
@@ -180,6 +325,25 @@ function convertApiRooms(rooms: RoomResponse[]): MockRoom[] {
           ],
     } as MockRoom;
   });
+}
+
+function buildRoomGallery(room: RoomResponse, index: number): string[] {
+  const imageMap = new Map<string, string>();
+  const addImage = (url?: string) => {
+    if (url) {
+      imageMap.set(url, url);
+    }
+  };
+
+  addImage(room.image);
+  [...(room.images ?? [])]
+    .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
+    .forEach((image) => addImage(image.url));
+  (room.galleryImages ?? []).forEach(addImage);
+  fallbackImages.slice(index).forEach(addImage);
+  fallbackImages.slice(0, index).forEach(addImage);
+
+  return Array.from(imageMap.values()).slice(0, 5);
 }
 
 /* ─── Loading Skeletons ─── */
@@ -385,49 +549,377 @@ function RoomGridCard({
           ))}
         </div>
 
-        <button
-          onClick={(e) => { e.stopPropagation(); onSelect(); }}
-          className="w-full mt-1 py-2.5 rounded-lg border border-[#c47a34] dark:border-[#f6c86f] text-[#c47a34] dark:text-[#f6c86f] text-sm font-semibold hover:bg-[#c47a34] hover:text-white dark:hover:bg-[#f6c86f] dark:hover:text-[#0b0f17] transition-all"
+        <Link
+          href={`/room/roomdetail/${room.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-1 flex w-full items-center justify-center rounded-lg border border-[#c47a34] py-2.5 text-sm font-semibold text-[#c47a34] transition-all hover:bg-[#c47a34] hover:text-white dark:border-[#f6c86f] dark:text-[#f6c86f] dark:hover:bg-[#f6c86f] dark:hover:text-[#0b0f17]"
         >
           Xem chi tiết
-        </button>
+        </Link>
       </div>
     </article>
   );
 }
 
 /* ─── Main Page ─── */
+function FilterDropdown({
+  label,
+  icon,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  icon?: ReactNode;
+  value: string;
+  options: FilterOption[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative w-full space-y-1.5 sm:w-[155px]">
+      <span className="text-xs font-semibold text-[#8b7a6a] dark:text-[#9aa5b1] uppercase tracking-wider">
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className={`flex h-[52px] w-full items-center gap-2 rounded-xl border px-3 text-left transition-all ${
+          open
+            ? "border-[#c47a34] bg-white shadow-[0_12px_30px_-20px_rgba(134,83,22,0.55)] ring-2 ring-[#c47a34]/15 dark:bg-white/[0.08]"
+            : "border-[#e8ddd0] bg-[#faf7f2] hover:border-[#d8b98c] dark:border-white/10 dark:bg-white/[0.04]"
+        }`}
+      >
+        {icon}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-[#1c1c19] dark:text-[#f8f1e7]">
+            {selected?.label}
+          </span>
+          {selected?.hint ? (
+            <span className="mt-0.5 block truncate text-[11px] text-[#9b8b7a] dark:text-[#9aa5b1]">
+              {selected.hint}
+            </span>
+          ) : null}
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[#8b6a3e] transition-transform dark:text-[#d7a25f] ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-[#e4d2bd] bg-white p-2 shadow-[0_20px_50px_-24px_rgba(64,38,12,0.45)] dark:border-white/10 dark:bg-[#141923]">
+          {options.map((option) => {
+            const active = option.value === value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-colors ${
+                  active
+                    ? "bg-[#f4e6d4] text-[#7b4513] dark:bg-[#d7a25f]/15 dark:text-[#f6c86f]"
+                    : "text-[#4f4438] hover:bg-[#faf3ea] dark:text-[#c9b8a4] dark:hover:bg-white/[0.06]"
+                }`}
+              >
+                <span>
+                  <span className="block text-sm font-semibold">{option.label}</span>
+                  {option.hint ? <span className="block text-[11px] opacity-70">{option.hint}</span> : null}
+                </span>
+                {active ? <span className="h-2 w-2 rounded-full bg-[#c47a34]" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function InlineFilterDropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: FilterOption[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative min-w-0 flex-1">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center justify-between gap-2 text-left text-sm font-semibold text-[#1c1c19] outline-none dark:text-[#f8f1e7]"
+      >
+        <span className="truncate">{selected?.label}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[#8b6a3e] transition-transform dark:text-[#d7a25f] ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open ? (
+        <div className="absolute left-[-44px] right-[-12px] top-full z-30 mt-4 overflow-hidden rounded-2xl border border-[#e4d2bd] bg-white p-2 shadow-[0_20px_50px_-24px_rgba(64,38,12,0.45)] dark:border-white/10 dark:bg-[#141923]">
+          {options.map((option) => {
+            const active = option.value === value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors ${
+                  active
+                    ? "bg-[#f4e6d4] text-[#7b4513] dark:bg-[#d7a25f]/15 dark:text-[#f6c86f]"
+                    : "text-[#4f4438] hover:bg-[#faf3ea] dark:text-[#c9b8a4] dark:hover:bg-white/[0.06]"
+                }`}
+              >
+                {option.label}
+                {active ? <span className="h-2 w-2 rounded-full bg-[#c47a34]" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DatePickerField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => parseDateInput(value));
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selectedDate = parseDateInput(value);
+  const todayValue = toDateInputValue(new Date());
+
+  useEffect(() => {
+    setVisibleMonth(parseDateInput(value));
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  const changeMonth = (amount: number) => {
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1));
+  };
+
+  return (
+    <div ref={rootRef} className="relative w-full space-y-1.5 sm:w-[155px]">
+      <span className="text-xs font-semibold text-[#8b7a6a] dark:text-[#9aa5b1] uppercase tracking-wider">
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className={`flex h-[52px] w-full items-center gap-2 rounded-xl border px-3 text-left transition-all ${
+          open
+            ? "border-[#c47a34] bg-white shadow-[0_12px_30px_-20px_rgba(134,83,22,0.55)] ring-2 ring-[#c47a34]/15 dark:bg-white/[0.08]"
+            : "border-[#e8ddd0] bg-[#faf7f2] hover:border-[#d8b98c] dark:border-white/10 dark:bg-white/[0.04]"
+        }`}
+      >
+        <CalendarDays className="h-4 w-4 shrink-0 text-[#c47a34]" />
+        <span className="flex-1 text-sm font-semibold text-[#1c1c19] dark:text-[#f8f1e7]">
+          {formatDateLabel(value)}
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[#8b6a3e] transition-transform dark:text-[#d7a25f] ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 top-full z-40 mt-3 w-[310px] rounded-3xl border border-[#ead8c4] bg-white p-4 shadow-[0_28px_70px_-28px_rgba(64,38,12,0.55)] dark:border-white/10 dark:bg-[#141923]">
+          <div className="mb-4 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => changeMonth(-1)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fbf5ed] text-[#8b6a3e] transition-colors hover:bg-[#f0dec6] dark:bg-white/[0.06] dark:text-[#d7a25f]"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="text-center">
+              <p className="text-sm font-black text-[#1c1c19] dark:text-[#f8f1e7]">
+                {monthNames[visibleMonth.getMonth()]} {visibleMonth.getFullYear()}
+              </p>
+              <p className="text-[11px] font-medium text-[#a58b70]">Chọn ngày lưu trú</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => changeMonth(1)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fbf5ed] text-[#8b6a3e] transition-colors hover:bg-[#f0dec6] dark:bg-white/[0.06] dark:text-[#d7a25f]"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {weekDays.map((day) => (
+              <span key={day} className="py-2 text-[11px] font-bold uppercase text-[#b08f6c]">
+                {day}
+              </span>
+            ))}
+            {getCalendarDays(visibleMonth).map((date) => {
+              const dateValue = toDateInputValue(date);
+              const isSelected = dateValue === value;
+              const isToday = dateValue === todayValue;
+              const inCurrentMonth = date.getMonth() === visibleMonth.getMonth();
+
+              return (
+                <button
+                  key={dateValue}
+                  type="button"
+                  onClick={() => {
+                    onChange(dateValue);
+                    setOpen(false);
+                  }}
+                  className={`flex h-9 items-center justify-center rounded-xl text-sm font-semibold transition-all ${
+                    isSelected
+                      ? "bg-gradient-to-br from-[#c47a34] to-[#ffd45e] text-white shadow-lg shadow-[#c47a34]/25"
+                      : inCurrentMonth
+                        ? "text-[#2b251f] hover:bg-[#fbf0e3] dark:text-[#f8f1e7] dark:hover:bg-white/[0.08]"
+                        : "text-[#c9b9a8] hover:bg-[#fbf0e3]/60 dark:text-[#657082]"
+                  }`}
+                >
+                  <span className={isToday && !isSelected ? "rounded-full border border-[#c47a34] px-2 py-0.5" : ""}>
+                    {date.getDate()}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function RoomListPage() {
   const [selectedRoom, setSelectedRoom] = useState(0);
+  const [stayType, setStayType] = useState("night");
   const [checkIn, setCheckIn] = useState("2026-06-15");
   const [checkOut, setCheckOut] = useState("2026-06-17");
+  const [checkInTime, setCheckInTime] = useState("14:00");
+  const [stayHours, setStayHours] = useState("3");
   const [guestCount, setGuestCount] = useState("2");
   const [priceRange, setPriceRange] = useState("all");
   const [displayRooms, setDisplayRooms] = useState<MockRoom[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalRooms, setTotalRooms] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<RoomSearchFilter | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
-    getAllRooms(currentPage, ROOM_PAGE_SIZE)
-      .then(({ data, total }) => {
-        if (data.length > 0) {
-          setDisplayRooms(convertApiRooms(data));
-          setTotalRooms(total);
-        } else {
-          setDisplayRooms(mockRooms);
-          setTotalRooms(mockRooms.length);
+
+    async function loadRooms() {
+      try {
+        if (!activeFilter) {
+          const { data, total } = await getAllRooms(currentPage, ROOM_PAGE_SIZE);
+          const rooms = data.length > 0 ? convertApiRooms(data) : mockRooms;
+          setDisplayRooms(rooms);
+          setTotalRooms(data.length > 0 ? total : mockRooms.length);
+          setSelectedRoom(0);
+          return;
         }
+
+        const { start, end } = buildSearchWindow(activeFilter);
+        const [{ data }, busyRoomIds] = await Promise.all([
+          getAllRooms(0, 500),
+          getBusyRoomIds(start, end),
+        ]);
+        const busyRoomSet = new Set(busyRoomIds);
+        const guestCountNumber = Number(activeFilter.guestCount || 1);
+        const sourceRooms = data.length > 0 ? convertApiRooms(data) : mockRooms;
+        const filteredRooms = sourceRooms.filter((room) => {
+          if (busyRoomSet.has(room.id)) {
+            return false;
+          }
+
+          if (room.maxGuests < guestCountNumber) {
+            return false;
+          }
+
+          return matchesPriceRange(room, activeFilter.stayType, activeFilter.priceRange);
+        });
+        const pageStart = currentPage * ROOM_PAGE_SIZE;
+
+        setDisplayRooms(filteredRooms.slice(pageStart, pageStart + ROOM_PAGE_SIZE));
+        setTotalRooms(filteredRooms.length);
         setSelectedRoom(0);
-      })
-      .catch(() => {
+      } catch {
         setDisplayRooms(mockRooms);
         setTotalRooms(mockRooms.length);
         setSelectedRoom(0);
-      })
-      .finally(() => setIsLoading(false));
-  }, [currentPage]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadRooms();
+  }, [currentPage, activeFilter]);
+
+  const handleSearch = () => {
+    setCurrentPage(0);
+    setActiveFilter({
+      stayType,
+      checkIn,
+      checkOut,
+      checkInTime,
+      stayHours,
+      guestCount,
+      priceRange,
+    });
+  };
 
   const current = displayRooms[selectedRoom] ?? displayRooms[0];
 
@@ -454,8 +946,132 @@ export default function RoomListPage() {
             </div>
 
             {/* Filter Bar */}
+            <div className="relative z-20 rounded-[1.5rem] border border-[#ead8c4] bg-white/90 p-4 shadow-[0_24px_70px_-40px_rgba(82,52,22,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+              <div className="flex flex-wrap items-end gap-3 xl:flex-nowrap">
+                <div className="h-[52px] w-full rounded-xl bg-[#fbf5ed] p-1 dark:bg-white/[0.05] sm:w-[220px]">
+                  <div className="grid h-full grid-cols-2 gap-1">
+                    {stayTypeOptions.map((option) => {
+                      const active = stayType === option.value;
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setStayType(option.value)}
+                          className={`flex h-full items-center justify-center gap-1.5 rounded-lg px-2 text-center text-sm font-bold transition-all ${
+                            active
+                              ? "bg-[#1f1b16] text-white shadow-lg shadow-[#1f1b16]/15 dark:bg-[#d7a25f] dark:text-[#16110b]"
+                              : "text-[#8b7a6a] hover:bg-white dark:text-[#c9b8a4] dark:hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          <Clock className="h-4 w-4 shrink-0" />
+                          <span className="whitespace-nowrap">{option.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <DatePickerField
+                  label="Nhận phòng"
+                  value={checkIn}
+                  onChange={setCheckIn}
+                />
+
+                <label className="hidden rounded-2xl border border-[#ecdcc9] bg-[#fffaf3] px-4 py-3 transition-colors focus-within:border-[#c47a34] focus-within:ring-2 focus-within:ring-[#c47a34]/15 dark:border-white/10 dark:bg-white/[0.04]">
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.2em] text-[#c69b71]">Nhận phòng</span>
+                  <span className="mt-2 flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 shrink-0 text-[#c47a34]" />
+                    <input
+                      type="date"
+                      value={checkIn}
+                      onChange={(e) => setCheckIn(e.target.value)}
+                      className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-[#1c1c19] outline-none dark:text-[#f8f1e7]"
+                    />
+                  </span>
+                </label>
+
+                {stayType === "night" ? (
+                  <>
+                  <DatePickerField
+                    label="Trả phòng"
+                    value={checkOut}
+                    onChange={setCheckOut}
+                  />
+
+                  <label className="hidden rounded-2xl border border-[#ecdcc9] bg-[#fffaf3] px-4 py-3 transition-colors focus-within:border-[#c47a34] focus-within:ring-2 focus-within:ring-[#c47a34]/15 dark:border-white/10 dark:bg-white/[0.04]">
+                    <span className="block text-[11px] font-bold uppercase tracking-[0.2em] text-[#c69b71]">Trả phòng</span>
+                    <span className="mt-2 flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4 shrink-0 text-[#c47a34]" />
+                      <input
+                        type="date"
+                        value={checkOut}
+                        onChange={(e) => setCheckOut(e.target.value)}
+                        className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-[#1c1c19] outline-none dark:text-[#f8f1e7]"
+                      />
+                    </span>
+                  </label>
+                  </>
+                ) : (
+                  <label className="w-full space-y-1.5 sm:w-[155px]">
+                    <span className="block text-xs font-semibold uppercase tracking-wider text-[#8b7a6a] dark:text-[#9aa5b1]">Giờ bắt đầu</span>
+                    <span className="flex h-[52px] items-center gap-2 rounded-xl border border-[#e8ddd0] bg-[#faf7f2] px-3 text-left transition-all hover:border-[#d8b98c] focus-within:border-[#c47a34] focus-within:ring-2 focus-within:ring-[#c47a34]/15 dark:border-white/10 dark:bg-white/[0.04]">
+                      <Clock className="h-4 w-4 shrink-0 text-[#c47a34]" />
+                      <input
+                        type="time"
+                        value={checkInTime}
+                        onChange={(e) => setCheckInTime(e.target.value)}
+                        className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-[#1c1c19] outline-none [color-scheme:light] dark:text-[#f8f1e7]"
+                      />
+                    </span>
+                  </label>
+                )}
+
+                {stayType === "hour" ? (
+                  <FilterDropdown
+                    label="Số giờ"
+                    icon={<Clock className="h-5 w-5 shrink-0 text-[#8b6a3e] dark:text-[#d7a25f]" />}
+                    value={stayHours}
+                    options={hourOptions}
+                    onChange={setStayHours}
+                  />
+                ) : null}
+
+                <FilterDropdown
+                  label="Số khách"
+                  icon={<Users className="h-5 w-5 shrink-0 text-[#8b6a3e] dark:text-[#d7a25f]" />}
+                  value={guestCount}
+                  options={guestOptions}
+                  onChange={setGuestCount}
+                />
+
+                <FilterDropdown
+                  label={stayType === "night" ? "Khoảng giá / đêm" : "Khoảng giá / giờ"}
+                  value={priceRange}
+                  options={priceOptions}
+                  onChange={setPriceRange}
+                />
+
+                <button
+                  type="button"
+                  onClick={handleSearch}
+                  className="h-[52px] w-full rounded-xl bg-gradient-to-r from-[#c47a34] to-[#ffd45e] px-5 text-sm font-black text-white shadow-[0_16px_36px_-20px_rgba(196,122,52,0.8)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_45px_-22px_rgba(196,122,52,0.95)] sm:w-[190px] xl:shrink-0"
+                >
+                  Kiểm tra phòng trống
+                </button>
+              </div>
+            </div>
+
+            <div className="hidden">
             <div className="rounded-2xl border border-[#e8ddd0] dark:border-white/10 bg-white dark:bg-white/[0.05] p-5 md:p-6 shadow-[0_4px_20px_-8px_rgba(120,90,50,0.08)] dark:shadow-none">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4 items-end">
+                <FilterDropdown
+                  label="Kiểu lưu trú"
+                  icon={<Clock className="h-5 w-5 shrink-0 text-[#8b6a3e] dark:text-[#d7a25f]" />}
+                  value={stayType}
+                  options={stayTypeOptions}
+                  onChange={setStayType}
+                />
                 <label className="space-y-2">
                   <span className="text-xs font-semibold text-[#8b7a6a] dark:text-[#9aa5b1] uppercase tracking-wider">Nhận phòng</span>
                   <div className="flex items-center gap-2.5 rounded-xl border border-[#e8ddd0] dark:border-white/10 bg-[#faf7f2] dark:bg-white/[0.04] px-4 py-3">
@@ -521,6 +1137,8 @@ export default function RoomListPage() {
                   Kiểm tra phòng trống
                 </button>
               </div>
+            </div>
+
             </div>
 
             {/* Section Title */}

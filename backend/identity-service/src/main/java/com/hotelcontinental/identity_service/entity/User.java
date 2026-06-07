@@ -46,6 +46,8 @@ public class User {
     @Column(name = "phone_number")
     String phoneNumber;
 
+    @Column(name = "googleId")
+    String googleId;
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     UserStatus status;

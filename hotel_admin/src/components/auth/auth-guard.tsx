@@ -9,20 +9,29 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const permissions = useAuthStore((state) => state.permissions);
+  const logout = useAuthStore((state) => state.logout);
+  const canAccessAdmin = isAuthenticated && permissions.includes("ROLE_ADMIN");
 
   useEffect(() => {
-    if (!isAuthenticated && pathname !== "/login") {
+    if (isAuthenticated && !canAccessAdmin) {
+      logout();
       router.replace("/login");
-    } else if (isAuthenticated && pathname === "/login") {
+      return;
+    }
+
+    if (!canAccessAdmin && pathname !== "/login") {
+      router.replace("/login");
+    } else if (canAccessAdmin && pathname === "/login") {
       router.replace("/");
     }
-  }, [isAuthenticated, pathname, router]);
+  }, [canAccessAdmin, isAuthenticated, logout, pathname, router]);
 
-  if (!isAuthenticated && pathname !== "/login") {
+  if (!canAccessAdmin && pathname !== "/login") {
     return null;
   }
 
-  if (isAuthenticated && pathname === "/login") {
+  if (canAccessAdmin && pathname === "/login") {
     return null;
   }
 

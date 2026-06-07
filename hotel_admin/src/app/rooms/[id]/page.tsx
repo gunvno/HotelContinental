@@ -1,7 +1,7 @@
 "use client";
 
-import { AdminEntityDetailPage } from "@/components/admin/admin-entity-detail-page";
+import { RoomDetailPageContent } from "@/components/admin/room-detail-page";
 
 export default function RoomDetailPage() {
-  return <AdminEntityDetailPage kind="room" />;
+  return <RoomDetailPageContent />;
 }

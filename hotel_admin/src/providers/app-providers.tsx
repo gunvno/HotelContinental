@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { KeycloakAuthProvider } from "@/providers/keycloak-auth-provider";
+import { AuthGuard } from "@/components/auth/auth-guard";
 
 export type AppProvidersProps = {
   children: ReactNode;
@@ -10,5 +10,5 @@ export type AppProvidersProps = {
 
 // Nơi tập trung các provider dùng chung để dễ mở rộng.
 export function AppProviders({ children }: AppProvidersProps) {
-  return <KeycloakAuthProvider>{children}</KeycloakAuthProvider>;
+  return <AuthGuard>{children}</AuthGuard>;
 }

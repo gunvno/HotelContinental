@@ -144,6 +144,8 @@ function RoomTableView({
   onPageChange: (page: number) => void;
   onOpen: (roomId: string) => void;
 }) {
+  const totalPages = Math.max(1, Math.ceil(total / ROOM_PAGE_SIZE));
+
   if (isLoading) {
     return (
       <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-10 text-center font-bold text-[#75695d]">

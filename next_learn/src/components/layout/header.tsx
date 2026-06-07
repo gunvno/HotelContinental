@@ -8,7 +8,6 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/utils";
-import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
 import {
   selectFirstName,
   selectLastName,
@@ -36,7 +35,6 @@ export function Header() {
   const firstName = useAuthStore(selectFirstName);
   const lastName = useAuthStore(selectLastName);
   const logoutLocal = useAuthStore((state) => state.logout);
-  const { logout: logoutSSO, userInfo } = useKeycloakAuth();
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -127,9 +125,9 @@ export function Header() {
     }
   };
 
-  const displayName = [firstName, lastName].filter(Boolean).join(" ") || userName || userInfo?.name || "bạn";
-  const displayEmail = userInfo?.email || userInfo?.preferred_username || "Tài khoản khách";
-  const accountInitial = (firstName?.[0] || lastName?.[0] || userName?.[0] || userInfo?.name?.[0] || "C").toUpperCase();
+  const displayName = [firstName, lastName].filter(Boolean).join(" ") || userName || "bạn";
+  const displayEmail = userName || "Tài khoản khách";
+  const accountInitial = (firstName?.[0] || lastName?.[0] || userName?.[0] || "C").toUpperCase();
 
   return (
     <header className="border-border/40 bg-background/85 sticky top-0 z-40 border-b shadow-[0_20px_60px_-40px_rgba(31,41,55,0.45)] backdrop-blur-xl">
@@ -307,7 +305,6 @@ export function Header() {
                     variant="ghost"
                     onClick={() => {
                       logoutLocal();
-                      logoutSSO();
                       setAccountOpen(false);
                     }}
                     className="w-full"
@@ -370,7 +367,6 @@ export function Header() {
                   variant="ghost"
                   onClick={() => {
                     logoutLocal();
-                    logoutSSO();
                     setAccountOpen(false);
                     setMobileOpen(false);
                   }}

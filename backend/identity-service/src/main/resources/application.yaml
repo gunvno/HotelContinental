@@ -4,11 +4,6 @@ server:
     context-path: /identity
 
 spring:
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8180/realms/HotelContinental
   application:
     name: identity-service
   datasource:
@@ -38,9 +33,3 @@ jwt:
 app:
   services:
     profile: http://localhost:8081/profile
-
-
-idp:
-  url: http://localhost:8180
-  client-id: HotelContinentalBackend
-  client-secret: 0NnN2ZKjioAFkWuRyjgP0JLE5F8crVFz

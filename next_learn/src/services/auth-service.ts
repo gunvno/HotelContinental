@@ -21,8 +21,19 @@ export type RegisterPayload = {
 // --- API Functions ---
 
 export async function login(payload: LoginPayload) {
-  const res = await http.post("auth/login", { json: payload }).json<ApiResponse<AuthContent>>();
+  const res = await http.post("identity/auth/login", { json: payload }).json<ApiResponse<AuthContent>>();
   return res.result ?? res.content;
+}
+
+export async function refreshAuthToken(refreshToken: string) {
+  const res = await http
+    .post("identity/auth/refresh", { json: { token: refreshToken } })
+    .json<ApiResponse<AuthContent>>();
+  return res.result ?? res.content;
+}
+
+export async function logoutAuthToken(token: string) {
+  await http.post("identity/auth/logout", { json: { token } }).json<ApiResponse<void>>();
 }
 
 // 1. Gửi OTP đến email (@PostMapping("/otp-register"))

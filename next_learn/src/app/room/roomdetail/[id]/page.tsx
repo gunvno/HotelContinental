@@ -1,10 +1,12 @@
 ﻿"use client";
 
 import { Bath, BedDouble, Calendar, CalendarOff,Coffee, Eye, MapPin, Ruler, Shirt, Tv, Users, Wifi, Wine } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { getRoomDetail, type RoomDetailData } from "@/services/room-service";
+import { useAuthStore } from "@/store/auth-store";
 
 function getFeatureIcon(iconType: string) {
 switch (iconType) {
@@ -31,9 +33,13 @@ default: return <Wifi className="h-8 w-8 text-[#865316]" />;
 export default function RoomDetailPage() {
 const params = useParams();
 const roomId = params?.id as string;
+const token = useAuthStore((state) => state.token);
 const [roomData, setRoomData] = useState<RoomDetailData | null>(null);
 const [isLoading, setIsLoading] = useState(true);
 const [error, setError] = useState<string | null>(null);
+const [checkIn, setCheckIn] = useState("2026-06-15");
+const [checkOut, setCheckOut] = useState("2026-06-18");
+const [guests, setGuests] = useState(2);
 
 useEffect(() => {
 async function loadRoomDetail() {
@@ -69,6 +75,35 @@ return (
 );
 }
 
+function buildBookingHref({
+roomId,
+roomTitle,
+pricePerNight,
+checkIn,
+checkOut,
+guests,
+token,
+}: {
+roomId: string;
+roomTitle: string;
+pricePerNight: number;
+checkIn: string;
+checkOut: string;
+guests: number;
+token: string | null;
+}) {
+const paymentParams = new URLSearchParams({
+roomId,
+roomTitle,
+pricePerNight: String(pricePerNight),
+checkIn,
+checkOut,
+guests: String(guests),
+});
+const paymentHref = `/payment?${paymentParams.toString()}`;
+return token ? paymentHref : `/login?redirect=${encodeURIComponent(paymentHref)}`;
+}
+
 if (error || !roomData) {
 return (
 <main className="bg-[#fdf9f4] min-h-screen pt-32 flex items-center justify-center">
@@ -81,6 +116,15 @@ return (
 }
 
 const { label, title, description, location, pricePerNight, galleryImages, featureSpecs, amenities, roomDescription } = roomData;
+const bookingHref = buildBookingHref({
+roomId: roomData.id,
+roomTitle: title,
+pricePerNight,
+checkIn,
+checkOut,
+guests,
+token,
+});
 
 return (
 <main className="bg-[#fdf9f4] text-[#1c1c19] pt-32 pb-24 px-6 md:px-12 max-w-screen-2xl mx-auto font-sans selection:bg-[#865316]/20 min-h-screen">
@@ -177,7 +221,7 @@ return (
 <div className="space-y-2">
 <label className="text-xs uppercase tracking-widest text-[#514439] font-bold px-1">Ngày nhận phòng</label>
 <div className="relative group">
-<input type="date" className="w-full bg-[#f1ede8] border-none rounded-xl py-4 px-4 text-[#1c1c19] focus:ring-2 focus:ring-[#865316]/20 transition-all appearance-none outline-none" />
+<input type="date" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} className="w-full bg-[#f1ede8] border-none rounded-xl py-4 px-4 text-[#1c1c19] focus:ring-2 focus:ring-[#865316]/20 transition-all appearance-none outline-none" />
 <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-[#514439] pointer-events-none w-5 h-5" />
 </div>
 </div>
@@ -185,17 +229,18 @@ return (
 <div className="space-y-2">
 <label className="text-xs uppercase tracking-widest text-[#514439] font-bold px-1">Ngày trả phòng</label>
 <div className="relative group">
-<input type="date" className="w-full bg-[#f1ede8] border-none rounded-xl py-4 px-4 text-[#1c1c19] focus:ring-2 focus:ring-[#865316]/20 transition-all appearance-none outline-none" />
+<input type="date" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} className="w-full bg-[#f1ede8] border-none rounded-xl py-4 px-4 text-[#1c1c19] focus:ring-2 focus:ring-[#865316]/20 transition-all appearance-none outline-none" />
 <CalendarOff className="absolute right-4 top-1/2 -translate-y-1/2 text-[#514439] pointer-events-none w-5 h-5" />
 </div>
 </div>
 
 <div className="space-y-2 pb-6 border-b border-[#d6c3b4]/20">
 <label className="text-xs uppercase tracking-widest text-[#514439] font-bold px-1">Số lượng khách</label>
-<select defaultValue="2 Người lớn" className="w-full bg-[#f1ede8] border-none rounded-xl py-4 px-4 text-[#1c1c19] focus:ring-2 focus:ring-[#865316]/20 transition-all outline-none appearance-none">
-<option>1 Người lớn</option>
-<option value="2 Người lớn">2 Người lớn</option>
-<option>3 Người lớn</option>
+<select value={guests} onChange={(event) => setGuests(Number(event.target.value))} className="w-full bg-[#f1ede8] border-none rounded-xl py-4 px-4 text-[#1c1c19] focus:ring-2 focus:ring-[#865316]/20 transition-all outline-none appearance-none">
+{Array.from({ length: Math.max(1, roomData.maxOccupancy) }).map((_, index) => {
+const value = index + 1;
+return <option key={value} value={value}>{value} Người lớn</option>;
+})}
 </select>
 </div>
 
@@ -214,9 +259,9 @@ return (
 </div>
 </div>
 
-<button className="w-full bg-gradient-to-r from-[#865316] to-[#c68948] text-white py-5 rounded-full font-bold text-lg shadow-xl shadow-[#865316]/20 hover:scale-[1.02] active:scale-95 transition-all">
+<Link href={bookingHref} className="block w-full bg-gradient-to-r from-[#865316] to-[#c68948] text-white py-5 rounded-full font-bold text-lg text-center shadow-xl shadow-[#865316]/20 hover:scale-[1.02] active:scale-95 transition-all">
 Đặt phòng ngay
-</button>
+</Link>
 <p className="text-center text-xs text-[#514439] italic">
 Không thu phí hủy phòng trước 48 giờ.
 </p>
@@ -232,7 +277,7 @@ Không thu phí hủy phòng trước 48 giờ.
 <div className="text-xs text-[#514439]">Bắt đầu từ</div>
 <div className="font-bold text-[#865316]">{pricePerNight.toLocaleString("vi-VN")} VNĐ</div>
 </div>
-<button className="bg-[#865316] text-white px-6 sm:px-8 py-3 rounded-full font-bold shadow-lg text-sm sm:text-base">Đặt ngay</button>
+<Link href={bookingHref} className="bg-[#865316] text-white px-6 sm:px-8 py-3 rounded-full font-bold shadow-lg text-sm sm:text-base">Đặt ngay</Link>
 </div>
 </div>
 </main>

@@ -19,6 +19,23 @@ type SpringPage<T> = {
   number: number;
 };
 
+type AmenityResponse = {
+  id: string;
+  name: string;
+  description?: string;
+  status?: string;
+  deleted?: boolean;
+};
+
+type AmenityRoomResponse = {
+  id: string;
+  amenityId?: string;
+  roomTypeId?: string;
+  amount?: number;
+  deleted?: boolean;
+  amenity?: AmenityResponse | null;
+};
+
 export type RoomCustomerListResult = {
   rooms: RoomEntity[];
   totalPages: number;
@@ -29,6 +46,8 @@ export type RoomResponse = {
   id: string;
   name: string;
   image?: string;
+  images?: RoomImageResponse[];
+  galleryImages?: string[];
   pricePerDay: number;
   pricePerHour: number;
   address?: string;
@@ -38,6 +57,14 @@ export type RoomResponse = {
   createdBy?: string;
   roomTypeId?: string;
   roomTypes?: RoomTypeResponse | null;
+};
+
+export type RoomImageResponse = {
+  id: string;
+  url: string;
+  publicId?: string;
+  isCover?: boolean;
+  sortOrder?: number;
 };
 
 export type RoomTypeResponse = {
@@ -53,11 +80,10 @@ export type RoomTypeResponse = {
   amenityRooms?: Array<{
     id: string;
     amenityId?: string;
-    amenity?: {
-      id: string;
-      name: string;
-      description?: string;
-    } | null;
+    roomTypeId?: string;
+    amount?: number;
+    deleted?: boolean;
+    amenity?: AmenityResponse | null;
   }>;
 };
 
@@ -74,6 +100,21 @@ export async function getAllRooms(page = 0, size = 20): Promise<{ data: RoomResp
   };
 }
 
+export async function getBusyRoomIds(start: string, end: string): Promise<string[]> {
+  const res = await http
+    .get("booking/availability/busy-room-ids", {
+      searchParams: { start, end },
+    })
+    .json<ApiResponse<string[]>>();
+
+  return (res.result ?? res.content ?? []) as string[];
+}
+
+export async function getRoomById(id: string): Promise<RoomResponse> {
+  const res = await http.get(`room/room/customer/${id}`).json<ApiResponse<RoomResponse>>();
+  return enrichRoom((res.result ?? res.content) as RoomResponse);
+}
+
 async function getRoomTypes(page = 0, size = 500): Promise<RoomTypeResponse[]> {
   const res = await http
     .get("catalog/roomType", {
@@ -85,15 +126,14 @@ async function getRoomTypes(page = 0, size = 500): Promise<RoomTypeResponse[]> {
   return pageData?.content ?? [];
 }
 
-async function getAmenities(page = 0, size = 500): Promise<Array<{ id: string; name: string; description?: string }>> {
+async function getAmenities(page = 0, size = 500): Promise<AmenityResponse[]> {
   const res = await http
     .get("catalog/amenity", {
       searchParams: { page, size },
     })
-    .json<ApiResponse<SpringPage<{ id: string; name: string; description?: string }>>>();
+    .json<ApiResponse<SpringPage<AmenityResponse>>>();
 
-  const pageData = (res.result ?? res.content) as SpringPage<{ id: string; name: string; description?: string }> | undefined;
-  return pageData?.content ?? [];
+  return extractContent(res.result ?? res.content).filter((amenity) => !amenity.deleted);
 }
 
 async function getAmenityRoomsByRoomType(roomTypeId: string): Promise<NonNullable<RoomTypeResponse["amenityRooms"]>> {
@@ -101,10 +141,9 @@ async function getAmenityRoomsByRoomType(roomTypeId: string): Promise<NonNullabl
     .get(`room/amenityRoom/roomType/${roomTypeId}`, {
       searchParams: { page: 0, size: 100 },
     })
-    .json<ApiResponse<SpringPage<{ id: string; amenityId: string }>>>();
+    .json<ApiResponse<SpringPage<AmenityRoomResponse> | AmenityRoomResponse[]>>();
 
-  const pageData = (res.result ?? res.content) as SpringPage<{ id: string; amenityId: string }> | undefined;
-  const amenityRooms = pageData?.content ?? [];
+  const amenityRooms = extractContent(res.result ?? res.content).filter((item) => !item.deleted);
   if (amenityRooms.length === 0) {
     return [];
   }
@@ -114,7 +153,7 @@ async function getAmenityRoomsByRoomType(roomTypeId: string): Promise<NonNullabl
 
   return amenityRooms.map((item) => ({
     ...item,
-    amenity: item.amenityId ? amenityMap.get(item.amenityId) ?? null : null,
+    amenity: item.amenity ?? (item.amenityId ? amenityMap.get(item.amenityId) ?? null : null),
   }));
 }
 
@@ -123,7 +162,9 @@ async function enrichRooms(rooms: RoomResponse[]): Promise<RoomResponse[]> {
     return rooms;
   }
 
-  const roomTypeIds = Array.from(new Set(rooms.map((room) => room.roomTypeId).filter((id): id is string => Boolean(id))));
+  const roomTypeIds = Array.from(
+    new Set(rooms.map((room) => room.roomTypeId ?? room.roomTypes?.id).filter((id): id is string => Boolean(id))),
+  );
   if (roomTypeIds.length === 0) {
     return rooms;
   }
@@ -136,17 +177,24 @@ async function enrichRooms(rooms: RoomResponse[]): Promise<RoomResponse[]> {
   const amenityMap = new Map(amenityEntries);
 
   return rooms.map((room) => {
-    const roomType = room.roomTypes ?? (room.roomTypeId ? roomTypeMap.get(room.roomTypeId) ?? null : null);
+    const roomTypeId = room.roomTypeId ?? room.roomTypes?.id;
+    const roomType = room.roomTypes ?? (roomTypeId ? roomTypeMap.get(roomTypeId) ?? null : null);
     return {
       ...room,
+      roomTypeId,
       roomTypes: roomType
         ? {
             ...roomType,
-            amenityRooms: roomType.amenityRooms ?? (room.roomTypeId ? amenityMap.get(room.roomTypeId) ?? [] : []),
+            amenityRooms: roomType.amenityRooms ?? (roomTypeId ? amenityMap.get(roomTypeId) ?? [] : []),
           }
         : null,
     };
   });
+}
+
+async function enrichRoom(room: RoomResponse): Promise<RoomResponse> {
+  const [enriched] = await enrichRooms([room]);
+  return enriched;
 }
 
 export interface RoomDetailData {
@@ -229,16 +277,23 @@ const mockRoomDetails: Record<string, RoomDetailData> = {
   }
 };
 
+const fallbackRoomDetailImages = [
+  "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=1400&q=80",
+  "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=900&q=80",
+];
+
 export async function getRoomDetail(id: string): Promise<RoomDetailData | null> {
   try {
-    const { data } = await getAllRooms(0, 100); 
-    const room = data.find((r) => r.id === id);
+    const room = await getRoomById(id);
     
     if (!room) return mockRoomDetails[id] || mockRoomDetails["room-1"] || null;
+    const gallery = buildRoomGallery(room);
 
     return {
       id: room.id,
-      image: room.image || "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=900&q=80",
+      image: gallery[0],
       label: room.roomTypes?.name || "Suite Cao Cấp",
       title: room.name || "Tên phòng",
       description: room.roomTypes?.description || "Không gian nghỉ dưỡng tuyệt vời kết hợp hoàn hảo giữa tiện nghi hiện đại và thiết kế tinh tế.",
@@ -246,21 +301,17 @@ export async function getRoomDetail(id: string): Promise<RoomDetailData | null> 
       pricePerNight: room.pricePerDay || 8500000,
       maxOccupancy: room.roomTypes?.maximumOccupancy || 2,
       galleryImages: {
-        main: room.image || "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=1400&q=80",
-        topRight: "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80",
-        bottomLeft: "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=900&q=80",
-        bottomRight: "https://images.unsplash.com/photo-1615874694520-474822394e73?auto=format&fit=crop&w=900&q=80",
+        main: gallery[0],
+        topRight: gallery[1],
+        bottomLeft: gallery[2],
+        bottomRight: gallery[3],
       },
       featureSpecs: [
         { label: "Diện tích", value: room.roomSize || "50 m²", iconType: "area" },
         { label: "Khách tối đa", value: `${room.roomTypes?.maximumOccupancy || 2} Người lớn`, iconType: "users" }
       ],
-      amenities: (room.roomTypes?.amenityRooms && room.roomTypes.amenityRooms.length > 0) 
-        ? room.roomTypes.amenityRooms.map(ar => ({
-            title: ar.amenity?.name || "Tiện ích",
-            description: ar.amenity?.description || "Mô tả tiện ích",
-            icon: "wifi"
-          }))
+      amenities: (room.roomTypes?.amenityRooms && room.roomTypes.amenityRooms.length > 0)
+        ? room.roomTypes.amenityRooms.map((ar) => toRoomAmenityItem(ar.amenity))
         : mockRoomDetails["room-1"].amenities, // fallback mock amenities
       roomDescription: room.description || "Trải nghiệm kỳ nghỉ hoàn hảo với đầy đủ các dịch vụ chuẩn quốc tế."
     };
@@ -268,6 +319,67 @@ export async function getRoomDetail(id: string): Promise<RoomDetailData | null> 
     console.error("Error fetching real room details:", error);
     return mockRoomDetails[id] || mockRoomDetails["room-1"] || null;
   }
+}
+
+function extractContent<T>(value: SpringPage<T> | T[] | undefined | null): T[] {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return value.content ?? [];
+}
+
+function toRoomAmenityItem(amenity?: AmenityResponse | null): RoomAmenityItem {
+  const title = amenity?.name?.trim() || "Tiện ích";
+  return {
+    title,
+    description: amenity?.description?.trim() || "Tiện ích được gán theo hạng phòng này.",
+    icon: resolveAmenityIcon(title),
+  };
+}
+
+function resolveAmenityIcon(name: string): RoomAmenityItem["icon"] {
+  const lower = name.toLowerCase();
+
+  if (lower.includes("bar") || lower.includes("minibar") || lower.includes("rượu") || lower.includes("nước")) {
+    return "mini-bar";
+  }
+  if (lower.includes("tắm") || lower.includes("bath") || lower.includes("bồn")) {
+    return "bath";
+  }
+  if (lower.includes("cà phê") || lower.includes("coffee") || lower.includes("ấm")) {
+    return "coffee";
+  }
+  if (lower.includes("quản gia") || lower.includes("butler") || lower.includes("concierge")) {
+    return "butler";
+  }
+  if (lower.includes("tv") || lower.includes("tivi") || lower.includes("truyền hình")) {
+    return "tv";
+  }
+
+  return "wifi";
+}
+
+function buildRoomGallery(room: RoomResponse): string[] {
+  const imageMap = new Map<string, string>();
+  const addImage = (url?: string) => {
+    if (url) {
+      imageMap.set(url, url);
+    }
+  };
+
+  addImage(room.image);
+  [...(room.images ?? [])]
+    .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
+    .forEach((image) => addImage(image.url));
+  (room.galleryImages ?? []).forEach(addImage);
+  fallbackRoomDetailImages.forEach(addImage);
+
+  return Array.from(imageMap.values()).slice(0, 4);
 }
 
 export async function getAllRoomIds(): Promise<string[]> {

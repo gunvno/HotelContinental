@@ -1,10 +1,14 @@
 package com.hotelcontinental.identity_service.controller;
 
 import com.hotelcontinental.identity_service.dto.ApiResponse;
+import com.hotelcontinental.identity_service.dto.request.Authentication.AuthenticationRequest;
+import com.hotelcontinental.identity_service.dto.request.Authentication.LogoutRequest;
 import com.hotelcontinental.identity_service.dto.request.Authentication.OtpRegisterRequest;
 import com.hotelcontinental.identity_service.dto.request.Authentication.OtpVerifyRequest;
+import com.hotelcontinental.identity_service.dto.request.Authentication.RefreshRequest;
 import com.hotelcontinental.identity_service.dto.request.User.RegistrationRequest;
 import com.hotelcontinental.identity_service.dto.request.Authentication.IntrospectRequest;
+import com.hotelcontinental.identity_service.dto.response.Authentication.AuthenticationResponse;
 import com.hotelcontinental.identity_service.dto.response.Authentication.IntrospectResponse;
 import com.hotelcontinental.identity_service.dto.response.User.UserInfoResponse;
 import com.hotelcontinental.identity_service.service.interfaces.AuthenticationService;
@@ -19,11 +23,31 @@ public class AuthenticationController {
     @Autowired
     private AuthenticationService authenticationService;
 
+    @PostMapping({"/token", "/login"})
+    public ApiResponse<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
+        return ApiResponse.<AuthenticationResponse>builder()
+                .result(authenticationService.authenticate(request))
+                .build();
+    }
+
     @PostMapping("/introspect")
     public ApiResponse<IntrospectResponse> introspect(@RequestBody IntrospectRequest request) {
         return ApiResponse.<IntrospectResponse>builder()
                 .result(authenticationService.introspect(request))
                 .build();
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<AuthenticationResponse> refresh(@RequestBody RefreshRequest request) {
+        return ApiResponse.<AuthenticationResponse>builder()
+                .result(authenticationService.refreshToken(request))
+                .build();
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@RequestBody LogoutRequest request) {
+        authenticationService.logout(request);
+        return ApiResponse.<Void>builder().build();
     }
 
     @PostMapping("/otp-register")

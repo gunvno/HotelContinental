@@ -76,7 +76,7 @@ export function RegisterForm() {
         }
 
         // 2. Tạo tài khoản
-        const userId = await registerUser({
+        await registerUser({
             username: formData.username,
             email: formData.email,
             firstName: formData.firstName,
@@ -87,13 +87,7 @@ export function RegisterForm() {
         setSuccess("Đăng ký thành công! Đang chuyển hướng...");
         
         setTimeout(() => {
-            if (userId) {
-              // Chuyển hướng sang trang cập nhật thông tin profile
-              router.push(`/register-profile?userId=${userId}`);
-            } else {
-              // Fallback nếu không có userId -> Login
-              router.push("/login"); 
-            }
+            router.push("/login");
         }, 2000);
       
     } catch (err: unknown) {

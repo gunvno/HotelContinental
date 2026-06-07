@@ -11,16 +11,13 @@ import {
 import Link from "next/link";
 
 import { Container } from "@/components/ui/container";
-import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function InvoicesPage() {
-  const { logout } = useKeycloakAuth();
   const logoutLocal = useAuthStore((state) => state.logout);
 
   const handleLogout = () => {
     logoutLocal();
-    logout();
   };
 
   const invoices = [

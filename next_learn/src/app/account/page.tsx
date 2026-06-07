@@ -5,8 +5,12 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { getMyProfile, type ProfileResponse } from "@/services/profile-service";
-import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
-import { useAuthStore } from "@/store/auth-store";
+import {
+  selectFirstName,
+  selectLastName,
+  selectUserName,
+  useAuthStore,
+} from "@/store/auth-store";
 import Link from "next/link";
 import {
   CalendarCheck,
@@ -19,8 +23,10 @@ import {
 } from "lucide-react";
 
 export default function AccountPage() {
-  const { userInfo, logout } = useKeycloakAuth();
   const logoutLocal = useAuthStore((state) => state.logout);
+  const storeFirstName = useAuthStore(selectFirstName);
+  const storeLastName = useAuthStore(selectLastName);
+  const userName = useAuthStore(selectUserName);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,16 +58,14 @@ export default function AccountPage() {
     };
   }, []);
 
-  const displayName = userInfo?.name || userInfo?.preferred_username || "Khách lưu trú";
-  const email = userInfo?.email || userInfo?.preferred_username || "Chưa có email";
+  const displayName = [storeFirstName, storeLastName].filter(Boolean).join(" ") || userName || "Khách lưu trú";
+  const email = userName || "Chưa có email";
   const nameParts = displayName.split(" ").filter(Boolean);
   const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : displayName;
   const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
-  const userId = userInfo?.sub;
 
   const handleLogout = () => {
     logoutLocal();
-    logout();
   };
 
   return (

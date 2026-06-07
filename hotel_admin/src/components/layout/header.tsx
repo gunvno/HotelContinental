@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/utils";
-import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
+import { logoutAuthToken } from "@/services/auth-service";
 import { selectLastName, selectToken, selectUserName, useAuthStore } from "@/store/auth-store";
 import { BadgeInfo, ChevronDown, LogOut, Mail, UserRound } from "lucide-react";
 
@@ -27,7 +27,6 @@ export function Header() {
   const userName = useAuthStore(selectUserName);
   const lastName = useAuthStore(selectLastName);
   const logoutLocal = useAuthStore((state) => state.logout);
-  const { logout: logoutSSO, userInfo } = useKeycloakAuth();
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -68,9 +67,16 @@ export function Header() {
     setAccountOpen(false);
   }, [pathname]);
 
-  const displayName = [lastName, userName].filter(Boolean).join(" ") || userInfo?.name || "bạn";
-  const displayEmail = userInfo?.email || userInfo?.preferred_username || "Tài khoản khách";
-  const accountInitial = (lastName?.[0] || userName?.[0] || userInfo?.name?.[0] || "A").toUpperCase();
+  const displayName = [lastName, userName].filter(Boolean).join(" ") || "bạn";
+  const displayEmail = userName || "Tài khoản khách";
+  const accountInitial = (lastName?.[0] || userName?.[0] || "A").toUpperCase();
+
+  const handleLogout = () => {
+    if (token) {
+      void logoutAuthToken(token).catch(() => undefined);
+    }
+    logoutLocal();
+  };
 
   return (
     <header className="border-border/40 bg-background/85 sticky top-0 z-40 border-b shadow-[0_20px_60px_-40px_rgba(31,41,55,0.45)] backdrop-blur-xl">
@@ -226,8 +232,7 @@ export function Header() {
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                      logoutLocal();
-                      logoutSSO();
+                      handleLogout();
                       setAccountOpen(false);
                     }}
                     className="w-full"
@@ -276,8 +281,7 @@ export function Header() {
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    logoutLocal();
-                    logoutSSO();
+                    handleLogout();
                     setAccountOpen(false);
                     setMobileOpen(false);
                   }}

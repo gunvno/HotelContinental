@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { Container } from "@/components/ui/container";
-import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
 import { selectToken,useAuthStore } from "@/store/auth-store";
 
 import { LoginForm } from "./LoginForm";
@@ -12,13 +11,12 @@ import { LoginForm } from "./LoginForm";
 export default function LoginPage() {
   const router = useRouter();
   const token = useAuthStore(selectToken);
-  const { authenticated } = useKeycloakAuth();
 
   useEffect(() => {
-    if (token || authenticated) {
+    if (token) {
       router.replace("/");
     }
-  }, [token, authenticated, router]);
+  }, [token, router]);
 
   return (
     <main className="py-6 sm:py-10 md:py-12">

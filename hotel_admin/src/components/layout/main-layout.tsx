@@ -19,10 +19,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
-import { useKeycloakAuth } from "@/providers/keycloak-auth-provider";
+import { logoutAuthToken } from "@/services/auth-service";
 import { useAuthStore } from "@/store/auth-store";
 
 const primaryNav = [
@@ -46,8 +46,24 @@ const systemNav = [{ label: "Cài đặt", href: "/settings", icon: Settings }];
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const userInfo = useAuthStore((state) => state.userInfo);
-  const { logout } = useKeycloakAuth();
+  const token = useAuthStore((state) => state.token);
+  const logoutLocal = useAuthStore((state) => state.logout);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+
+    const closeMobileMenu = () => {
+      if (mediaQuery.matches) {
+        setMobileOpen(false);
+      }
+    };
+
+    closeMobileMenu();
+    mediaQuery.addEventListener("change", closeMobileMenu);
+
+    return () => mediaQuery.removeEventListener("change", closeMobileMenu);
+  }, []);
 
   if (pathname === "/login") {
     return (
@@ -66,6 +82,13 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     .slice(0, 2)
     .toUpperCase();
 
+  const handleLogout = () => {
+    if (token) {
+      void logoutAuthToken(token).catch(() => undefined);
+    }
+    logoutLocal();
+  };
+
   return (
     <div className="min-h-screen overflow-hidden bg-[#f5efe5] text-[#211a14] dark:bg-[#11100d] dark:text-[#f8f1e7]">
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_15%_10%,rgba(178,106,44,0.18),transparent_30%),radial-gradient(circle_at_85%_0%,rgba(33,26,20,0.16),transparent_26%)]" />
@@ -79,13 +102,12 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <Menu className="h-5 w-5" />
       </button>
 
-      <div
-        className={cn(
-          "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity lg:hidden",
-          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
-        )}
-        onClick={() => setMobileOpen(false)}
-      />
+      {mobileOpen ? (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      ) : null}
 
       <aside
         className={cn(
@@ -139,7 +161,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             </div>
             <button
               type="button"
-              onClick={() => logout()}
+              onClick={handleLogout}
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10"
             >
               <LogOut className="h-4 w-4" />
