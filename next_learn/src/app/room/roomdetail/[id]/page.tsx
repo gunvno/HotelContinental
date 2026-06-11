@@ -144,7 +144,7 @@ return (
 );
 }
 
-const { label, title, description, location, pricePerNight, galleryImages, featureSpecs, amenities, roomDescription } = roomData;
+const { label, title, description, location, pricePerNight, galleryImages, featureSpecs, amenities, addOnServices, roomDescription } = roomData;
 const nightCount = stayType === "night" ? calculateNightCount(checkIn, checkOut) : 0;
 const roomSubtotal = stayType === "hour"
 ? Math.round((pricePerNight / 8) * stayHours)
@@ -236,8 +236,9 @@ return (
 </section>
 
 {/* Amenities Bento */}
+{amenities.length > 0 ? (
 <section>
-<h3 className="text-2xl font-serif font-bold mb-8">Tiện nghi đặc quyền</h3>
+<h3 className="text-2xl font-serif font-bold mb-8">Tiện nghi trong phòng</h3>
 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 {amenities.map((item, idx) => (
 <div key={idx} className="p-6 rounded-xl bg-[#f7f3ee] flex flex-col gap-4 hover:bg-[#ebe8e3] transition-colors">
@@ -250,6 +251,24 @@ return (
 ))}
 </div>
 </section>
+) : null}
+
+{addOnServices.length > 0 ? (
+<section>
+<h3 className="text-2xl font-serif font-bold mb-8">Dịch vụ bổ sung</h3>
+<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+{addOnServices.map((item, idx) => (
+<div key={idx} className="p-6 rounded-xl bg-[#f7f3ee] flex flex-col gap-4 hover:bg-[#ebe8e3] transition-colors">
+{getAmenityIcon(item.icon)}
+<div>
+<h4 className="font-bold mb-1">{item.title}</h4>
+<p className="text-sm text-[#514439]">{item.description}</p>
+</div>
+</div>
+))}
+</div>
+</section>
+) : null}
 </div>
 
 {/* Booking Card (Sticky) */}

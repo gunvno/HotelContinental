@@ -31,6 +31,9 @@ public class PolicyTypes {
     @Column(name = "title_of_type")
     String titleOfType;
 
+    @Column(name = "code", unique = true)
+    String code;
+
     @Column(name = "content", columnDefinition = "TEXT")
     String content;
 

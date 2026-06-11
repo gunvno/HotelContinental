@@ -9,7 +9,9 @@ public enum ErrorCode {
     UNCATEGORIZED_EXCEPTION(9999, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR),
     INVALID_KEY(1001, "Invalid message key", HttpStatus.BAD_REQUEST),
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
-    UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN);
+    UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
+    INVALID_PAYMENT_REQUEST(1011, "Invalid payment request", HttpStatus.BAD_REQUEST),
+    PAYMENT_NOT_FOUND(1012, "Payment not found", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

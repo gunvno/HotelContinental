@@ -97,6 +97,7 @@ function createHttpClient(): KyInstance {
                   token: data.token,
                   refreshToken: data.refreshToken,
                   userName: data.userName ?? authStore.userName,
+                  email: data.email ?? authStore.email,
                   firstName: data.firstName ?? authStore.firstName,
                   lastName: data.lastName ?? authStore.lastName,
                   permissions: data.permissions ?? authStore.permissions,
@@ -115,18 +116,6 @@ function createHttpClient(): KyInstance {
               authStore.logout();
               return response;
             }
-          }
-
-          if (!response.ok) {
-            const errRes = response.clone();
-            try {
-              const body = await errRes.text();
-              console.error("[http] Request failed", {
-                url: request.url,
-                status: response.status,
-                body,
-              });
-            } catch {}
           }
 
           return response;

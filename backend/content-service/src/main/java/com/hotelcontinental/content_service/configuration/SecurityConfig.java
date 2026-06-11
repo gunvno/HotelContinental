@@ -16,7 +16,8 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINTS = {
             "/actuator/health",
-            "/health"
+            "/health",
+            "/policies/**"
     };
 
     private final CustomJwtDecoder customJwtDecoder;

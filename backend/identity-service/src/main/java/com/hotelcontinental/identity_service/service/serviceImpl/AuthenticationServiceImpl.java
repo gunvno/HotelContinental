@@ -244,6 +244,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .token(generateToken(account, validDuration))
                     .refreshToken(generateToken(account, refreshableDuration))
                     .userName(account.getUsername())
+                    .email(account.getUser().getEmail())
                     .firstName(account.getUser().getFirstName())
                     .lastName(account.getUser().getLastName())
                     .permissions(buildAuthorities(account).toArray(String[]::new))

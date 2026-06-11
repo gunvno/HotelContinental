@@ -13,6 +13,7 @@ import java.util.List;
 
 @Repository
 public interface RoomBookingDetailsRepository extends JpaRepository<RoomBookingDetails, String> {
+    List<RoomBookingDetails> findByRoomBookingsId(String roomBookingId);
 
     @Query("""
             select distinct detail.roomId

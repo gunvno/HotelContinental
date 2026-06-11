@@ -17,6 +17,8 @@ public enum ErrorCode {
     USERNAME_IS_MISSING(1010, "Please enter username", HttpStatus.BAD_REQUEST),
     USER_NOT_EXISTED(1011, "User not existed", HttpStatus.BAD_REQUEST),
     INVALID_DATE_RANGE(1012, "Start time must be before end time", HttpStatus.BAD_REQUEST),
+    ROOM_ALREADY_BOOKED(1013, "Room is already booked for selected time", HttpStatus.CONFLICT),
+    INVALID_BOOKING_REQUEST(1014, "Invalid booking request", HttpStatus.BAD_REQUEST),
 
     ;
 

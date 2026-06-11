@@ -6,6 +6,7 @@ export type AuthContent = {
   token: string | null;
   refreshToken: string | null;
   userName: string | null;
+  email?: string | null;
   permissions: string[];
   lastName?: string | null;
   firstName?: string | null;
@@ -33,6 +34,7 @@ export const useAuthStore = create<AuthState>()(
         token: resp.token,
         refreshToken: resp.refreshToken,
         userName: resp.userName,
+        email: resp.email,
         firstName: resp.firstName,
         lastName: resp.lastName,
         permissions: resp.permissions ?? [],
@@ -46,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
         token: resp.token,
         refreshToken: resp.refreshToken,
         userName: resp.userName,
+        email: resp.email,
         firstName: resp.firstName,
         lastName: resp.lastName,
         permissions: resp.permissions ?? [],
@@ -58,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
         token: null,
         refreshToken: null,
         userName: null,
+        email: null,
         firstName: null,
         lastName: null,
         permissions: [],
@@ -77,6 +81,7 @@ if (typeof window !== "undefined") {
         token: auth.token,
         refreshToken: auth.refreshToken,
         userName: auth.userName,
+        email: auth.email,
         firstName: auth.firstName,
         lastName: auth.lastName,
         permissions: auth.permissions ?? [],
@@ -88,6 +93,7 @@ if (typeof window !== "undefined") {
 // Useful selectors (optional):
 export const selectToken = (s: AuthState) => s.token;
 export const selectUserName = (s: AuthState) => s.userName;
+export const selectEmail = (s: AuthState) => s.email;
 export const selectFirstName = (s: AuthState) => s.firstName;
 export const selectLastName = (s: AuthState) => s.lastName;
 export const selectHasPermission = (perm: string) => (s: AuthState) => s.permissions.includes(perm);

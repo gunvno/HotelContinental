@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ClipboardList,
   DoorOpen,
+  FileText,
   Grid3X3,
   LayoutDashboard,
   LogOut,
@@ -14,6 +15,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  TicketPercent,
   Users,
   X,
 } from "lucide-react";
@@ -42,6 +44,11 @@ const catalogNav = [
 ];
 
 const systemNav = [{ label: "Cài đặt", href: "/settings", icon: Settings }];
+
+const promotionNav = [
+  { label: "Voucher", href: "/admin/vouchers", icon: TicketPercent },
+  { label: "Chính sách", href: "/admin/policies", icon: FileText },
+];
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -145,6 +152,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-y-auto px-4 py-5">
           <NavGroup title="Vận hành" items={primaryNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
           <NavGroup title="Danh mục phòng" items={catalogNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+          <NavGroup title="Khuyến mãi" items={promotionNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
           <NavGroup title="Hệ thống" items={systemNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
         </div>
 
@@ -262,6 +270,8 @@ function getPathTitle(pathname: string) {
   if (pathname.startsWith("/admin/amenities")) return "Cơ sở vật chất";
   if (pathname.startsWith("/admin/amenity-rooms")) return "Gán cơ sở vật chất theo loại phòng";
   if (pathname.startsWith("/admin/room-type-services")) return "Gán dịch vụ bổ sung theo loại phòng";
+  if (pathname.startsWith("/admin/vouchers")) return "Quản lý voucher";
+  if (pathname.startsWith("/admin/policies")) return "Quản lý chính sách";
   if (pathname.startsWith("/bookings")) return "Đặt phòng";
   if (pathname.startsWith("/users")) return "Khách hàng";
   if (pathname.startsWith("/settings")) return "Cài đặt";

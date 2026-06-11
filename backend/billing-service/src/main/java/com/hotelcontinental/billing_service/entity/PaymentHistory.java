@@ -42,7 +42,7 @@ public class PaymentHistory {
     @Column(name = "payment_time", nullable = false)
     LocalDate paymentTime;
 
-    @Column(name = "node", length = 500)
+    @Column(name = "note", length = 500)
     String note;
 
     @Column(name = "created_time")

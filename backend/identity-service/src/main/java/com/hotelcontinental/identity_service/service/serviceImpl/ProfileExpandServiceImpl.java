@@ -3,7 +3,11 @@ package com.hotelcontinental.identity_service.service.serviceImpl;
 import com.hotelcontinental.identity_service.dto.request.ProfileExpand.ProfileExpandCreationRequest;
 import com.hotelcontinental.identity_service.dto.response.ProfileExpand.ProfileExpandResponse;
 import com.hotelcontinental.identity_service.entity.ProfileExpands;
+import com.hotelcontinental.identity_service.entity.User;
+import com.hotelcontinental.identity_service.exception.AppException;
+import com.hotelcontinental.identity_service.exception.ErrorCode;
 import com.hotelcontinental.identity_service.repository.ProfileExpandRepository;
+import com.hotelcontinental.identity_service.repository.UserRepository;
 import com.hotelcontinental.identity_service.service.interfaces.ProfileExpandService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,15 +27,22 @@ import java.time.LocalDateTime;
 public class ProfileExpandServiceImpl implements ProfileExpandService {
     @Autowired
     private ProfileExpandRepository profileExpandRepository;
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     public ProfileExpandResponse createProfileExpand(ProfileExpandCreationRequest request) {
         String userId = request.getUserId();
-        // Fallback to authenticated user if userId not in request (optional, but good for dual-use)
         if (userId == null) {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             userId = auth.getName();
         }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        user.setPhoneNumber(request.getPhoneNumber());
+        user.setModifiedTime(LocalDateTime.now());
+        userRepository.save(user);
 
         boolean exists = profileExpandRepository.existsById(userId);
         if (!exists) {
@@ -51,31 +62,29 @@ public class ProfileExpandServiceImpl implements ProfileExpandService {
                     .deletedBy(null)
                     .build();
             profileExpandRepository.save(profileExpand);
-            return ProfileExpandResponse.builder()
-                    .gender(request.getGender())
-                    .dateOfBirth(request.getDateOfBirth())
-                    .address(request.getAddress())
-                    .phoneNumber(request.getPhoneNumber())
-                    .identityNumber(request.getIdentityNumber())
-                    .build();
         }
-        return null;
+
+        return buildUserProfileResponse(user, request);
     }
 
     @Override
     public ProfileExpandResponse getMyProfile() {
         var context = SecurityContextHolder.getContext();
-        String name = context.getAuthentication().getName();
+        String userId = context.getAuthentication().getName();
 
-        ProfileExpands profile = profileExpandRepository.findById(name).orElse(null);
-        if (profile == null) return null;
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        ProfileExpands profile = profileExpandRepository.findById(userId).orElse(null);
 
         return ProfileExpandResponse.builder()
-                .gender(profile.getGender())
-                .dateOfBirth(profile.getDateOfBirth())
-                .address(profile.getAddress())
-                .phoneNumber(profile.getPhoneNumber())
-                .identityNumber(profile.getIdentityNumber())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .gender(profile != null ? profile.getGender() : null)
+                .dateOfBirth(profile != null ? profile.getDateOfBirth() : null)
+                .address(profile != null ? profile.getAddress() : null)
+                .phoneNumber(user.getPhoneNumber())
+                .identityNumber(profile != null ? profile.getIdentityNumber() : null)
                 .build();
     }
     @PreAuthorize("hasRole('ADMIN')")
@@ -89,5 +98,18 @@ public class ProfileExpandServiceImpl implements ProfileExpandService {
                         .phoneNumber(profile.getPhoneNumber())
                         .identityNumber(profile.getIdentityNumber())
                         .build());
+    }
+
+    private ProfileExpandResponse buildUserProfileResponse(User user, ProfileExpandCreationRequest request) {
+        return ProfileExpandResponse.builder()
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .gender(request.getGender())
+                .dateOfBirth(request.getDateOfBirth())
+                .address(request.getAddress())
+                .phoneNumber(user.getPhoneNumber())
+                .identityNumber(request.getIdentityNumber())
+                .build();
     }
 }

@@ -2,12 +2,12 @@ import { http } from "@/lib/http";
 import { type ApiResponse } from "@/types/api-types";
 
 export type CreateProfilePayload = {
-  userId: string;
-  gender: string;
-  dateOfBirth: string; // "YYYY-MM-DD"
-  address: string;
+  userId?: string;
+  gender?: string;
+  dateOfBirth?: string; // "YYYY-MM-DD"
+  address?: string;
   phoneNumber: string;
-  identityNumber: string;
+  identityNumber?: string;
 };
 
 export async function createProfile(payload: CreateProfilePayload) {
@@ -18,15 +18,25 @@ export async function createProfile(payload: CreateProfilePayload) {
 }
 
 export type ProfileResponse = {
-  gender: string;
-  dateOfBirth: string;
-  address: string;
-  phoneNumber: string;
-  identityNumber: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  address?: string;
+  phoneNumber?: string;
+  identityNumber?: string;
 };
 
 export async function getMyProfile() {
   const res = await http.get("identity/profileExpand/my-profile").json<ApiResponse<ProfileResponse | null>>();
+  return res.result;
+}
+
+export async function updateMyPhoneNumber(phoneNumber: string) {
+  const res = await http
+    .post("identity/profileExpand/create", { json: { phoneNumber } })
+    .json<ApiResponse<ProfileResponse>>();
   return res.result;
 }
 

@@ -880,9 +880,8 @@ export default function RoomListPage() {
       try {
         if (!activeFilter) {
           const { data, total } = await getAllRooms(currentPage, ROOM_PAGE_SIZE);
-          const rooms = data.length > 0 ? convertApiRooms(data) : mockRooms;
-          setDisplayRooms(rooms);
-          setTotalRooms(data.length > 0 ? total : mockRooms.length);
+          setDisplayRooms(convertApiRooms(data));
+          setTotalRooms(total);
           setSelectedRoom(0);
           return;
         }
@@ -894,7 +893,7 @@ export default function RoomListPage() {
         ]);
         const busyRoomSet = new Set(busyRoomIds);
         const guestCountNumber = Number(activeFilter.guestCount || 1);
-        const sourceRooms = data.length > 0 ? convertApiRooms(data) : mockRooms;
+        const sourceRooms = convertApiRooms(data);
         const filteredRooms = sourceRooms.filter((room) => {
           if (busyRoomSet.has(room.id)) {
             return false;
@@ -912,8 +911,8 @@ export default function RoomListPage() {
         setTotalRooms(filteredRooms.length);
         setSelectedRoom(0);
       } catch {
-        setDisplayRooms(mockRooms);
-        setTotalRooms(mockRooms.length);
+        setDisplayRooms([]);
+        setTotalRooms(0);
         setSelectedRoom(0);
       } finally {
         setIsLoading(false);
@@ -1184,6 +1183,12 @@ export default function RoomListPage() {
                     />
                   ))}
             </div>
+
+            {!isLoading && displayRooms.length === 0 ? (
+              <div className="rounded-2xl border border-[#e8ddd0] bg-white p-8 text-center text-[#6f5d4b] dark:border-white/10 dark:bg-white/[0.05] dark:text-[#cdbda8]">
+                Không có phòng phù hợp trong hệ thống.
+              </div>
+            ) : null}
 
             {!isLoading ? (
               <Pagination

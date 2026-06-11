@@ -36,6 +36,25 @@ type AmenityRoomResponse = {
   amenity?: AmenityResponse | null;
 };
 
+type ServiceResponse = {
+  id: string;
+  name: string;
+  description?: string;
+  price?: number;
+  status?: string;
+  deleted?: boolean;
+};
+
+type RoomTypeServiceResponse = {
+  id: string;
+  roomTypeId?: string;
+  roomTypeName?: string;
+  serviceId?: string;
+  serviceName?: string;
+  amount?: number;
+  deleted?: boolean;
+};
+
 export type RoomCustomerListResult = {
   rooms: RoomEntity[];
   totalPages: number;
@@ -157,6 +176,26 @@ async function getAmenityRoomsByRoomType(roomTypeId: string): Promise<NonNullabl
   }));
 }
 
+async function getCatalogServices(page = 0, size = 500): Promise<ServiceResponse[]> {
+  const res = await http
+    .get("catalog/service", {
+      searchParams: { page, size },
+    })
+    .json<ApiResponse<SpringPage<ServiceResponse>>>();
+
+  return extractContent(res.result ?? res.content).filter((service) => !service.deleted);
+}
+
+async function getRoomTypeServicesByRoomType(roomTypeId: string): Promise<RoomTypeServiceResponse[]> {
+  const res = await http
+    .get(`catalog/roomTypeService/roomType/${roomTypeId}`, {
+      searchParams: { page: 0, size: 100 },
+    })
+    .json<ApiResponse<SpringPage<RoomTypeServiceResponse> | RoomTypeServiceResponse[]>>();
+
+  return extractContent(res.result ?? res.content).filter((item) => !item.deleted);
+}
+
 async function enrichRooms(rooms: RoomResponse[]): Promise<RoomResponse[]> {
   if (rooms.length === 0) {
     return rooms;
@@ -213,6 +252,7 @@ export interface RoomDetailData {
     iconType: "area" | "users";
   }>;
   amenities: RoomAmenityItem[];
+  addOnServices: RoomAmenityItem[];
   roomDescription: string;
 }
 
@@ -244,6 +284,7 @@ const mockRoomDetails: Record<string, RoomDetailData> = {
       { title: "Dịch Vụ Quản Gia", description: "Hỗ trợ 24/7 cho mọi yêu cầu cá nhân của quý khách.", icon: "butler" },
       { title: "Giải Trí Thông Minh", description: "Hệ thống Smart TV 65 inch tích hợp các nền tảng trực tuyến.", icon: "tv" }
     ],
+    addOnServices: [],
     roomDescription: "Tận hưởng sự xa hoa tột tinh tại Suite Hoàng Gia, nơi mọi chi tiết nhỏ nhất đều được chăm chút để tôn vinh sự sang trọng. Phòng khách riêng biệt được bài trí với nét đặt riêng từ những nghệ nhân hàng đầu, cùng hệ thống âm thanh vòm cao cấp tạo nên không gian giải trí riêng tư lý tưởng. Phòng tắm cẩm thạch Ý trang bị bồn tắm nằm với hệ thống sục massage và bộ sản phẩm chăm sóc cơ thể độc quyền từ thương hiệu di sản Pháp."
   },
   "room-2": {
@@ -273,6 +314,7 @@ const mockRoomDetails: Record<string, RoomDetailData> = {
       { title: "Dịch Vụ Hỗ Trợ", description: "Hỗ trợ khách hàng 24/7.", icon: "butler" },
       { title: "Smart TV", description: "Hệ thống Smart TV tích hợp các nền tảng.", icon: "tv" }
     ],
+    addOnServices: [],
     roomDescription: "Trải nghiệm thoải mái với Phòng Deluxe Nhìn ra Biển, nơi kết hợp hoàn hảo giữa tiện nghi hiện đại và vẻ đẹp tự nhiên."
   }
 };
@@ -288,17 +330,23 @@ export async function getRoomDetail(id: string): Promise<RoomDetailData | null> 
   try {
     const room = await getRoomById(id);
     
-    if (!room) return mockRoomDetails[id] || mockRoomDetails["room-1"] || null;
+    if (!room) return null;
     const gallery = buildRoomGallery(room);
+    const amenities = (room.roomTypes?.amenityRooms ?? [])
+      .filter((ar) => ar.amenity && !ar.deleted)
+      .map((ar) => toRoomAmenityItem(ar.amenity));
+    const addOnServices = room.roomTypeId
+      ? await getRoomServiceItems(room.roomTypeId)
+      : [];
 
     return {
       id: room.id,
       image: gallery[0],
-      label: room.roomTypes?.name || "Suite Cao Cấp",
+      label: room.roomTypes?.name || "Phòng khách sạn",
       title: room.name || "Tên phòng",
-      description: room.roomTypes?.description || "Không gian nghỉ dưỡng tuyệt vời kết hợp hoàn hảo giữa tiện nghi hiện đại và thiết kế tinh tế.",
-      location: room.address || "Vị trí theo tòa nhà",
-      pricePerNight: room.pricePerDay || 8500000,
+      description: room.roomTypes?.description || room.description || "Thông tin phòng đang được cập nhật.",
+      location: room.address || "Continental Grand Hotel",
+      pricePerNight: room.pricePerDay || 0,
       maxOccupancy: room.roomTypes?.maximumOccupancy || 2,
       galleryImages: {
         main: gallery[0],
@@ -310,15 +358,35 @@ export async function getRoomDetail(id: string): Promise<RoomDetailData | null> 
         { label: "Diện tích", value: room.roomSize || "50 m²", iconType: "area" },
         { label: "Khách tối đa", value: `${room.roomTypes?.maximumOccupancy || 2} Người lớn`, iconType: "users" }
       ],
-      amenities: (room.roomTypes?.amenityRooms && room.roomTypes.amenityRooms.length > 0)
-        ? room.roomTypes.amenityRooms.map((ar) => toRoomAmenityItem(ar.amenity))
-        : mockRoomDetails["room-1"].amenities, // fallback mock amenities
-      roomDescription: room.description || "Trải nghiệm kỳ nghỉ hoàn hảo với đầy đủ các dịch vụ chuẩn quốc tế."
+      amenities,
+      addOnServices,
+      roomDescription: room.description || room.roomTypes?.description || "Thông tin mô tả phòng đang được cập nhật."
     };
   } catch (error) {
     console.error("Error fetching real room details:", error);
-    return mockRoomDetails[id] || mockRoomDetails["room-1"] || null;
+    return null;
   }
+}
+
+async function getRoomServiceItems(roomTypeId: string): Promise<RoomAmenityItem[]> {
+  const [roomTypeServices, services] = await Promise.all([
+    getRoomTypeServicesByRoomType(roomTypeId),
+    getCatalogServices().catch(() => []),
+  ]);
+  const serviceMap = new Map(services.map((service) => [service.id, service]));
+
+  return roomTypeServices.map((item) => {
+    const service = item.serviceId ? serviceMap.get(item.serviceId) : undefined;
+    const title = service?.name || item.serviceName || "Dịch vụ bổ sung";
+    const priceText = service?.price ? ` Giá: ${Number(service.price).toLocaleString("vi-VN")} VNĐ.` : "";
+    const amountText = item.amount && item.amount > 1 ? ` Số lượng áp dụng: ${item.amount}.` : "";
+
+    return {
+      title,
+      description: service?.description?.trim() || `Dịch vụ bán thêm áp dụng cho loại phòng này.${amountText}${priceText}`,
+      icon: resolveAmenityIcon(title),
+    };
+  });
 }
 
 function extractContent<T>(value: SpringPage<T> | T[] | undefined | null): T[] {
@@ -387,6 +455,6 @@ export async function getAllRoomIds(): Promise<string[]> {
     const { data } = await getAllRooms(0, 100);
     return data.map(r => r.id);
   } catch {
-    return Object.keys(mockRoomDetails);
+    return [];
   }
 }

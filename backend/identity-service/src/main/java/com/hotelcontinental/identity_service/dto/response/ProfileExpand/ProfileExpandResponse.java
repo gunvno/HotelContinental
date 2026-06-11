@@ -10,6 +10,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ProfileExpandResponse {
+    String email;
+    String firstName;
+    String lastName;
     String gender;
     String dateOfBirth;
     String address;

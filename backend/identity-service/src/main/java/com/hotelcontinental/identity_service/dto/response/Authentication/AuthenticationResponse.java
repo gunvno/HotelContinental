@@ -16,6 +16,7 @@ public class AuthenticationResponse {
     String token;
     String refreshToken;
     String userName;
+    String email;
     String firstName;
     String lastName;
     String[] permissions;
