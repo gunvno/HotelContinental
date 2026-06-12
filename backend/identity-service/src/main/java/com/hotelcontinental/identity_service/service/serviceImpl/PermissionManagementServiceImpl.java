@@ -13,6 +13,7 @@ import com.hotelcontinental.identity_service.repository.AccountsRepository;
 import com.hotelcontinental.identity_service.repository.PermissionsRepository;
 import com.hotelcontinental.identity_service.service.interfaces.PermissionManagementService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -31,6 +32,7 @@ public class PermissionManagementServiceImpl implements PermissionManagementServ
 
     @Override
     @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('PERMISSION_MANAGE')")
     public List<PermissionResponse> getPermissions() {
         return permissionsRepository.findAvailable().stream()
                 .map(this::mapPermission)
@@ -39,6 +41,7 @@ public class PermissionManagementServiceImpl implements PermissionManagementServ
 
     @Override
     @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('PERMISSION_MANAGE')")
     public List<StaffPermissionResponse> getStaffAccounts() {
         return accountsRepository.findStaffAccounts().stream()
                 .map(this::mapStaff)
@@ -47,12 +50,14 @@ public class PermissionManagementServiceImpl implements PermissionManagementServ
 
     @Override
     @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('PERMISSION_MANAGE')")
     public StaffPermissionResponse getStaffPermissions(String accountId) {
         return mapStaff(getStaffAccount(accountId));
     }
 
     @Override
     @Transactional
+    @PreAuthorize("hasAuthority('PERMISSION_MANAGE')")
     public StaffPermissionResponse updateStaffPermissions(String accountId, AccountPermissionUpdateRequest request) {
         Accounts account = getStaffAccount(accountId);
         Set<Permissions> permissions = new LinkedHashSet<>();

@@ -10,14 +10,10 @@ import org.springframework.util.StringUtils;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class CustomAuthoritiesConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
     private static final String SCOPE = "scope";
-    private static final String REALM_ACCESS = "realm_access";
-    private static final String ROLE_PREFIX = "ROLE_";
 
     @Nullable
     @Override
@@ -30,19 +26,6 @@ public class CustomAuthoritiesConverter implements Converter<Jwt, Collection<Gra
                     .filter(StringUtils::hasText)
                     .map(SimpleGrantedAuthority::new)
                     .forEach(authorities::add);
-        }
-
-        Map<String, Object> realmAccessMap = source.getClaimAsMap(REALM_ACCESS);
-        if (realmAccessMap != null) {
-            Object roles = realmAccessMap.get("roles");
-            if (roles instanceof List<?> roleList) {
-                roleList.stream()
-                        .filter(String.class::isInstance)
-                        .map(String.class::cast)
-                        .map(role -> role.startsWith(ROLE_PREFIX) ? role : ROLE_PREFIX + role)
-                        .map(SimpleGrantedAuthority::new)
-                        .forEach(authorities::add);
-            }
         }
 
         return authorities;

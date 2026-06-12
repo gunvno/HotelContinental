@@ -38,7 +38,11 @@ export default function RoomsPage() {
 
   const availableRooms = rooms.filter((room) => room.status === "AVAILABLE").length;
   const canCreateRoom = permission.has("ROOM_CREATE");
-  const canOpenRoomDetail = permission.hasAny("ROOM_UPDATE", "ROOM_IMAGE_UPDATE", "ROOM_IMAGE_DELETE");
+  const canOpenRoomDetail = permission.hasAny(
+    "ROOM_UPDATE",
+    "ROOM_IMAGE_UPDATE",
+    "ROOM_IMAGE_DELETE",
+  );
 
   useEffect(() => {
     void loadRooms(roomPage);
@@ -60,9 +64,15 @@ export default function RoomsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const [roomResult, buildingResult] = await Promise.all([getAllRooms(pageIndex, ROOM_PAGE_SIZE), getBuildings()]);
+      const [roomResult, buildingResult] = await Promise.all([
+        getAllRooms(pageIndex, ROOM_PAGE_SIZE),
+        getBuildings(),
+      ]);
       const floorEntries = await Promise.all(
-        buildingResult.map(async (building) => [building.id, await getFloorsByBuilding(building.id)] as const),
+        buildingResult.map(
+          async (building) =>
+            [building.id, await getFloorsByBuilding(building.id)] as const,
+        ),
       );
 
       setRooms(roomResult.data);
@@ -71,7 +81,9 @@ export default function RoomsPage() {
       setFloors(floorEntries.flatMap(([, buildingFloors]) => buildingFloors));
     } catch (loadError) {
       console.error(loadError);
-      setError("Không tải được dữ liệu phòng. Kiểm tra gateway, room-service và token ADMIN.");
+      setError(
+        "Không tải được dữ liệu phòng. Kiểm tra gateway, room-service và token ADMIN.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -83,12 +95,15 @@ export default function RoomsPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(232,201,144,0.33),transparent_28%),radial-gradient(circle_at_88%_6%,rgba(255,255,255,0.12),transparent_24%)]" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.32em] text-[#e8c990]">Room inventory</p>
-            <h2 className="mt-3 font-serif text-5xl font-bold leading-none tracking-tight lg:text-7xl">
+            <p className="text-xs font-black tracking-[0.32em] text-[#e8c990] uppercase">
+              Room inventory
+            </p>
+            <h2 className="mt-3 font-serif text-5xl leading-none font-bold tracking-tight lg:text-7xl">
               Kho phòng
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-[#eadbc4]">
-              Trang này chỉ quản lý phòng vật lý. Muốn thêm phòng mới thì chuyển sang trang tạo riêng để không làm rối danh sách.
+              Trang này chỉ quản lý phòng vật lý. Muốn thêm phòng mới thì chuyển sang
+              trang tạo riêng để không làm rối danh sách.
             </p>
           </div>
           <Button
@@ -104,13 +119,29 @@ export default function RoomsPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-4">
-        <MetricCard icon={<Hotel className="h-5 w-5" />} label="Tòa nhà" value={String(buildings.length)} />
-        <MetricCard icon={<Layers3 className="h-5 w-5" />} label="Tầng" value={String(floors.length)} />
-        <MetricCard icon={<CheckCircle2 className="h-5 w-5" />} label="Sẵn sàng bán" value={String(availableRooms)} />
-        <MetricCard icon={<BedDouble className="h-5 w-5" />} label="Tổng phòng" value={String(totalRooms)} />
+        <MetricCard
+          icon={<Hotel className="h-5 w-5" />}
+          label="Tòa nhà"
+          value={String(buildings.length)}
+        />
+        <MetricCard
+          icon={<Layers3 className="h-5 w-5" />}
+          label="Tầng"
+          value={String(floors.length)}
+        />
+        <MetricCard
+          icon={<CheckCircle2 className="h-5 w-5" />}
+          label="Sẵn sàng bán"
+          value={String(availableRooms)}
+        />
+        <MetricCard
+          icon={<BedDouble className="h-5 w-5" />}
+          label="Tổng phòng"
+          value={String(totalRooms)}
+        />
       </section>
 
-      {error ? <Alert tone="error">{error}</Alert> : null}
+      {error ? <Alert>{error}</Alert> : null}
 
       <RoomTableView
         rooms={rooms}
@@ -168,10 +199,15 @@ function RoomTableView({
     <section className="rounded-[1.75rem] border border-[#decdb9] bg-white/78 shadow-sm">
       <div className="flex flex-col gap-3 border-b border-[#eadfcd] px-6 py-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-[#9b5c24]">Danh sách phòng</p>
-          <h3 className="mt-2 font-serif text-3xl font-bold text-[#211a14]">Phòng vật lý</h3>
+          <p className="text-xs font-black tracking-[0.28em] text-[#9b5c24] uppercase">
+            Danh sách phòng
+          </p>
+          <h3 className="mt-2 font-serif text-3xl font-bold text-[#211a14]">
+            Phòng vật lý
+          </h3>
           <p className="mt-1 text-sm text-[#75695d]">
-            Hiển thị {rooms.length} / {total} phòng. Bấm vào một dòng để xem chi tiết hoặc sửa ảnh.
+            Hiển thị {rooms.length} / {total} phòng. Bấm vào một dòng để xem chi tiết hoặc
+            sửa ảnh.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -190,7 +226,7 @@ function RoomTableView({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
-            <tr className="border-b border-[#eadfcd] text-xs uppercase tracking-[0.18em] text-[#9b8c7d]">
+            <tr className="border-b border-[#eadfcd] text-xs tracking-[0.18em] text-[#9b8c7d] uppercase">
               <th className="px-6 py-4 font-black">Phòng</th>
               <th className="px-4 py-4 font-black">Tòa nhà</th>
               <th className="px-4 py-4 font-black">Tầng</th>
@@ -204,7 +240,10 @@ function RoomTableView({
           <tbody>
             {rooms.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-sm font-bold text-[#75695d]">
+                <td
+                  colSpan={8}
+                  className="px-6 py-12 text-center text-sm font-bold text-[#75695d]"
+                >
                   Chưa có phòng. Bấm “Thêm phòng” để tạo phòng vật lý đầu tiên.
                 </td>
               </tr>
@@ -225,25 +264,41 @@ function RoomTableView({
                         <div className="grid size-11 place-items-center overflow-hidden rounded-2xl bg-[#eadfcd] text-[#9b5c24]">
                           {room.image ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={room.image} alt={room.name} className="size-full object-cover" />
+                            <img
+                              src={room.image}
+                              alt={room.name}
+                              className="size-full object-cover"
+                            />
                           ) : (
                             <BedDouble className="h-5 w-5" />
                           )}
                         </div>
                         <div>
                           <p className="font-black text-[#211a14]">{room.name}</p>
-                          <p className="mt-1 line-clamp-1 max-w-[220px] text-xs text-[#75695d]">{room.description || "Chưa có mô tả"}</p>
+                          <p className="mt-1 line-clamp-1 max-w-[220px] text-xs text-[#75695d]">
+                            {room.description || "Chưa có mô tả"}
+                          </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 font-semibold text-[#4d4035]">{location.buildingName}</td>
+                    <td className="px-4 py-4 font-semibold text-[#4d4035]">
+                      {location.buildingName}
+                    </td>
                     <td className="px-4 py-4 text-[#4d4035]">{location.floorName}</td>
-                    <td className="px-4 py-4 font-semibold text-[#211a14]">{room.roomTypes?.name || "Chưa gán"}</td>
+                    <td className="px-4 py-4 font-semibold text-[#211a14]">
+                      {room.roomTypes?.name || "Chưa gán"}
+                    </td>
                     <td className="px-4 py-4 text-[#4d4035]">{room.roomSize || "-"}</td>
-                    <td className="px-4 py-4 font-black text-[#9b5c24]">{formatCurrency(room.pricePerDay)}</td>
-                    <td className="px-4 py-4 text-[#4d4035]">{formatCurrency(room.pricePerHour)}</td>
+                    <td className="px-4 py-4 font-black text-[#9b5c24]">
+                      {formatCurrency(room.pricePerDay)}
+                    </td>
+                    <td className="px-4 py-4 text-[#4d4035]">
+                      {formatCurrency(room.pricePerHour)}
+                    </td>
                     <td className="px-4 py-4">
-                      <span className={`rounded-full px-3 py-1 text-xs font-black ${getStatusClassName(room.status)}`}>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-black ${getStatusClassName(room.status)}`}
+                      >
                         {statusLabel[room.status] || room.status}
                       </span>
                     </td>
@@ -255,12 +310,22 @@ function RoomTableView({
         </table>
       </div>
 
-      <Pagination page={page} pageSize={ROOM_PAGE_SIZE} total={total} itemLabel="phòng" onPageChange={onPageChange} />
+      <Pagination
+        page={page}
+        pageSize={ROOM_PAGE_SIZE}
+        total={total}
+        itemLabel="phòng"
+        onPageChange={onPageChange}
+      />
     </section>
   );
 }
 
-function resolveRoomLocationParts(room: RoomResponse, buildings: BuildingResponse[], floors: FloorResponse[]) {
+function resolveRoomLocationParts(
+  room: RoomResponse,
+  buildings: BuildingResponse[],
+  floors: FloorResponse[],
+) {
   const floor = floors.find((item) => item.id === room.floorId);
   const building = buildings.find((item) => item.id === floor?.buildingId);
 
@@ -285,7 +350,15 @@ function getStatusClassName(status: string) {
   }
 }
 
-function MetricCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function MetricCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-[1.5rem] border border-[#decdb9] bg-white/72 p-5 shadow-sm">
       <div className="flex items-center justify-between gap-4">
@@ -297,7 +370,7 @@ function MetricCard({ icon, label, value }: { icon: React.ReactNode; label: stri
   );
 }
 
-function Alert({ tone, children }: { tone: "error"; children: React.ReactNode }) {
+function Alert({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
       {children}

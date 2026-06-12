@@ -2,12 +2,12 @@ import { http } from "@/lib/http";
 import { type AuthContent } from "@/store/auth-store";
 import { type ApiResponse } from "@/types/api-types";
 
-export type LoginPayload = { username: string; password: string};
+export type LoginPayload = { username: string; password: string };
 export type OtpRegisterPayload = { email: string };
-export type OtpVerifyPayload = { 
-  email: string; 
-  inputOtp: string; 
-  expectedType: "REGISTER" | "FORGOT_PASSWORD"; 
+export type OtpVerifyPayload = {
+  email: string;
+  inputOtp: string;
+  expectedType: "REGISTER" | "FORGOT_PASSWORD";
 };
 
 export type RegisterPayload = {
@@ -21,7 +21,9 @@ export type RegisterPayload = {
 // --- API Functions ---
 
 export async function login(payload: LoginPayload) {
-  const res = await http.post("identity/auth/login", { json: payload }).json<ApiResponse<AuthContent>>();
+  const res = await http
+    .post("identity/auth/login", { json: payload })
+    .json<ApiResponse<AuthContent>>();
   return res.result ?? res.content;
 }
 
@@ -51,7 +53,6 @@ export async function otpVerify(payload: OtpVerifyPayload) {
   const res = await http
     .post("identity/auth/otp-verify", { json: payload })
     .json<ApiResponse<boolean>>();
-  // console.log("OTP Verify Result:", res.result);
   return res.result; // Trả về true/false
 }
 
@@ -61,6 +62,5 @@ export async function registerUser(payload: RegisterPayload) {
   const res = await http
     .post("identity/auth/register", { json: payload })
     .json<ApiResponse<string>>();
-  // console.log("Registered User ID:", res.result);
   return res.result;
 }

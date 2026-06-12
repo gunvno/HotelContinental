@@ -12,6 +12,7 @@ import com.hotelcontinental.content_service.repository.PolicyRepository;
 import com.hotelcontinental.content_service.repository.PolicyTypesRepository;
 import com.hotelcontinental.content_service.service.interfaces.PolicyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('POLICY_TYPE_CREATE')")
     public PolicyTypeResponse createPolicyType(PolicyTypeRequest request) {
         validatePolicyType(request);
         LocalDateTime now = LocalDateTime.now();
@@ -53,6 +55,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('POLICY_TYPE_UPDATE')")
     public PolicyTypeResponse updatePolicyType(String id, PolicyTypeRequest request) {
         validatePolicyType(request);
         PolicyTypes type = getType(id);
@@ -74,6 +77,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('POLICY_TYPE_DELETE')")
     public void deletePolicyType(String id) {
         PolicyTypes type = getType(id);
         type.setDeleted(true);
@@ -97,6 +101,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('POLICY_CREATE')")
     public PolicyResponse createPolicy(PolicyRequest request) {
         validatePolicy(request);
         LocalDateTime now = LocalDateTime.now();
@@ -114,6 +119,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('POLICY_UPDATE')")
     public PolicyResponse updatePolicy(String id, PolicyRequest request) {
         validatePolicy(request);
         Policy policy = getPolicy(id);
@@ -127,6 +133,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('POLICY_DELETE')")
     public void deletePolicy(String id) {
         Policy policy = getPolicy(id);
         policy.setDeleted(true);

@@ -6,7 +6,6 @@ import com.hotelcontinental.identity_service.dto.response.Permission.PermissionR
 import com.hotelcontinental.identity_service.dto.response.Permission.StaffPermissionResponse;
 import com.hotelcontinental.identity_service.service.interfaces.PermissionManagementService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -19,7 +18,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/permissions")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('PERMISSION_MANAGE')")
 public class PermissionManagementController {
     private final PermissionManagementService permissionManagementService;
 

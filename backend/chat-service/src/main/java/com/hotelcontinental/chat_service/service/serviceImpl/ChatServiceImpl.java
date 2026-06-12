@@ -13,6 +13,7 @@ import com.hotelcontinental.chat_service.repository.ChatConversationRepository;
 import com.hotelcontinental.chat_service.repository.ChatMessageRepository;
 import com.hotelcontinental.chat_service.service.interfaces.ChatService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,6 +34,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('CHAT_CUSTOMER_VIEW')")
     public ChatConversationResponse getOrCreateMyConversation() {
         String customerId = getCurrentUserId();
 
@@ -45,6 +47,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('CHAT_STAFF_VIEW')")
     public List<ChatConversationResponse> getConversations() {
         return conversationRepository.findAllActiveOrderByRecent().stream()
                 .map(this::mapConversation)
@@ -52,6 +55,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    @PreAuthorize("hasAnyAuthority('CHAT_CUSTOMER_VIEW', 'CHAT_STAFF_VIEW')")
     public ChatConversationResponse getConversation(String id) {
         ChatConversation conversation = getRequiredConversation(id);
         assertCanAccess(conversation);
@@ -59,6 +63,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    @PreAuthorize("hasAnyAuthority('CHAT_CUSTOMER_VIEW', 'CHAT_STAFF_VIEW')")
     public List<ChatMessageResponse> getMessages(String conversationId, LocalDateTime after) {
         ChatConversation conversation = getRequiredConversation(conversationId);
         assertCanAccess(conversation);
@@ -72,6 +77,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('CHAT_CUSTOMER_SEND')")
     public ChatMessageResponse sendCustomerMessage(SendMessageRequest request) {
         validateMessage(request);
         ChatConversation conversation = conversationRepository
@@ -84,6 +90,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('CHAT_STAFF_REPLY')")
     public ChatMessageResponse reply(String conversationId, SendMessageRequest request) {
         validateMessage(request);
         ChatConversation conversation = getRequiredConversation(conversationId);
@@ -104,6 +111,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('CHAT_CLOSE')")
     public ChatConversationResponse closeConversation(String conversationId) {
         ChatConversation conversation = getRequiredConversation(conversationId);
         conversation.setStatus(ConversationStatus.CLOSED);
@@ -114,6 +122,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAnyAuthority('CHAT_CUSTOMER_VIEW', 'CHAT_STAFF_VIEW')")
     public void markAsRead(String conversationId) {
         ChatConversation conversation = getRequiredConversation(conversationId);
         assertCanAccess(conversation);

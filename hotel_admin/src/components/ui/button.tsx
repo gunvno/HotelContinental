@@ -45,7 +45,10 @@ const sizeClasses: Record<ButtonSize, string> = {
 export type ButtonProps = ConditionalProps;
 
 export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
-  function Button({ children, className, href, variant = "primary", size = "md", ...rest }, ref) {
+  function Button(
+    { children, className, href, variant = "primary", size = "md", ...rest },
+    ref,
+  ) {
     const composedClasses = cn(
       "inline-flex items-center justify-center rounded-full border border-transparent font-semibold transition-transform duration-200 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-55",
       variantClasses[variant],
@@ -56,7 +59,12 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPr
     if (href) {
       const anchorProps = rest as AnchorHTMLAttributes<HTMLAnchorElement>;
       return (
-        <Link href={href} className={composedClasses} ref={ref as Ref<HTMLAnchorElement>} {...anchorProps}>
+        <Link
+          href={href}
+          className={composedClasses}
+          ref={ref as Ref<HTMLAnchorElement>}
+          {...anchorProps}
+        >
           {children}
         </Link>
       );
@@ -65,7 +73,11 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPr
     const buttonProps = rest as ButtonHTMLAttributes<HTMLButtonElement>;
 
     return (
-      <button className={composedClasses} ref={ref as Ref<HTMLButtonElement>} {...buttonProps}>
+      <button
+        className={composedClasses}
+        ref={ref as Ref<HTMLButtonElement>}
+        {...buttonProps}
+      >
         {children}
       </button>
     );

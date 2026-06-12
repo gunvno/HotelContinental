@@ -64,7 +64,10 @@ export function RoomCard({
   className,
 }: RoomCardProps) {
   const isImageRight = imagePosition === "right";
-  const displayImage = room.image || room.images?.[0]?.url || "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80";
+  const displayImage =
+    room.image ||
+    room.images?.[0]?.url ||
+    "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80";
   const occupancy = room.roomTypes?.maximumOccupancy;
   const roomTypeName = room.roomTypes?.name;
   const amenityLabels = (room.roomTypes?.amenityRooms ?? [])
@@ -88,7 +91,7 @@ export function RoomCard({
       >
         <div
           className={cn(
-            "relative min-h-[320px] overflow-hidden rounded-[22px] bg-muted",
+            "bg-muted relative min-h-[320px] overflow-hidden rounded-[22px]",
             isImageRight && "lg:col-start-2",
           )}
         >
@@ -112,11 +115,13 @@ export function RoomCard({
               <p className="text-ring text-sm font-semibold tracking-[0.22em] uppercase">
                 ★ {badge}
               </p>
-              <h3 className="text-foreground max-w-[11ch] text-[clamp(2rem,4vw,3.4rem)] leading-[0.95] font-serif font-medium tracking-[-0.04em]">
+              <h3 className="text-foreground max-w-[11ch] font-serif text-[clamp(2rem,4vw,3.4rem)] leading-[0.95] font-medium tracking-[-0.04em]">
                 {room.name}
               </h3>
               <p className="text-muted-foreground max-w-md text-base leading-7">
-                {room.description || room.roomTypes?.description || "Trải nghiệm nghỉ dưỡng cao cấp với đầy đủ tiện nghi chuẩn 5 sao."}
+                {room.description ||
+                  room.roomTypes?.description ||
+                  "Trải nghiệm nghỉ dưỡng cao cấp với đầy đủ tiện nghi chuẩn 5 sao."}
               </p>
             </div>
 
@@ -150,7 +155,7 @@ export function RoomCard({
             </div>
           </div>
 
-          <div className="mt-6 border-t border-border/70 pt-5">
+          <div className="border-border/70 mt-6 border-t pt-5">
             <p className="text-muted-foreground text-xs font-semibold tracking-[0.22em] uppercase">
               Chỉ từ
             </p>
@@ -162,12 +167,14 @@ export function RoomCard({
                   </span>
                 </div>
                 <p className="text-muted-foreground text-sm">/ đêm</p>
-                <p className="text-muted-foreground mt-2 text-sm">{room.address || "Vị trí theo tòa nhà"}</p>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  {room.address || "Vị trí theo tòa nhà"}
+                </p>
               </div>
 
               <Link
                 href={roomDetailLink}
-                className="bg-muted text-foreground inline-flex min-h-14 min-w-32 items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm font-medium transition-transform duration-200 hover:-translate-y-0.5 hover:bg-muted/80"
+                className="bg-muted text-foreground border-border/70 hover:bg-muted/80 inline-flex min-h-14 min-w-32 items-center justify-center rounded-full border px-6 py-3 text-sm font-medium transition-transform duration-200 hover:-translate-y-0.5"
               >
                 {buttonLabel}
               </Link>

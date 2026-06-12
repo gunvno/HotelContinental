@@ -28,11 +28,15 @@ export async function createPayment(payload: CreatePaymentPayload) {
 }
 
 export async function getLatestPaymentByBooking(roomBookingId: string) {
-  const res = await http.get(`billing/payments/booking/${roomBookingId}`).json<ApiResponse<PaymentHistoryResponse>>();
+  const res = await http
+    .get(`billing/payments/booking/${roomBookingId}`)
+    .json<ApiResponse<PaymentHistoryResponse>>();
   return (res.result ?? res.content) as PaymentHistoryResponse;
 }
 
 export async function getMyPayments() {
-  const res = await http.get("billing/payments/my").json<ApiResponse<PaymentHistoryResponse[]>>();
+  const res = await http
+    .get("billing/payments/my")
+    .json<ApiResponse<PaymentHistoryResponse[]>>();
   return (res.result ?? res.content ?? []) as PaymentHistoryResponse[];
 }

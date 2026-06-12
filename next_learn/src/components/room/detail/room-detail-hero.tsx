@@ -26,10 +26,12 @@ export function RoomDetailHero({
         <h1 className="text-foreground max-w-xl font-serif text-[clamp(2.8rem,7vw,5.4rem)] leading-[0.92] font-semibold tracking-[-0.04em]">
           {title}
         </h1>
-        <p className="text-muted-foreground max-w-xl text-[17px] leading-8">{description}</p>
+        <p className="text-muted-foreground max-w-xl text-[17px] leading-8">
+          {description}
+        </p>
       </div>
 
-      <div className="space-y-4 border-l border-border/60 pl-6 lg:pb-2">
+      <div className="border-border/60 space-y-4 border-l pl-6 lg:pb-2">
         <p className="text-ring inline-flex items-center gap-2 text-sm font-medium">
           <MapPin className="h-4 w-4" />
           {location}

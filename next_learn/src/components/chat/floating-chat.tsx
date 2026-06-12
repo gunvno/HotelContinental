@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import {
+  type ChatConversationResponse,
+  type ChatMessageResponse,
   getChatMessages,
   getOrCreateMyConversation,
   markChatAsRead,
   sendMyChatMessage,
-  type ChatConversationResponse,
-  type ChatMessageResponse,
 } from "@/services/chat-service";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -120,17 +120,17 @@ export function FloatingChat() {
   }
 
   return (
-    <div className="fixed bottom-6 right-5 z-[70] sm:bottom-8 sm:right-8">
+    <div className="fixed right-5 bottom-6 z-[70] sm:right-8 sm:bottom-8">
       {open ? (
-        <section className="flex h-[min(560px,calc(100vh-130px))] w-[calc(100vw-40px)] max-w-[380px] flex-col overflow-hidden rounded-3xl border border-[#ead8c4] bg-background shadow-[0_28px_90px_-30px_rgba(35,20,8,0.55)]">
-          <header className="flex items-center justify-between border-b border-border/70 bg-[#fbf5ed] px-4 py-3 dark:bg-white/[0.06]">
+        <section className="bg-background flex h-[min(560px,calc(100vh-130px))] w-[calc(100vw-40px)] max-w-[380px] flex-col overflow-hidden rounded-3xl border border-[#ead8c4] shadow-[0_28px_90px_-30px_rgba(35,20,8,0.55)]">
+          <header className="border-border/70 flex items-center justify-between border-b bg-[#fbf5ed] px-4 py-3 dark:bg-white/[0.06]">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#8b5319] to-[#d19345] text-white shadow-[0_14px_26px_-18px_rgba(0,0,0,0.8)]">
                 <MessageCircle className="h-5 w-5" />
               </span>
               <div>
-                <h2 className="text-sm font-bold text-foreground">Hỗ trợ Continental</h2>
-                <p className="text-xs text-muted-foreground">
+                <h2 className="text-foreground text-sm font-bold">Hỗ trợ Continental</h2>
+                <p className="text-muted-foreground text-xs">
                   {loading ? "Đang kết nối..." : "Lễ tân sẽ phản hồi tại đây"}
                 </p>
               </div>
@@ -140,37 +140,46 @@ export function FloatingChat() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Đóng chat"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:bg-background hover:text-foreground"
+              className="border-border/70 text-muted-foreground hover:bg-background hover:text-foreground flex h-9 w-9 items-center justify-center rounded-full border transition"
             >
               <X className="h-4 w-4" />
             </button>
           </header>
 
-          <div ref={bodyRef} className="flex-1 space-y-3 overflow-y-auto bg-[#fffaf4] px-4 py-4 dark:bg-[#0b0f17]">
+          <div
+            ref={bodyRef}
+            className="flex-1 space-y-3 overflow-y-auto bg-[#fffaf4] px-4 py-4 dark:bg-[#0b0f17]"
+          >
             {loading ? (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Đang tải hội thoại...
               </div>
             ) : messages.length === 0 ? (
-              <div className="rounded-2xl border border-border/70 bg-background p-4 text-sm leading-6 text-muted-foreground">
-                Xin chào {userName || "bạn"}, Continental có thể hỗ trợ gì cho kỳ nghỉ của bạn?
+              <div className="border-border/70 bg-background text-muted-foreground rounded-2xl border p-4 text-sm leading-6">
+                Xin chào {userName || "bạn"}, Continental có thể hỗ trợ gì cho kỳ nghỉ của
+                bạn?
               </div>
             ) : (
               messages.map((message) => {
                 const mine = message.senderType === "CUSTOMER";
 
                 return (
-                  <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                  <div
+                    key={message.id}
+                    className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                  >
                     <div
                       className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-sm leading-6 shadow-sm ${
                         mine
                           ? "rounded-br-md bg-[#c47a34] text-white"
-                          : "rounded-bl-md border border-border/70 bg-background text-foreground"
+                          : "border-border/70 bg-background text-foreground rounded-bl-md border"
                       }`}
                     >
                       <p>{message.content}</p>
-                      <p className={`mt-1 text-[10px] ${mine ? "text-white/70" : "text-muted-foreground"}`}>
+                      <p
+                        className={`mt-1 text-[10px] ${mine ? "text-white/70" : "text-muted-foreground"}`}
+                      >
                         {formatTime(message.createdTime)}
                       </p>
                     </div>
@@ -180,16 +189,23 @@ export function FloatingChat() {
             )}
           </div>
 
-          {error ? <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700">{error}</p> : null}
+          {error ? (
+            <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700">
+              {error}
+            </p>
+          ) : null}
 
-          <form onSubmit={handleSend} className="flex items-end gap-2 border-t border-border/70 bg-background p-3">
+          <form
+            onSubmit={handleSend}
+            className="border-border/70 bg-background flex items-end gap-2 border-t p-3"
+          >
             <textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               disabled={sending || loading}
               rows={1}
               placeholder="Nhập tin nhắn..."
-              className="min-h-11 flex-1 resize-none rounded-2xl border border-border bg-muted/30 px-3 py-3 text-sm text-foreground outline-none transition focus:border-[#c47a34] disabled:cursor-not-allowed disabled:opacity-70"
+              className="border-border bg-muted/30 text-foreground min-h-11 flex-1 resize-none rounded-2xl border px-3 py-3 text-sm transition outline-none focus:border-[#c47a34] disabled:cursor-not-allowed disabled:opacity-70"
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
@@ -203,7 +219,11 @@ export function FloatingChat() {
               aria-label="Gửi tin nhắn"
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#c47a34] text-white shadow-[0_16px_32px_-20px_rgba(196,122,52,0.9)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {sending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </button>
           </form>
         </section>

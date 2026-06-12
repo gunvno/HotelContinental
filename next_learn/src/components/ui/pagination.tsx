@@ -28,7 +28,7 @@ export function Pagination({
 
   return (
     <div
-      className={`flex flex-col gap-4 rounded-2xl border border-[#e8ddd0] bg-white p-4 shadow-[0_4px_20px_-8px_rgba(120,90,50,0.08)] dark:border-white/10 dark:bg-white/[0.05] md:flex-row md:items-center md:justify-between ${className}`}
+      className={`flex flex-col gap-4 rounded-2xl border border-[#e8ddd0] bg-white p-4 shadow-[0_4px_20px_-8px_rgba(120,90,50,0.08)] md:flex-row md:items-center md:justify-between dark:border-white/10 dark:bg-white/[0.05] ${className}`}
     >
       <p className="text-sm font-medium text-[#6b5e50] dark:text-[#c9b8a4]">
         Hiển thị {from}-{to} trong {total} {itemLabel}
@@ -50,7 +50,9 @@ export function Pagination({
 
           return (
             <span key={pageIndex} className="flex items-center gap-2">
-              {needsGap ? <span className="px-1 text-sm font-bold text-[#8b7a6a]">...</span> : null}
+              {needsGap ? (
+                <span className="px-1 text-sm font-bold text-[#8b7a6a]">...</span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => onPageChange(pageIndex)}

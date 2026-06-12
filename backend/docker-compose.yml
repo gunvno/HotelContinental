@@ -1,0 +1,289 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: hotel-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hotel-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hotel-redis
+    restart: unless-stopped
+    networks:
+      - hotel-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: hotel-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - hotel-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: hotel-kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - hotel-network
+
+  identity-service:
+    build: ./identity-service
+    container_name: hotel-identity-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/identity_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APP_SERVICES_PROFILE: http://room-service:8081/profile
+    networks:
+      - hotel-network
+
+  room-service:
+    build: ./room-service
+    container_name: hotel-room-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/room_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  notification-service:
+    build: ./notification-service
+    container_name: hotel-notification-service
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    networks:
+      - hotel-network
+
+  catalog-service:
+    build: ./catalog-service
+    container_name: hotel-catalog-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/catalog_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  booking-service:
+    build: ./booking-service
+    container_name: hotel-booking-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/booking_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  billing-service:
+    build: ./billing-service
+    container_name: hotel-billing-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      booking-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/billing_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      APP_SERVICES_IDENTITY: http://identity-service:8080/identity
+      APP_SERVICES_BOOKING: http://booking-service:8084/booking
+      APP_SERVICES_CATALOG: http://catalog-service:8083/catalog
+    networks:
+      - hotel-network
+
+  promotion-service:
+    build: ./promotion-service
+    container_name: hotel-promotion-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/promotion_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  feedback-service:
+    build: ./feedback-service
+    container_name: hotel-feedback-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/feedback_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  content-service:
+    build: ./content-service
+    container_name: hotel-content-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/content_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  report-service:
+    build: ./report-service
+    container_name: hotel-report-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/report_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  chat-service:
+    build: ./chat-service
+    container_name: hotel-chat-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      identity-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/chat_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      APP_IDENTITY_SERVICE_URL: http://identity-service:8080/identity
+    networks:
+      - hotel-network
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: hotel-api-gateway
+    restart: unless-stopped
+    depends_on:
+      - identity-service
+      - room-service
+      - notification-service
+      - catalog-service
+      - booking-service
+      - billing-service
+      - promotion-service
+      - feedback-service
+      - content-service
+      - report-service
+      - chat-service
+    environment:
+      IDENTITY_SERVICE_URI: http://identity-service:8080
+      ROOM_SERVICE_URI: http://room-service:8081
+      NOTIFICATION_SERVICE_URI: http://notification-service:8082
+      CATALOG_SERVICE_URI: http://catalog-service:8083
+      BOOKING_SERVICE_URI: http://booking-service:8084
+      BILLING_SERVICE_URI: http://billing-service:8085
+      PROMOTION_SERVICE_URI: http://promotion-service:8086
+      FEEDBACK_SERVICE_URI: http://feedback-service:8087
+      CONTENT_SERVICE_URI: http://content-service:8088
+      REPORT_SERVICE_URI: http://report-service:8089
+      CHAT_SERVICE_URI: http://chat-service:8090
+    ports:
+      - "${GATEWAY_PORT:-8888}:8888"
+    networks:
+      - hotel-network
+
+  web:
+    build:
+      context: ../next_learn
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:8888/api/v1}
+    container_name: hotel-web
+    restart: unless-stopped
+    depends_on:
+      - api-gateway
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    networks:
+      - hotel-network
+
+  admin-web:
+    build:
+      context: ../hotel_admin
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:8888/api/v1}
+    container_name: hotel-admin-web
+    restart: unless-stopped
+    depends_on:
+      - api-gateway
+    ports:
+      - "${ADMIN_WEB_PORT:-3001}:3001"
+    networks:
+      - hotel-network
+
+volumes:
+  mysql_data:
+
+networks:
+  hotel-network:
+    driver: bridge

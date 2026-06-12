@@ -1,10 +1,20 @@
 "use client";
 
-import { BadgeDollarSign, BedDouble, CalendarDays, CheckCircle2, Filter, LogOut, RefreshCcw, Search, UserRound } from "lucide-react";
+import {
+  BadgeDollarSign,
+  BedDouble,
+  CalendarDays,
+  CheckCircle2,
+  Filter,
+  LogOut,
+  RefreshCcw,
+  Search,
+  UserRound,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { PermissionDenied } from "@/components/auth/permission-gate";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePermission } from "@/hooks/use-permission";
 import {
@@ -51,13 +61,11 @@ export default function BookingsPage() {
       ]);
 
       setBookings(bookingData);
-      setRoomNames(
-        Object.fromEntries(
-          roomData.data.map((room) => [room.id, room.name]),
-        ),
-      );
+      setRoomNames(Object.fromEntries(roomData.data.map((room) => [room.id, room.name])));
     } catch {
-      setMessage("Không thể tải danh sách đặt phòng. Kiểm tra booking-service, gateway và quyền BOOKING_VIEW.");
+      setMessage(
+        "Không thể tải danh sách đặt phòng. Kiểm tra booking-service, gateway và quyền BOOKING_VIEW.",
+      );
     } finally {
       setLoading(false);
     }
@@ -82,14 +90,19 @@ export default function BookingsPage() {
     });
   }, [bookings, query, roomNames, status]);
 
-  const checkedInCount = bookings.filter((booking) => getDisplayStatus(booking) === "CHECKED_IN").length;
+  const checkedInCount = bookings.filter(
+    (booking) => getDisplayStatus(booking) === "CHECKED_IN",
+  ).length;
   const checkOutSoonCount = bookings.filter((booking) => {
     if (getDisplayStatus(booking) !== "CHECKED_IN" || !booking.checkout) return false;
     const checkout = new Date(booking.checkout).getTime();
     const now = Date.now();
     return checkout >= now && checkout - now <= 24 * 60 * 60 * 1000;
   }).length;
-  const totalRevenue = bookings.reduce((sum, booking) => sum + (booking.totalPrice || 0), 0);
+  const totalRevenue = bookings.reduce(
+    (sum, booking) => sum + (booking.totalPrice || 0),
+    0,
+  );
 
   async function handleCheckIn(booking: RoomBookingResponse) {
     if (isActionBusy) return;
@@ -97,10 +110,14 @@ export default function BookingsPage() {
     setMessage(null);
     try {
       const updated = await checkInRoomBooking(booking.id);
-      setBookings((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      setBookings((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
       setMessage(`Đã check-in booking ${shortCode(updated.id)}.`);
     } catch {
-      setMessage("Không thể check-in booking này. Kiểm tra trạng thái booking và quyền BOOKING_CHECKIN.");
+      setMessage(
+        "Không thể check-in booking này. Kiểm tra trạng thái booking và quyền BOOKING_CHECKIN.",
+      );
     } finally {
       setActionId(null);
     }
@@ -112,17 +129,23 @@ export default function BookingsPage() {
     setMessage(null);
     try {
       const updated = await checkOutRoomBooking(booking.id);
-      setBookings((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      setBookings((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
       setMessage(`Đã check-out booking ${shortCode(updated.id)}.`);
     } catch {
-      setMessage("Không thể check-out booking này. Chỉ booking đang ở mới được trả phòng.");
+      setMessage(
+        "Không thể check-out booking này. Chỉ booking đang ở mới được trả phòng.",
+      );
     } finally {
       setActionId(null);
     }
   }
 
   if (!canViewBookings) {
-    return <PermissionDenied message="Bạn không có quyền BOOKING_VIEW để xem danh sách đặt phòng." />;
+    return (
+      <PermissionDenied message="Bạn không có quyền BOOKING_VIEW để xem danh sách đặt phòng." />
+    );
   }
 
   return (
@@ -130,13 +153,23 @@ export default function BookingsPage() {
       <div className="rounded-2xl border border-[#decdb9] bg-white/80 p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#9b5c24]">Quản lý đặt phòng</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">Check-in / Check-out</h2>
+            <p className="text-sm font-bold tracking-[0.2em] text-[#9b5c24] uppercase">
+              Quản lý đặt phòng
+            </p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">
+              Check-in / Check-out
+            </h2>
             <p className="mt-2 max-w-2xl text-sm text-[#7c6f63]">
-              Theo dõi trạng thái đặt phòng và xử lý khách nhận phòng, trả phòng từ dữ liệu booking thật.
+              Theo dõi trạng thái đặt phòng và xử lý khách nhận phòng, trả phòng từ dữ
+              liệu booking thật.
             </p>
           </div>
-          <Button type="button" onClick={() => void loadData()} disabled={loading || isActionBusy} className="gap-2">
+          <Button
+            type="button"
+            onClick={() => void loadData()}
+            disabled={loading || isActionBusy}
+            className="gap-2"
+          >
             <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Tải lại
           </Button>
@@ -144,24 +177,54 @@ export default function BookingsPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Tổng booking" value={bookings.length.toString()} icon={<CalendarDays className="h-4 w-4" />} sub="Từ hệ thống booking" />
-        <MetricCard title="Đang ở" value={checkedInCount.toString()} icon={<BedDouble className="h-4 w-4" />} sub={`${checkOutSoonCount} phòng sắp checkout`} />
-        <MetricCard title="Doanh thu booking" value={formatCompactMoney(totalRevenue)} icon={<BadgeDollarSign className="h-4 w-4" />} sub="Tổng giá trị booking" />
-        <MetricCard title="Chờ xử lý" value={bookings.filter((booking) => getDisplayStatus(booking) === "PENDING").length.toString()} icon={<UserRound className="h-4 w-4" />} sub="Chưa xác nhận tiền cọc" />
+        <MetricCard
+          title="Tổng booking"
+          value={bookings.length.toString()}
+          icon={<CalendarDays className="h-4 w-4" />}
+          sub="Từ hệ thống booking"
+        />
+        <MetricCard
+          title="Đang ở"
+          value={checkedInCount.toString()}
+          icon={<BedDouble className="h-4 w-4" />}
+          sub={`${checkOutSoonCount} phòng sắp checkout`}
+        />
+        <MetricCard
+          title="Doanh thu booking"
+          value={formatCompactMoney(totalRevenue)}
+          icon={<BadgeDollarSign className="h-4 w-4" />}
+          sub="Tổng giá trị booking"
+        />
+        <MetricCard
+          title="Chờ xử lý"
+          value={bookings
+            .filter((booking) => getDisplayStatus(booking) === "PENDING")
+            .length.toString()}
+          icon={<UserRound className="h-4 w-4" />}
+          sub="Chưa xác nhận tiền cọc"
+        />
       </div>
 
-      {message ? <div className="rounded-xl bg-[#fff6df] p-3 text-sm text-[#8a5724]">{message}</div> : null}
+      {message ? (
+        <div className="rounded-xl bg-[#fff6df] p-3 text-sm text-[#8a5724]">
+          {message}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-[#17213a]">Danh sách đặt phòng</h3>
-              <p className="text-sm text-[#7c6f63]">Tìm kiếm, lọc trạng thái và thao tác nhanh.</p>
+              <h3 className="text-lg font-semibold text-[#17213a]">
+                Danh sách đặt phòng
+              </h3>
+              <p className="text-sm text-[#7c6f63]">
+                Tìm kiếm, lọc trạng thái và thao tác nhanh.
+              </p>
             </div>
             <div className="flex flex-col gap-3 md:flex-row">
               <div className="relative w-full md:w-72">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
+                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
@@ -171,7 +234,9 @@ export default function BookingsPage() {
               </div>
               <select
                 value={status}
-                onChange={(event) => setStatus(event.target.value as DisplayStatus | "ALL")}
+                onChange={(event) =>
+                  setStatus(event.target.value as DisplayStatus | "ALL")
+                }
                 className="rounded-md border border-[#decdb9] bg-white px-3 py-2 text-sm text-[#17213a]"
               >
                 <option value="ALL">Tất cả trạng thái</option>
@@ -200,37 +265,71 @@ export default function BookingsPage() {
               <tbody>
                 {filtered.map((booking) => {
                   const displayStatus = getDisplayStatus(booking);
-                  const isBusy = actionId === booking.id;
                   return (
-                    <tr key={booking.id} className="border-b border-[#eee3d5] last:border-b-0">
-                      <td className="py-4 pr-4 font-medium text-[#17213a]">{shortCode(booking.id)}</td>
+                    <tr
+                      key={booking.id}
+                      className="border-b border-[#eee3d5] last:border-b-0"
+                    >
+                      <td className="py-4 pr-4 font-medium text-[#17213a]">
+                        {shortCode(booking.id)}
+                      </td>
                       <td className="py-4 pr-4 text-[#5f5144]">{booking.customerId}</td>
-                      <td className="py-4 pr-4 text-[#5f5144]">{roomNames[booking.roomId] ?? booking.roomId}</td>
+                      <td className="py-4 pr-4 text-[#5f5144]">
+                        {roomNames[booking.roomId] ?? booking.roomId}
+                      </td>
                       <td className="py-4 pr-4 text-[#5f5144]">
                         <div>{formatDateTime(booking.checkin)}</div>
-                        <div className="text-xs text-[#9f8a77]">→ {formatDateTime(booking.checkout)}</div>
-                        {booking.checkinReality ? <div className="mt-1 text-xs text-green-700">Thực nhận: {formatDateTime(booking.checkinReality)}</div> : null}
-                        {booking.checkoutReality ? <div className="text-xs text-slate-600">Thực trả: {formatDateTime(booking.checkoutReality)}</div> : null}
+                        <div className="text-xs text-[#9f8a77]">
+                          → {formatDateTime(booking.checkout)}
+                        </div>
+                        {booking.checkinReality ? (
+                          <div className="mt-1 text-xs text-green-700">
+                            Thực nhận: {formatDateTime(booking.checkinReality)}
+                          </div>
+                        ) : null}
+                        {booking.checkoutReality ? (
+                          <div className="text-xs text-slate-600">
+                            Thực trả: {formatDateTime(booking.checkoutReality)}
+                          </div>
+                        ) : null}
                       </td>
-                      <td className="py-4 pr-4 text-[#5f5144]">{formatMoney(booking.totalPrice)}</td>
+                      <td className="py-4 pr-4 text-[#5f5144]">
+                        {formatMoney(booking.totalPrice)}
+                      </td>
                       <td className="py-4 pr-4">
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(displayStatus)}`}>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(displayStatus)}`}
+                        >
                           {statusLabel[displayStatus]}
                         </span>
                       </td>
                       <td className="py-4 pr-4">
                         {displayStatus === "CONFIRMED" || displayStatus === "PENDING" ? (
-                          <Button type="button" size="sm" disabled={!canCheckIn || isActionBusy} onClick={() => void handleCheckIn(booking)} className="gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!canCheckIn || isActionBusy}
+                            onClick={() => void handleCheckIn(booking)}
+                            className="gap-2"
+                          >
                             <CheckCircle2 className="h-4 w-4" />
                             Check-in
                           </Button>
                         ) : displayStatus === "CHECKED_IN" ? (
-                          <Button type="button" size="sm" disabled={!canCheckOut || isActionBusy} onClick={() => void handleCheckOut(booking)} className="gap-2 bg-[#5f5144] hover:bg-[#4c4036]">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!canCheckOut || isActionBusy}
+                            onClick={() => void handleCheckOut(booking)}
+                            className="gap-2 bg-[#5f5144] hover:bg-[#4c4036]"
+                          >
                             <LogOut className="h-4 w-4" />
                             Check-out
                           </Button>
                         ) : (
-                          <span className="text-xs text-[#9f8a77]">Không có thao tác</span>
+                          <span className="text-xs text-[#9f8a77]">
+                            Không có thao tác
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -239,9 +338,13 @@ export default function BookingsPage() {
               </tbody>
             </table>
             {!loading && filtered.length === 0 ? (
-              <div className="py-10 text-center text-[#7c6f63]">Không tìm thấy booking nào phù hợp.</div>
+              <div className="py-10 text-center text-[#7c6f63]">
+                Không tìm thấy booking nào phù hợp.
+              </div>
             ) : null}
-            {loading ? <div className="py-10 text-center text-[#7c6f63]">Đang tải booking...</div> : null}
+            {loading ? (
+              <div className="py-10 text-center text-[#7c6f63]">Đang tải booking...</div>
+            ) : null}
           </div>
         </div>
 
@@ -274,13 +377,22 @@ export default function BookingsPage() {
               {bookings.slice(0, 4).map((booking) => {
                 const displayStatus = getDisplayStatus(booking);
                 return (
-                  <div key={booking.id} className="rounded-xl border border-[#eee3d5] p-4">
+                  <div
+                    key={booking.id}
+                    className="rounded-xl border border-[#eee3d5] p-4"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <div className="font-semibold text-[#17213a]">{shortCode(booking.id)}</div>
-                        <div className="text-sm text-[#7c6f63]">{roomNames[booking.roomId] ?? booking.roomId}</div>
+                        <div className="font-semibold text-[#17213a]">
+                          {shortCode(booking.id)}
+                        </div>
+                        <div className="text-sm text-[#7c6f63]">
+                          {roomNames[booking.roomId] ?? booking.roomId}
+                        </div>
                       </div>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(displayStatus)}`}>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(displayStatus)}`}
+                      >
                         {statusLabel[displayStatus]}
                       </span>
                     </div>
@@ -291,7 +403,9 @@ export default function BookingsPage() {
                   </div>
                 );
               })}
-              {!loading && bookings.length === 0 ? <p className="text-sm text-[#7c6f63]">Chưa có booking nào.</p> : null}
+              {!loading && bookings.length === 0 ? (
+                <p className="text-sm text-[#7c6f63]">Chưa có booking nào.</p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -300,7 +414,17 @@ export default function BookingsPage() {
   );
 }
 
-function MetricCard({ title, value, sub, icon }: { title: string; value: string; sub: string; icon: React.ReactNode }) {
+function MetricCard({
+  title,
+  value,
+  sub,
+  icon,
+}: {
+  title: string;
+  value: string;
+  sub: string;
+  icon: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
       <div className="flex items-center justify-between">
@@ -323,7 +447,11 @@ const statusButtons = [
 ];
 
 function getDisplayStatus(booking: RoomBookingResponse): DisplayStatus {
-  if (booking.status === "CANCEL" || booking.detailStatus === "CANCELED" || booking.detailStatus === "NO_SHOW") {
+  if (
+    booking.status === "CANCEL" ||
+    booking.detailStatus === "CANCELED" ||
+    booking.detailStatus === "NO_SHOW"
+  ) {
     return "CANCELLED";
   }
   if (booking.status === "DONE" || booking.detailStatus === "CHECKED_OUT") {

@@ -20,21 +20,30 @@ export type StaffPermissionResponse = {
 };
 
 export async function getPermissions() {
-  const res = await http.get("identity/admin/permissions").json<ApiResponse<PermissionResponse[]>>();
+  const res = await http
+    .get("identity/admin/permissions")
+    .json<ApiResponse<PermissionResponse[]>>();
   return (res.result ?? res.content ?? []) as PermissionResponse[];
 }
 
 export async function getStaffAccounts() {
-  const res = await http.get("identity/admin/permissions/staff").json<ApiResponse<StaffPermissionResponse[]>>();
+  const res = await http
+    .get("identity/admin/permissions/staff")
+    .json<ApiResponse<StaffPermissionResponse[]>>();
   return (res.result ?? res.content ?? []) as StaffPermissionResponse[];
 }
 
 export async function getStaffPermissions(accountId: string) {
-  const res = await http.get(`identity/admin/permissions/staff/${accountId}`).json<ApiResponse<StaffPermissionResponse>>();
+  const res = await http
+    .get(`identity/admin/permissions/staff/${accountId}`)
+    .json<ApiResponse<StaffPermissionResponse>>();
   return (res.result ?? res.content) as StaffPermissionResponse;
 }
 
-export async function updateStaffPermissions(accountId: string, permissionNames: string[]) {
+export async function updateStaffPermissions(
+  accountId: string,
+  permissionNames: string[],
+) {
   const res = await http
     .put(`identity/admin/permissions/staff/${accountId}`, { json: { permissionNames } })
     .json<ApiResponse<StaffPermissionResponse>>();

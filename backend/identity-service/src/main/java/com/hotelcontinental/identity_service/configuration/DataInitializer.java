@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -139,7 +140,7 @@ public class DataInitializer implements ApplicationRunner {
 
     private void assignPermissions(Role roleName, List<String> permissionNames) {
         Roles role = ensureRole(roleName);
-        Set<Permissions> permissions = new LinkedHashSet<>();
+        Set<String> requestedPermissionNames = new LinkedHashSet<>();
 
         if (permissionNames == null) {
             permissionNames = List.of();
@@ -147,9 +148,25 @@ public class DataInitializer implements ApplicationRunner {
 
         for (String permissionName : permissionNames) {
             if (StringUtils.hasText(permissionName)) {
-                permissions.add(ensurePermission(permissionName));
+                requestedPermissionNames.add(permissionName.trim().toUpperCase());
             }
         }
+
+        Set<String> currentPermissionNames = role.getPermissions() == null
+                ? Set.of()
+                : role.getPermissions().stream()
+                .filter(permission -> !Boolean.TRUE.equals(permission.getDeleted()))
+                .map(Permissions::getName)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (currentPermissionNames.equals(requestedPermissionNames)) {
+            return;
+        }
+
+        Set<Permissions> permissions = requestedPermissionNames.stream()
+                .map(this::ensurePermission)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         role.setPermissions(permissions);
         role.setModifiedBy("system");

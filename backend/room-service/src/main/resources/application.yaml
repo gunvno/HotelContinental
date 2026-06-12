@@ -24,10 +24,6 @@ spring:
 app:
   services:
     identity: http://localhost:8080/identity
-idp:
-  url: http://localhost:8180
-  client-id: HotelContinentalBackend
-  client-secret: 0NnN2ZKjioAFkWuRyjgP0JLE5F8crVFz
 cloudinary:
   cloud-name: dweslsemq
   api-key: 489933971286769

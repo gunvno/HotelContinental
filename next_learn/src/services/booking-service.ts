@@ -43,22 +43,33 @@ export type UpdateRoomBookingTotalsPayload = {
 
 export async function createRoomBooking(payload: CreateRoomBookingPayload) {
   const res = await http
-    .post("booking/room-bookings", { json: { bookingType: "ONLINE", deposit: 0, ...payload } })
+    .post("booking/room-bookings", {
+      json: { bookingType: "ONLINE", deposit: 0, ...payload },
+    })
     .json<ApiResponse<RoomBookingResponse>>();
   return (res.result ?? res.content) as RoomBookingResponse;
 }
 
 export async function getRoomBooking(id: string) {
-  const res = await http.get(`booking/room-bookings/${id}`).json<ApiResponse<RoomBookingResponse>>();
+  const res = await http
+    .get(`booking/room-bookings/${id}`)
+    .json<ApiResponse<RoomBookingResponse>>();
   return (res.result ?? res.content) as RoomBookingResponse;
 }
 
 export async function markRoomBookingDeposited(id: string) {
-  const res = await http.post(`booking/room-bookings/${id}/mark-deposited`).json<ApiResponse<RoomBookingResponse>>();
+  const res = await http
+    .post(`booking/room-bookings/${id}/mark-deposited`)
+    .json<ApiResponse<RoomBookingResponse>>();
   return (res.result ?? res.content) as RoomBookingResponse;
 }
 
-export async function updateRoomBookingTotals(id: string, payload: UpdateRoomBookingTotalsPayload) {
-  const res = await http.post(`booking/room-bookings/${id}/totals`, { json: payload }).json<ApiResponse<RoomBookingResponse>>();
+export async function updateRoomBookingTotals(
+  id: string,
+  payload: UpdateRoomBookingTotalsPayload,
+) {
+  const res = await http
+    .post(`booking/room-bookings/${id}/totals`, { json: payload })
+    .json<ApiResponse<RoomBookingResponse>>();
   return (res.result ?? res.content) as RoomBookingResponse;
 }

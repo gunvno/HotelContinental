@@ -3,9 +3,9 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 
+import { FloatingChat } from "@/components/chat/floating-chat";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
-import { FloatingChat } from "@/components/chat/floating-chat";
 import { AppProviders } from "@/providers/app-providers";
 
 const geistSans = Geist({

@@ -8,9 +8,9 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 
 export const Select: React.FC<SelectProps> = ({ label, error, options, ...props }) => (
   <div className="space-y-2">
-    {label && <label className="text-sm font-medium text-foreground">{label}</label>}
+    {label && <label className="text-foreground text-sm font-medium">{label}</label>}
     <select
-      className="bg-background text-foreground border-border w-full rounded-md border px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/45"
+      className="bg-background text-foreground border-border focus-visible:ring-ring/45 w-full rounded-md border px-3 py-2 outline-none focus-visible:ring-2"
       {...props}
     >
       {options.map((opt) => (

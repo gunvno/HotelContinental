@@ -66,7 +66,10 @@ export default function AdminLoginPage() {
         result.token,
         result.refreshToken,
         {
-          name: [result.firstName, result.lastName].filter(Boolean).join(" ") || result.userName || undefined,
+          name:
+            [result.firstName, result.lastName].filter(Boolean).join(" ") ||
+            result.userName ||
+            undefined,
           preferred_username: result.userName || undefined,
           firstName: result.firstName,
           lastName: result.lastName,
@@ -88,7 +91,7 @@ export default function AdminLoginPage() {
           C
         </span>
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-[#9b5c24]">
+          <p className="text-[11px] font-bold tracking-[0.35em] text-[#9b5c24] uppercase">
             Continental
           </p>
           <h1 className="font-serif text-3xl font-bold text-[#211a14]">Admin Login</h1>
@@ -98,9 +101,11 @@ export default function AdminLoginPage() {
       <div className="mb-7 rounded-3xl border border-[#decdb9] bg-white/55 p-4 text-sm text-[#6d5b49]">
         <div className="mb-2 flex items-center gap-2 font-bold text-[#211a14]">
           <ShieldCheck className="h-4 w-4 text-[#9b5c24]" />
-          Chỉ tài khoản quản trị hoặc nhân viên được phân quyền mới được truy cập trang quản trị.
+          Chỉ tài khoản quản trị hoặc nhân viên được phân quyền mới được truy cập trang
+          quản trị.
         </div>
-        Tài khoản khách hoặc tài khoản chưa được cấp quyền sẽ được báo như sai tài khoản/mật khẩu.
+        Tài khoản khách hoặc tài khoản chưa được cấp quyền sẽ được báo như sai tài
+        khoản/mật khẩu.
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -109,20 +114,23 @@ export default function AdminLoginPage() {
             Username / Email
           </label>
           <div className="relative">
-            <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
+            <User className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
             <input
               id="username"
               type="text"
               autoComplete="username"
               className={cn(
-                "h-12 w-full rounded-2xl border border-[#decdb9] bg-white px-4 pl-11 text-sm font-medium text-[#211a14] outline-none transition focus:border-[#c68948] focus:ring-4 focus:ring-[#c68948]/15",
-                errors.username && "border-red-400 focus:border-red-400 focus:ring-red-100",
+                "h-12 w-full rounded-2xl border border-[#decdb9] bg-white px-4 pl-11 text-sm font-medium text-[#211a14] transition outline-none focus:border-[#c68948] focus:ring-4 focus:ring-[#c68948]/15",
+                errors.username &&
+                  "border-red-400 focus:border-red-400 focus:ring-red-100",
               )}
               placeholder="admin hoặc admin@email.com"
               {...register("username")}
             />
           </div>
-          {errors.username && <p className="text-xs font-medium text-red-600">{errors.username.message}</p>}
+          {errors.username && (
+            <p className="text-xs font-medium text-red-600">{errors.username.message}</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -130,20 +138,23 @@ export default function AdminLoginPage() {
             Mật khẩu
           </label>
           <div className="relative">
-            <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
+            <Lock className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
             <input
               id="password"
               type="password"
               autoComplete="current-password"
               className={cn(
-                "h-12 w-full rounded-2xl border border-[#decdb9] bg-white px-4 pl-11 text-sm font-medium text-[#211a14] outline-none transition focus:border-[#c68948] focus:ring-4 focus:ring-[#c68948]/15",
-                errors.password && "border-red-400 focus:border-red-400 focus:ring-red-100",
+                "h-12 w-full rounded-2xl border border-[#decdb9] bg-white px-4 pl-11 text-sm font-medium text-[#211a14] transition outline-none focus:border-[#c68948] focus:ring-4 focus:ring-[#c68948]/15",
+                errors.password &&
+                  "border-red-400 focus:border-red-400 focus:ring-red-100",
               )}
               placeholder="••••••••"
               {...register("password")}
             />
           </div>
-          {errors.password && <p className="text-xs font-medium text-red-600">{errors.password.message}</p>}
+          {errors.password && (
+            <p className="text-xs font-medium text-red-600">{errors.password.message}</p>
+          )}
         </div>
 
         {error && (

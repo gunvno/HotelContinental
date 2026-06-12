@@ -187,14 +187,6 @@ export type RoomTypeOption = {
   name: string;
 };
 
-type RoomForCustomerApi = {
-  roomTypeId?: string;
-  roomTypes?: {
-    id: string;
-    name?: string;
-  } | null;
-};
-
 type SpringPage<T> = {
   content: T[];
   totalElements?: number;
@@ -203,19 +195,28 @@ type SpringPage<T> = {
 };
 
 // ============= ROOM TYPE SERVICES =============
-export async function createRoomType(payload: RoomTypePayload): Promise<RoomTypeResponse> {
-  const res = await http.post("catalog/roomType", { json: payload }).json<ApiResponse<RoomTypeResponse>>();
+export async function createRoomType(
+  payload: RoomTypePayload,
+): Promise<RoomTypeResponse> {
+  const res = await http
+    .post("catalog/roomType", { json: payload })
+    .json<ApiResponse<RoomTypeResponse>>();
   return (res.result ?? res.content) as RoomTypeResponse;
 }
 
-export async function getRoomTypes(page = 0, size = 10): Promise<{ data: RoomTypeResponse[]; total: number }> {
+export async function getRoomTypes(
+  page = 0,
+  size = 10,
+): Promise<{ data: RoomTypeResponse[]; total: number }> {
   const res = await http
     .get("catalog/roomType", {
       searchParams: { page, size },
     })
     .json<ApiResponse<SpringPage<RoomTypeResponse>>>();
 
-  const pageData = (res.result ?? res.content) as SpringPage<RoomTypeResponse> | undefined;
+  const pageData = (res.result ?? res.content) as
+    | SpringPage<RoomTypeResponse>
+    | undefined;
   return {
     data: pageData?.content ?? [],
     total: pageData?.totalElements ?? 0,
@@ -223,12 +224,19 @@ export async function getRoomTypes(page = 0, size = 10): Promise<{ data: RoomTyp
 }
 
 export async function getRoomType(id: string): Promise<RoomTypeResponse> {
-  const res = await http.get(`catalog/roomType/${id}`).json<ApiResponse<RoomTypeResponse>>();
+  const res = await http
+    .get(`catalog/roomType/${id}`)
+    .json<ApiResponse<RoomTypeResponse>>();
   return (res.result ?? res.content) as RoomTypeResponse;
 }
 
-export async function updateRoomType(id: string, payload: RoomTypePayload): Promise<RoomTypeResponse> {
-  const res = await http.put(`catalog/roomType/${id}`, { json: payload }).json<ApiResponse<RoomTypeResponse>>();
+export async function updateRoomType(
+  id: string,
+  payload: RoomTypePayload,
+): Promise<RoomTypeResponse> {
+  const res = await http
+    .put(`catalog/roomType/${id}`, { json: payload })
+    .json<ApiResponse<RoomTypeResponse>>();
   return (res.result ?? res.content) as RoomTypeResponse;
 }
 
@@ -238,11 +246,16 @@ export async function deleteRoomType(id: string): Promise<void> {
 
 // ============= AMENITY SERVICES =============
 export async function createAmenity(payload: AmenityPayload): Promise<AmenityResponse> {
-  const res = await http.post("catalog/amenity", { json: payload }).json<ApiResponse<AmenityResponse>>();
+  const res = await http
+    .post("catalog/amenity", { json: payload })
+    .json<ApiResponse<AmenityResponse>>();
   return (res.result ?? res.content) as AmenityResponse;
 }
 
-export async function getAmenities(page = 0, size = 10): Promise<{ data: AmenityResponse[]; total: number }> {
+export async function getAmenities(
+  page = 0,
+  size = 10,
+): Promise<{ data: AmenityResponse[]; total: number }> {
   const res = await http
     .get("catalog/amenity", {
       searchParams: { page, size },
@@ -257,15 +270,24 @@ export async function getAmenities(page = 0, size = 10): Promise<{ data: Amenity
 }
 
 export async function getAmenity(id: string): Promise<AmenityResponse> {
-  const res = await http.get(`catalog/amenity/${id}`).json<ApiResponse<AmenityResponse>>();
+  const res = await http
+    .get(`catalog/amenity/${id}`)
+    .json<ApiResponse<AmenityResponse>>();
   return (res.result ?? res.content) as AmenityResponse;
 }
 
 export async function updateAmenity(
   id: string,
-  payload: { name?: string; description?: string; status?: "AVAILABLE" | "UNAVAILABLE"; deleted?: boolean }
+  payload: {
+    name?: string;
+    description?: string;
+    status?: "AVAILABLE" | "UNAVAILABLE";
+    deleted?: boolean;
+  },
 ): Promise<AmenityResponse> {
-  const res = await http.put(`catalog/amenity/${id}`, { json: payload }).json<ApiResponse<AmenityResponse>>();
+  const res = await http
+    .put(`catalog/amenity/${id}`, { json: payload })
+    .json<ApiResponse<AmenityResponse>>();
   return (res.result ?? res.content) as AmenityResponse;
 }
 
@@ -274,7 +296,10 @@ export async function deleteAmenity(id: string): Promise<void> {
 }
 
 // ============= CATALOG SERVICES =============
-export async function getCatalogServices(page = 0, size = 100): Promise<{ data: ServiceResponse[]; total: number }> {
+export async function getCatalogServices(
+  page = 0,
+  size = 100,
+): Promise<{ data: ServiceResponse[]; total: number }> {
   const res = await http
     .get("catalog/service", {
       searchParams: { page, size },
@@ -289,12 +314,18 @@ export async function getCatalogServices(page = 0, size = 100): Promise<{ data: 
 }
 
 // ============= AMENITY ROOM SERVICES =============
-export async function createAmenityRoom(payload: AmenityRoomPayload): Promise<AmenityRoomResponse> {
-  const res = await http.post("room/amenityRoom", { json: payload }).json<ApiResponse<AmenityRoomResponse>>();
+export async function createAmenityRoom(
+  payload: AmenityRoomPayload,
+): Promise<AmenityRoomResponse> {
+  const res = await http
+    .post("room/amenityRoom", { json: payload })
+    .json<ApiResponse<AmenityRoomResponse>>();
   return enrichAmenityRoom((res.result ?? res.content) as AmenityRoomResponse);
 }
 
-export async function getAmenityRoomsByRoomType(roomTypeId: string): Promise<AmenityRoomResponse[]> {
+export async function getAmenityRoomsByRoomType(
+  roomTypeId: string,
+): Promise<AmenityRoomResponse[]> {
   const res = await http
     .get(`room/amenityRoom/roomType/${roomTypeId}`)
     .json<ApiResponse<AmenityRoomResponse[]>>();
@@ -302,14 +333,16 @@ export async function getAmenityRoomsByRoomType(roomTypeId: string): Promise<Ame
 }
 
 export async function getAmenityRoom(id: string): Promise<AmenityRoomResponse> {
-  const res = await http.get(`room/amenityRoom/${id}`).json<ApiResponse<AmenityRoomResponse>>();
+  const res = await http
+    .get(`room/amenityRoom/${id}`)
+    .json<ApiResponse<AmenityRoomResponse>>();
   return enrichAmenityRoom((res.result ?? res.content) as AmenityRoomResponse);
 }
 
 export async function getAmenityRoomsByRoomTypePaged(
   roomTypeId: string,
   page = 0,
-  size = 20
+  size = 20,
 ): Promise<{ data: AmenityRoomResponse[]; total: number }> {
   const res = await http
     .get(`room/amenityRoom/roomType/${roomTypeId}`, {
@@ -317,7 +350,9 @@ export async function getAmenityRoomsByRoomTypePaged(
     })
     .json<ApiResponse<SpringPage<AmenityRoomResponse>>>();
 
-  const pageData = (res.result ?? res.content) as SpringPage<AmenityRoomResponse> | undefined;
+  const pageData = (res.result ?? res.content) as
+    | SpringPage<AmenityRoomResponse>
+    | undefined;
   return {
     data: await enrichAmenityRooms(pageData?.content ?? []),
     total: pageData?.totalElements ?? 0,
@@ -326,9 +361,11 @@ export async function getAmenityRoomsByRoomTypePaged(
 
 export async function updateAmenityRoom(
   id: string,
-  payload: { roomTypeId?: string; amenityId?: string; amount: number; deleted?: boolean }
+  payload: { roomTypeId?: string; amenityId?: string; amount: number; deleted?: boolean },
 ): Promise<AmenityRoomResponse> {
-  const res = await http.put(`room/amenityRoom/${id}`, { json: payload }).json<ApiResponse<AmenityRoomResponse>>();
+  const res = await http
+    .put(`room/amenityRoom/${id}`, { json: payload })
+    .json<ApiResponse<AmenityRoomResponse>>();
   return enrichAmenityRoom((res.result ?? res.content) as AmenityRoomResponse);
 }
 
@@ -337,26 +374,37 @@ export async function deleteAmenityRoom(id: string): Promise<void> {
 }
 
 // ============= ROOM TYPE SERVICE SERVICES =============
-export async function createRoomTypeService(payload: RoomTypeServicePayload): Promise<RoomTypeServiceResponse> {
-  const res = await http.post("catalog/roomTypeService", { json: payload }).json<ApiResponse<RoomTypeServiceResponse>>();
+export async function createRoomTypeService(
+  payload: RoomTypeServicePayload,
+): Promise<RoomTypeServiceResponse> {
+  const res = await http
+    .post("catalog/roomTypeService", { json: payload })
+    .json<ApiResponse<RoomTypeServiceResponse>>();
   return enrichRoomTypeService((res.result ?? res.content) as RoomTypeServiceResponse);
 }
 
-export async function getRoomTypeServices(page = 0, size = 10): Promise<{ data: RoomTypeServiceResponse[]; total: number }> {
+export async function getRoomTypeServices(
+  page = 0,
+  size = 10,
+): Promise<{ data: RoomTypeServiceResponse[]; total: number }> {
   const res = await http
     .get("catalog/roomTypeService", {
       searchParams: { page, size },
     })
     .json<ApiResponse<SpringPage<RoomTypeServiceResponse>>>();
 
-  const pageData = (res.result ?? res.content) as SpringPage<RoomTypeServiceResponse> | undefined;
+  const pageData = (res.result ?? res.content) as
+    | SpringPage<RoomTypeServiceResponse>
+    | undefined;
   return {
     data: await enrichRoomTypeServices(pageData?.content ?? []),
     total: pageData?.totalElements ?? 0,
   };
 }
 
-export async function getRoomTypeServicesByRoomType(roomTypeId: string): Promise<RoomTypeServiceResponse[]> {
+export async function getRoomTypeServicesByRoomType(
+  roomTypeId: string,
+): Promise<RoomTypeServiceResponse[]> {
   const res = await http
     .get(`catalog/roomTypeService/roomType/${roomTypeId}`)
     .json<ApiResponse<RoomTypeServiceResponse[]>>();
@@ -364,14 +412,16 @@ export async function getRoomTypeServicesByRoomType(roomTypeId: string): Promise
 }
 
 export async function getRoomTypeService(id: string): Promise<RoomTypeServiceResponse> {
-  const res = await http.get(`catalog/roomTypeService/${id}`).json<ApiResponse<RoomTypeServiceResponse>>();
+  const res = await http
+    .get(`catalog/roomTypeService/${id}`)
+    .json<ApiResponse<RoomTypeServiceResponse>>();
   return enrichRoomTypeService((res.result ?? res.content) as RoomTypeServiceResponse);
 }
 
 export async function getRoomTypeServicesByRoomTypePaged(
   roomTypeId: string,
   page = 0,
-  size = 20
+  size = 20,
 ): Promise<{ data: RoomTypeServiceResponse[]; total: number }> {
   const res = await http
     .get(`catalog/roomTypeService/roomType/${roomTypeId}`, {
@@ -379,7 +429,9 @@ export async function getRoomTypeServicesByRoomTypePaged(
     })
     .json<ApiResponse<SpringPage<RoomTypeServiceResponse>>>();
 
-  const pageData = (res.result ?? res.content) as SpringPage<RoomTypeServiceResponse> | undefined;
+  const pageData = (res.result ?? res.content) as
+    | SpringPage<RoomTypeServiceResponse>
+    | undefined;
   return {
     data: await enrichRoomTypeServices(pageData?.content ?? []),
     total: pageData?.totalElements ?? 0,
@@ -388,9 +440,16 @@ export async function getRoomTypeServicesByRoomTypePaged(
 
 export async function updateRoomTypeService(
   id: string,
-  payload: { roomTypeId?: string; serviceId?: string; amount?: number; deleted?: boolean }
+  payload: {
+    roomTypeId?: string;
+    serviceId?: string;
+    amount?: number;
+    deleted?: boolean;
+  },
 ): Promise<RoomTypeServiceResponse> {
-  const res = await http.put(`catalog/roomTypeService/${id}`, { json: payload }).json<ApiResponse<RoomTypeServiceResponse>>();
+  const res = await http
+    .put(`catalog/roomTypeService/${id}`, { json: payload })
+    .json<ApiResponse<RoomTypeServiceResponse>>();
   return enrichRoomTypeService((res.result ?? res.content) as RoomTypeServiceResponse);
 }
 
@@ -418,22 +477,33 @@ export async function createRoom(payload: CreateRoomPayload): Promise<RoomRespon
 }
 
 export async function getRoom(id: string): Promise<RoomResponse> {
-  const res = await http.get(`room/room/customer/${id}`).json<ApiResponse<RoomResponse>>();
+  const res = await http
+    .get(`room/room/customer/${id}`)
+    .json<ApiResponse<RoomResponse>>();
   return enrichRoom((res.result ?? res.content) as RoomResponse);
 }
 
-export async function updateRoom(id: string, payload: CreateRoomPayload): Promise<RoomResponse> {
+export async function updateRoom(
+  id: string,
+  payload: CreateRoomPayload,
+): Promise<RoomResponse> {
   const { roomTypes, ...rest } = payload;
   const json = {
     ...rest,
     roomTypeId: payload.roomTypeId ?? roomTypes?.id,
   };
-  const res = await http.put(`room/room/${id}`, { json }).json<ApiResponse<RoomResponse>>();
+  const res = await http
+    .put(`room/room/${id}`, { json })
+    .json<ApiResponse<RoomResponse>>();
   return enrichRoom((res.result ?? res.content) as RoomResponse);
 }
 
-export async function setupBuilding(payload: BuildingSetupPayload): Promise<BuildingSetupResponse> {
-  const res = await http.post("room/building/setup", { json: payload }).json<ApiResponse<BuildingSetupResponse>>();
+export async function setupBuilding(
+  payload: BuildingSetupPayload,
+): Promise<BuildingSetupResponse> {
+  const res = await http
+    .post("room/building/setup", { json: payload })
+    .json<ApiResponse<BuildingSetupResponse>>();
   return (res.result ?? res.content) as BuildingSetupResponse;
 }
 
@@ -443,11 +513,17 @@ export async function getBuildings(): Promise<BuildingResponse[]> {
 }
 
 export async function getFloorsByBuilding(buildingId: string): Promise<FloorResponse[]> {
-  const res = await http.get(`room/building/${buildingId}/floors`).json<ApiResponse<FloorResponse[]>>();
+  const res = await http
+    .get(`room/building/${buildingId}/floors`)
+    .json<ApiResponse<FloorResponse[]>>();
   return (res.result ?? res.content) as FloorResponse[];
 }
 
-export async function uploadRoomImages(roomId: string, files: File[], coverIndex = 0): Promise<void> {
+export async function uploadRoomImages(
+  roomId: string,
+  files: File[],
+  coverIndex = 0,
+): Promise<void> {
   if (!files.length) {
     return;
   }
@@ -484,8 +560,10 @@ export async function deleteRoomImage(roomId: string, imageId: string): Promise<
   await http.delete(`room/room/${roomId}/images/${imageId}`);
 }
 
-export async function getAllRooms(page = 0,
-  size = 20): Promise<{ data: RoomResponse[]; total: number }> {
+export async function getAllRooms(
+  page = 0,
+  size = 20,
+): Promise<{ data: RoomResponse[]; total: number }> {
   const res = await http
     .get("room/room/customer", {
       searchParams: { page, size },
@@ -518,16 +596,22 @@ async function enrichRooms(rooms: RoomResponse[]): Promise<RoomResponse[]> {
 
   return rooms.map((room) => ({
     ...room,
-    roomTypes: room.roomTypes ?? (room.roomTypeId ? roomTypeMap.get(room.roomTypeId) ?? null : null),
+    roomTypes:
+      room.roomTypes ??
+      (room.roomTypeId ? (roomTypeMap.get(room.roomTypeId) ?? null) : null),
   }));
 }
 
-async function enrichAmenityRoom(item: AmenityRoomResponse): Promise<AmenityRoomResponse> {
+async function enrichAmenityRoom(
+  item: AmenityRoomResponse,
+): Promise<AmenityRoomResponse> {
   const [enriched] = await enrichAmenityRooms([item]);
   return enriched;
 }
 
-async function enrichAmenityRooms(items: AmenityRoomResponse[]): Promise<AmenityRoomResponse[]> {
+async function enrichAmenityRooms(
+  items: AmenityRoomResponse[],
+): Promise<AmenityRoomResponse[]> {
   if (items.length === 0) {
     return items;
   }
@@ -541,12 +625,16 @@ async function enrichAmenityRooms(items: AmenityRoomResponse[]): Promise<Amenity
   }));
 }
 
-async function enrichRoomTypeService(item: RoomTypeServiceResponse): Promise<RoomTypeServiceResponse> {
+async function enrichRoomTypeService(
+  item: RoomTypeServiceResponse,
+): Promise<RoomTypeServiceResponse> {
   const [enriched] = await enrichRoomTypeServices([item]);
   return enriched;
 }
 
-async function enrichRoomTypeServices(items: RoomTypeServiceResponse[]): Promise<RoomTypeServiceResponse[]> {
+async function enrichRoomTypeServices(
+  items: RoomTypeServiceResponse[],
+): Promise<RoomTypeServiceResponse[]> {
   if (items.length === 0) {
     return items;
   }

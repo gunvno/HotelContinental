@@ -7,11 +7,6 @@ spring:
   application:
     name: billing-service
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8180/realms/HotelContinental
 
   datasource:
     url: jdbc:mysql://localhost:3306/billing_service
@@ -30,10 +25,5 @@ spring:
 app:
   services:
     identity: http://localhost:8080/identity
-    booking: http://localhost:8082/booking
+    booking: http://localhost:8084/booking
     catalog: http://localhost:8083/catalog
-
-idp:
-  url: http://localhost:8180
-  client-id: HotelContinentalBackend
-  client-secret: 0NnN2ZKjioAFkWuRyjgP0JLE5F8crVFz

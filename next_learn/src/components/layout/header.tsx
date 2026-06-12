@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { BadgeInfo, ChevronDown, LogOut, Mail, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -15,7 +16,6 @@ import {
   selectUserName,
   useAuthStore,
 } from "@/store/auth-store";
-import { BadgeInfo, ChevronDown, LogOut, Mail, UserRound } from "lucide-react";
 
 const navItems: Array<{ label: string; href: string; hash?: string }> = [
   { label: "Trang chủ", href: "/" },
@@ -67,12 +67,12 @@ export function Header() {
 
   useEffect(() => {
     if (mobileOpen) {
-      setMobileOpen(false);
+      queueMicrotask(() => setMobileOpen(false));
     }
   }, [pathname, activeHash, mobileOpen]);
 
   useEffect(() => {
-    setAccountOpen(false);
+    queueMicrotask(() => setAccountOpen(false));
   }, [pathname]);
 
   useEffect(() => {
@@ -125,9 +125,15 @@ export function Header() {
     }
   };
 
-  const displayName = [firstName, lastName].filter(Boolean).join(" ") || userName || "bạn";
+  const displayName =
+    [firstName, lastName].filter(Boolean).join(" ") || userName || "bạn";
   const displayEmail = userName || "Tài khoản khách";
-  const accountInitial = (firstName?.[0] || lastName?.[0] || userName?.[0] || "C").toUpperCase();
+  const accountInitial = (
+    firstName?.[0] ||
+    lastName?.[0] ||
+    userName?.[0] ||
+    "C"
+  ).toUpperCase();
 
   return (
     <header className="border-border/40 bg-background/85 sticky top-0 z-40 border-b shadow-[0_20px_60px_-40px_rgba(31,41,55,0.45)] backdrop-blur-xl">
@@ -205,7 +211,7 @@ export function Header() {
             aria-label="Mở menu"
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((value) => !value)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-background/80 shadow-sm hover:bg-background/70 md:hidden"
+            className="border-border/60 bg-background/80 hover:bg-background/70 inline-flex h-9 w-9 items-center justify-center rounded-md border shadow-sm md:hidden"
           >
             <svg
               viewBox="0 0 24 24"
@@ -227,7 +233,12 @@ export function Header() {
           </span>
 
           {!token ? (
-            <Button href="/login" size="sm" variant="primary" className="hidden md:inline-flex">
+            <Button
+              href="/login"
+              size="sm"
+              variant="primary"
+              className="hidden md:inline-flex"
+            >
               Đăng nhập
             </Button>
           ) : (
@@ -237,37 +248,46 @@ export function Header() {
                 onClick={() => setAccountOpen((value) => !value)}
                 aria-haspopup="true"
                 aria-expanded={accountOpen}
-                className="flex items-center gap-3 rounded-full border border-border/60 bg-background/70 px-3 py-2 text-left shadow-sm transition hover:border-ring/30 hover:bg-background"
+                className="border-border/60 bg-background/70 hover:border-ring/30 hover:bg-background flex items-center gap-3 rounded-full border px-3 py-2 text-left shadow-sm transition"
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#2b1d12] to-[#c68948] text-sm font-bold text-white shadow-[0_16px_30px_-18px_rgba(0,0,0,0.8)]">
                   {accountInitial}
                 </span>
                 <span className="flex max-w-[16rem] flex-col leading-tight">
-                  <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                  <span className="text-muted-foreground text-[11px] tracking-[0.3em] uppercase">
                     Xin chào
                   </span>
-                  <span className="truncate text-sm font-semibold text-foreground">
+                  <span className="text-foreground truncate text-sm font-semibold">
                     {displayName}
                   </span>
                 </span>
                 <ChevronDown
-                  className={cn("h-4 w-4 text-muted-foreground transition-transform", accountOpen && "rotate-180")}
+                  className={cn(
+                    "text-muted-foreground h-4 w-4 transition-transform",
+                    accountOpen && "rotate-180",
+                  )}
                 />
               </button>
 
               <div
                 className={cn(
-                  "absolute right-0 top-full mt-3 w-[340px] rounded-3xl border border-border/60 bg-background/95 p-4 shadow-[0_30px_80px_-35px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-150",
-                  accountOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0",
+                  "border-border/60 bg-background/95 absolute top-full right-0 mt-3 w-[340px] rounded-3xl border p-4 shadow-[0_30px_80px_-35px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-150",
+                  accountOpen
+                    ? "pointer-events-auto translate-y-0 opacity-100"
+                    : "pointer-events-none -translate-y-2 opacity-0",
                 )}
               >
-                <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3">
+                <div className="border-border/60 bg-muted/30 flex items-start gap-3 rounded-2xl border p-3">
                   <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2b1d12] to-[#c68948] text-lg font-bold text-white shadow-[0_16px_30px_-18px_rgba(0,0,0,0.8)]">
                     {accountInitial}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-                    <p className="truncate text-xs text-muted-foreground">{displayEmail}</p>
+                    <p className="text-foreground truncate text-sm font-semibold">
+                      {displayName}
+                    </p>
+                    <p className="text-muted-foreground truncate text-xs">
+                      {displayEmail}
+                    </p>
                     <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
                       <BadgeInfo className="h-3.5 w-3.5" />
                       Hồ sơ cá nhân
@@ -279,25 +299,37 @@ export function Header() {
                   <Link
                     href="/account"
                     onClick={() => setAccountOpen(false)}
-                    className="flex items-center gap-3 rounded-2xl border border-border/50 px-3 py-3 transition hover:border-ring/30 hover:bg-muted/40"
+                    className="border-border/50 hover:border-ring/30 hover:bg-muted/40 flex items-center gap-3 rounded-2xl border px-3 py-3 transition"
                   >
                     <UserRound className="h-4 w-4 text-[#8b5e22]" />
                     <span className="flex-1">
-                      <span className="block font-medium text-foreground">Thông tin tài khoản</span>
-                      <span className="block text-xs text-muted-foreground">Xem hồ sơ, liên hệ và trạng thái đăng nhập</span>
+                      <span className="text-foreground block font-medium">
+                        Thông tin tài khoản
+                      </span>
+                      <span className="text-muted-foreground block text-xs">
+                        Xem hồ sơ, liên hệ và trạng thái đăng nhập
+                      </span>
                     </span>
                   </Link>
-                  <div className="flex items-center gap-3 rounded-2xl border border-border/50 px-3 py-3">
+                  <div className="border-border/50 flex items-center gap-3 rounded-2xl border px-3 py-3">
                     <Mail className="h-4 w-4 text-[#8b5e22]" />
                     <span className="min-w-0 flex-1">
-                      <span className="block font-medium text-foreground">Email</span>
-                      <span className="block truncate text-xs text-muted-foreground">{displayEmail}</span>
+                      <span className="text-foreground block font-medium">Email</span>
+                      <span className="text-muted-foreground block truncate text-xs">
+                        {displayEmail}
+                      </span>
                     </span>
                   </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <Button href="/account" variant="secondary" size="sm" className="w-full" onClick={() => setAccountOpen(false)}>
+                  <Button
+                    href="/account"
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setAccountOpen(false)}
+                  >
                     Mở hồ sơ
                   </Button>
                   <Button
@@ -320,8 +352,10 @@ export function Header() {
 
         <div
           className={cn(
-            "absolute left-2 right-2 top-full z-50 mt-2 origin-top rounded-xl border border-border bg-background shadow-lg transition-all duration-150 md:hidden",
-            mobileOpen ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0",
+            "border-border bg-background absolute top-full right-2 left-2 z-50 mt-2 origin-top rounded-xl border shadow-lg transition-all duration-150 md:hidden",
+            mobileOpen
+              ? "scale-100 opacity-100"
+              : "pointer-events-none scale-95 opacity-0",
           )}
         >
           <nav className="flex flex-col p-2 text-sm">
@@ -335,15 +369,17 @@ export function Header() {
                 }}
                 className={cn(
                   "rounded-lg px-3 py-2",
-                  item.isActive ? "bg-ring/15 text-ring" : "text-foreground hover:bg-background/70",
+                  item.isActive
+                    ? "bg-ring/15 text-ring"
+                    : "text-foreground hover:bg-background/70",
                 )}
               >
                 {item.label}
               </Link>
             ))}
-            <div className="my-2 h-px bg-border/60" />
+            <div className="bg-border/60 my-2 h-px" />
             <div className="flex items-center justify-between px-2 py-1">
-              <span className="text-xs text-muted-foreground">Giao diện</span>
+              <span className="text-muted-foreground text-xs">Giao diện</span>
               <ThemeToggle />
             </div>
             {!token ? (
@@ -354,12 +390,22 @@ export function Header() {
               </div>
             ) : (
               <div className="space-y-3 p-2">
-                <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
-                  <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Tài khoản</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">{displayName}</p>
-                  <p className="truncate text-xs text-muted-foreground">{displayEmail}</p>
+                <div className="border-border/60 bg-muted/30 rounded-2xl border p-3">
+                  <p className="text-muted-foreground text-xs tracking-[0.28em] uppercase">
+                    Tài khoản
+                  </p>
+                  <p className="text-foreground mt-1 text-sm font-semibold">
+                    {displayName}
+                  </p>
+                  <p className="text-muted-foreground truncate text-xs">{displayEmail}</p>
                 </div>
-                <Button href="/account" size="sm" variant="secondary" className="w-full" onClick={() => setMobileOpen(false)}>
+                <Button
+                  href="/account"
+                  size="sm"
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => setMobileOpen(false)}
+                >
                   Thông tin tài khoản
                 </Button>
                 <Button

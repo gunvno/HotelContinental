@@ -29,67 +29,67 @@ spring:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
       routes:
         - id: identity_service
-          uri: http://localhost:8080
+          uri: ${IDENTITY_SERVICE_URI:http://localhost:8080}
           predicates:
             - Path=${app.api-prefix}/identity/**
           filters:
             - StripPrefix=2
         - id: room_service
-          uri: http://localhost:8081
+          uri: ${ROOM_SERVICE_URI:http://localhost:8081}
           predicates:
             - Path=${app.api-prefix}/room/**
           filters:
             - StripPrefix=2
         - id: catalog_service
-          uri: http://localhost:8083
+          uri: ${CATALOG_SERVICE_URI:http://localhost:8083}
           predicates:
             - Path=${app.api-prefix}/catalog/**
           filters:
             - StripPrefix=2
         - id: notification_service
-          uri: http://localhost:8082
+          uri: ${NOTIFICATION_SERVICE_URI:http://localhost:8082}
           predicates:
             - Path=${app.api-prefix}/notification/**
           filters:
             - StripPrefix=2
         - id: booking_service
-          uri: http://localhost:8084
+          uri: ${BOOKING_SERVICE_URI:http://localhost:8084}
           predicates:
             - Path=${app.api-prefix}/booking/**
           filters:
             - StripPrefix=2
         - id: billing_service
-          uri: http://localhost:8085
+          uri: ${BILLING_SERVICE_URI:http://localhost:8085}
           predicates:
             - Path=${app.api-prefix}/billing/**
           filters:
             - StripPrefix=2
         - id: promotion_service
-          uri: http://localhost:8086
+          uri: ${PROMOTION_SERVICE_URI:http://localhost:8086}
           predicates:
             - Path=${app.api-prefix}/promotion/**
           filters:
             - StripPrefix=2
         - id: feedback_service
-          uri: http://localhost:8087
+          uri: ${FEEDBACK_SERVICE_URI:http://localhost:8087}
           predicates:
             - Path=${app.api-prefix}/feedback/**
           filters:
             - StripPrefix=2
         - id: content_service
-          uri: http://localhost:8088
+          uri: ${CONTENT_SERVICE_URI:http://localhost:8088}
           predicates:
             - Path=${app.api-prefix}/content/**
           filters:
             - StripPrefix=2
         - id: report_service
-          uri: http://localhost:8089
+          uri: ${REPORT_SERVICE_URI:http://localhost:8089}
           predicates:
             - Path=${app.api-prefix}/report/**
           filters:
             - StripPrefix=2
         - id: chat_service
-          uri: http://localhost:8090
+          uri: ${CHAT_SERVICE_URI:http://localhost:8090}
           predicates:
             - Path=${app.api-prefix}/chat/**
           filters:

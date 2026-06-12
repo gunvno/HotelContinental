@@ -63,7 +63,8 @@ export function LoginForm() {
       }
 
       doLogin(result, data.rememberMe);
-      const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/";
+      const redirectTo =
+        new URLSearchParams(window.location.search).get("redirect") || "/";
       router.replace(redirectTo);
     } catch {
       setError(LOGIN_ERROR_MESSAGE);
@@ -76,57 +77,61 @@ export function LoginForm() {
     <div className="space-y-6">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
-          <label htmlFor="username" className="text-sm font-medium text-foreground">
+          <label htmlFor="username" className="text-foreground text-sm font-medium">
             Username / Email
           </label>
           <div className="relative">
-            <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <User className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
             <input
               id="username"
               type="text"
               autoComplete="username"
               className={cn(
-                "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                "border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
                 errors.username && "border-red-500 focus-visible:ring-red-500",
               )}
               placeholder="Username hoặc Email"
               {...register("username")}
             />
           </div>
-          {errors.username && <span className="text-xs text-red-500">{errors.username.message}</span>}
+          {errors.username && (
+            <span className="text-xs text-red-500">{errors.username.message}</span>
+          )}
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label htmlFor="password" className="text-sm font-medium text-foreground">
+            <label htmlFor="password" className="text-foreground text-sm font-medium">
               Mật khẩu
             </label>
-            <Link href="#" className="text-xs text-primary hover:underline">
+            <Link href="#" className="text-primary text-xs hover:underline">
               Quên mật khẩu?
             </Link>
           </div>
           <div className="relative">
-            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Lock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
             <input
               id="password"
               type="password"
               autoComplete="current-password"
               className={cn(
-                "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                "border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
                 errors.password && "border-red-500 focus-visible:ring-red-500",
               )}
               placeholder="••••••••"
               {...register("password")}
             />
           </div>
-          {errors.password && <span className="text-xs text-red-500">{errors.password.message}</span>}
+          {errors.password && (
+            <span className="text-xs text-red-500">{errors.password.message}</span>
+          )}
         </div>
 
         <div className="flex items-center space-x-2">
           <Checkbox id="rememberMe" {...register("rememberMe")} />
           <label
             htmlFor="rememberMe"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
             Ghi nhớ đăng nhập
           </label>
@@ -138,7 +143,13 @@ export function LoginForm() {
           </div>
         )}
 
-        <Button type="submit" size="md" variant="primary" disabled={loading} className="w-full font-semibold">
+        <Button
+          type="submit"
+          size="md"
+          variant="primary"
+          disabled={loading}
+          className="w-full font-semibold"
+        >
           {loading ? (
             <span className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -150,9 +161,12 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-center text-sm">
         Chưa có tài khoản?{" "}
-        <Link href="/register" className="font-medium text-primary hover:text-primary/90 hover:underline">
+        <Link
+          href="/register"
+          className="text-primary hover:text-primary/90 font-medium hover:underline"
+        >
           Đăng ký ngay
         </Link>
       </p>

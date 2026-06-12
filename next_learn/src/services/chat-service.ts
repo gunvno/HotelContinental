@@ -27,7 +27,9 @@ export type ChatMessageResponse = {
 };
 
 export async function getOrCreateMyConversation() {
-  const res = await http.get("chat/conversations/me").json<ApiResponse<ChatConversationResponse>>();
+  const res = await http
+    .get("chat/conversations/me")
+    .json<ApiResponse<ChatConversationResponse>>();
   return (res.result ?? res.content) as ChatConversationResponse;
 }
 

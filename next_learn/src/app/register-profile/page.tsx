@@ -1,12 +1,19 @@
-import { Suspense } from "react";
-import { ProfileForm } from "./ProfileForm";
 import { Loader2 } from "lucide-react";
+import { Suspense } from "react";
+
+import { ProfileForm } from "./ProfileForm";
 
 export default function RegisterProfilePage() {
   return (
-    <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
-      <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?q=80&w=2649&auto=format&fit=crop')" }} />
+    <div className="relative container grid min-h-screen flex-col items-center justify-center lg:max-w-none lg:grid-cols-2 lg:px-0">
+      <div className="bg-muted relative hidden h-full flex-col p-10 text-white lg:flex dark:border-r">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?q=80&w=2649&auto=format&fit=crop')",
+          }}
+        />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-20 flex items-center text-lg font-medium">
           <svg
@@ -26,7 +33,8 @@ export default function RegisterProfilePage() {
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
             <p className="text-lg">
-              "Hoàn tất hồ sơ của bạn để nhận được những ưu đãi và dịch vụ tốt nhất từ chúng tôi."
+              &quot;Hoàn tất hồ sơ của bạn để nhận được những ưu đãi và dịch vụ tốt nhất
+              từ chúng tôi.&quot;
             </p>
             <footer className="text-sm">Customer Care Team</footer>
           </blockquote>
@@ -34,16 +42,25 @@ export default function RegisterProfilePage() {
       </div>
       <div className="lg:p-8">
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-          <Suspense fallback={<div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-10">
+                <Loader2 className="text-primary h-8 w-8 animate-spin" />
+              </div>
+            }
+          >
             <ProfileForm />
           </Suspense>
-          <p className="px-8 text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground px-8 text-center text-sm">
             Bằng cách cập nhật hồ sơ, bạn đồng ý với{" "}
-            <a href="/terms" className="underline underline-offset-4 hover:text-primary">
+            <a href="/terms" className="hover:text-primary underline underline-offset-4">
               Điều khoản dịch vụ
             </a>{" "}
             và{" "}
-            <a href="/privacy" className="underline underline-offset-4 hover:text-primary">
+            <a
+              href="/privacy"
+              className="hover:text-primary underline underline-offset-4"
+            >
               Chính sách bảo mật
             </a>
             .

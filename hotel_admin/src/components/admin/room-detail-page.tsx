@@ -1,24 +1,31 @@
 "use client";
 
+import {
+  BedDouble,
+  Building2,
+  ImagePlus,
+  Layers3,
+  Save,
+  UploadCloud,
+  X,
+} from "lucide-react";
 import Link from "next/link";
-import { BedDouble, Building2, ImagePlus, Layers3, Save, UploadCloud, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { PermissionDenied } from "@/components/auth/permission-gate";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePermission } from "@/hooks/use-permission";
 import {
+  type BuildingResponse,
   deleteRoomImage,
-  getAllRooms,
+  type FloorResponse,
   getBuildings,
   getFloorsByBuilding,
   getRoom,
   getRoomTypes,
-  type BuildingResponse,
-  type FloorResponse,
   type RoomResponse,
   type RoomTypeResponse,
   updateRoom,
@@ -112,14 +119,21 @@ export function RoomDetailPageContent() {
   }, [selectedImagePreviews]);
 
   const roomImages = useMemo(() => buildRoomImages(room), [room]);
-  const activeImage = roomImages[Math.min(activeImageIndex, Math.max(roomImages.length - 1, 0))];
+  const activeImage =
+    roomImages[Math.min(activeImageIndex, Math.max(roomImages.length - 1, 0))];
   const selectedFloor = floors.find((floor) => floor.id === form.floorId);
-  const selectedBuilding = buildings.find((building) => building.id === selectedFloor?.buildingId);
+  const selectedBuilding = buildings.find(
+    (building) => building.id === selectedFloor?.buildingId,
+  );
   const selectedRoomType = roomTypes.find((roomType) => roomType.id === form.roomTypeId);
   const canUpdateRoom = permission.has("ROOM_UPDATE");
   const canUploadImages = permission.has("ROOM_IMAGE_UPDATE");
   const canDeleteImages = permission.has("ROOM_IMAGE_DELETE");
-  const canUseDetail = permission.hasAny("ROOM_UPDATE", "ROOM_IMAGE_UPDATE", "ROOM_IMAGE_DELETE");
+  const canUseDetail = permission.hasAny(
+    "ROOM_UPDATE",
+    "ROOM_IMAGE_UPDATE",
+    "ROOM_IMAGE_DELETE",
+  );
   const isActionBusy = isSaving || deletingImageId !== null;
 
   useEffect(() => {
@@ -139,7 +153,10 @@ export function RoomDetailPageContent() {
         getBuildings(),
       ]);
       const floorEntries = await Promise.all(
-        buildingResult.map(async (building) => [building.id, await getFloorsByBuilding(building.id)] as const),
+        buildingResult.map(
+          async (building) =>
+            [building.id, await getFloorsByBuilding(building.id)] as const,
+        ),
       );
 
       setRoom(roomDetail);
@@ -152,7 +169,9 @@ export function RoomDetailPageContent() {
       setActiveImageIndex(0);
     } catch (loadError) {
       console.error(loadError);
-      setError("Không tải được chi tiết phòng. Kiểm tra gateway, room-service và token ADMIN.");
+      setError(
+        "Không tải được chi tiết phòng. Kiểm tra gateway, room-service và token ADMIN.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -164,7 +183,9 @@ export function RoomDetailPageContent() {
 
   function handleImageFiles(files: File[]) {
     const maxImageSize = 30 * 1024 * 1024;
-    const validFiles = files.filter((file) => file.type.startsWith("image/") && file.size <= maxImageSize);
+    const validFiles = files.filter(
+      (file) => file.type.startsWith("image/") && file.size <= maxImageSize,
+    );
     const nextFiles = [...selectedImageFiles, ...validFiles].slice(0, 10);
 
     if (files.length > 0 && validFiles.length === 0) {
@@ -172,7 +193,10 @@ export function RoomDetailPageContent() {
       return;
     }
 
-    if (files.length !== validFiles.length || selectedImageFiles.length + validFiles.length > 10) {
+    if (
+      files.length !== validFiles.length ||
+      selectedImageFiles.length + validFiles.length > 10
+    ) {
       setError("Một số ảnh không hợp lệ hoặc vượt quá giới hạn 10 ảnh đã bị bỏ qua.");
     } else {
       setError(null);
@@ -271,7 +295,7 @@ export function RoomDetailPageContent() {
     <div className="space-y-6">
       <Link
         href="/rooms"
-        className="inline-flex h-11 items-center justify-center rounded-full border border-[#decdb9] bg-white/80 px-5 text-sm font-bold uppercase tracking-[0.16em] text-[#211a14] shadow-sm transition hover:bg-[#fffaf2]"
+        className="inline-flex h-11 items-center justify-center rounded-full border border-[#decdb9] bg-white/80 px-5 text-sm font-bold tracking-[0.16em] text-[#211a14] uppercase shadow-sm transition hover:bg-[#fffaf2]"
       >
         ← Quay lại
       </Link>
@@ -280,32 +304,35 @@ export function RoomDetailPageContent() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(232,201,144,0.33),transparent_28%),radial-gradient(circle_at_88%_6%,rgba(255,255,255,0.12),transparent_24%)]" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.32em] text-[#e8c990]">Room detail</p>
-            <h2 className="mt-3 font-serif text-5xl font-bold leading-none tracking-tight lg:text-7xl">
+            <p className="text-xs font-black tracking-[0.32em] text-[#e8c990] uppercase">
+              Room detail
+            </p>
+            <h2 className="mt-3 font-serif text-5xl leading-none font-bold tracking-tight lg:text-7xl">
               Phòng {room.name}
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-[#eadbc4]">
-              {selectedRoomType?.name || "Chưa gán loại phòng"} · {selectedBuilding?.name || "Chưa gán tòa nhà"} ·{" "}
+              {selectedRoomType?.name || "Chưa gán loại phòng"} ·{" "}
+              {selectedBuilding?.name || "Chưa gán tòa nhà"} ·{" "}
               {selectedFloor ? `Tầng ${selectedFloor.floorNumber}` : "Chưa gán tầng"}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             {canUpdateRoom ? (
               <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                if (isEditing) {
-                  setForm(toRoomForm(room));
-                  setSelectedImageFiles([]);
-                  setCoverIndex(0);
-                }
-                setIsEditing((value) => !value);
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  if (isEditing) {
+                    setForm(toRoomForm(room));
+                    setSelectedImageFiles([]);
+                    setCoverIndex(0);
+                  }
+                  setIsEditing((value) => !value);
                 }}
                 disabled={isActionBusy}
                 className="border-white/15 bg-white/10 text-white hover:bg-white/15"
-            >
-              {isEditing ? "Hủy sửa" : "Chỉnh sửa"}
+              >
+                {isEditing ? "Hủy sửa" : "Chỉnh sửa"}
               </Button>
             ) : null}
             {isEditing && canUpdateRoom ? (
@@ -322,10 +349,28 @@ export function RoomDetailPageContent() {
       {message ? <Alert tone="success">{message}</Alert> : null}
 
       <section className="grid gap-4 md:grid-cols-4">
-        <MetricCard icon={<Building2 className="h-5 w-5" />} label="Tòa nhà" value={selectedBuilding?.name || "Chưa gán"} />
-        <MetricCard icon={<Layers3 className="h-5 w-5" />} label="Tầng" value={selectedFloor ? `Tầng ${selectedFloor.floorNumber}` : "Chưa gán"} />
-        <MetricCard icon={<BedDouble className="h-5 w-5" />} label="Loại phòng" value={selectedRoomType?.name || "Chưa gán"} />
-        <MetricCard icon={<BedDouble className="h-5 w-5" />} label="Trạng thái" value={statusOptions.find((item) => item.value === form.status)?.label || form.status} />
+        <MetricCard
+          icon={<Building2 className="h-5 w-5" />}
+          label="Tòa nhà"
+          value={selectedBuilding?.name || "Chưa gán"}
+        />
+        <MetricCard
+          icon={<Layers3 className="h-5 w-5" />}
+          label="Tầng"
+          value={selectedFloor ? `Tầng ${selectedFloor.floorNumber}` : "Chưa gán"}
+        />
+        <MetricCard
+          icon={<BedDouble className="h-5 w-5" />}
+          label="Loại phòng"
+          value={selectedRoomType?.name || "Chưa gán"}
+        />
+        <MetricCard
+          icon={<BedDouble className="h-5 w-5" />}
+          label="Trạng thái"
+          value={
+            statusOptions.find((item) => item.value === form.status)?.label || form.status
+          }
+        />
       </section>
 
       <section className="grid gap-5 rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm lg:grid-cols-2">
@@ -367,14 +412,19 @@ export function RoomDetailPageContent() {
             </select>
           ) : (
             <ReadOnlyValue>
-              {selectedBuilding?.name || "Chưa gán tòa nhà"} · {selectedFloor ? `Tầng ${selectedFloor.floorNumber}` : "Chưa gán tầng"}
+              {selectedBuilding?.name || "Chưa gán tòa nhà"} ·{" "}
+              {selectedFloor ? `Tầng ${selectedFloor.floorNumber}` : "Chưa gán tầng"}
             </ReadOnlyValue>
           )}
         </FormField>
 
         <FormField label="Tên phòng">
           {isEditing ? (
-            <Input value={form.name} onChange={(event) => setValue("name", event.target.value)} className="h-11 rounded-xl border-[#eadfcd]" />
+            <Input
+              value={form.name}
+              onChange={(event) => setValue("name", event.target.value)}
+              className="h-11 rounded-xl border-[#eadfcd]"
+            />
           ) : (
             <ReadOnlyValue>{form.name || "-"}</ReadOnlyValue>
           )}
@@ -384,7 +434,9 @@ export function RoomDetailPageContent() {
           {isEditing ? (
             <select
               value={form.status}
-              onChange={(event) => setValue("status", event.target.value as RoomFormState["status"])}
+              onChange={(event) =>
+                setValue("status", event.target.value as RoomFormState["status"])
+              }
               className="h-11 w-full rounded-xl border border-[#eadfcd] bg-white px-4 text-sm font-semibold text-gray-950 outline-none focus:border-[#c47a34]"
             >
               {statusOptions.map((status) => (
@@ -394,8 +446,11 @@ export function RoomDetailPageContent() {
               ))}
             </select>
           ) : (
-            <span className={`inline-flex rounded-full px-3 py-1 text-sm font-black ${statusClassName[form.status]}`}>
-              {statusOptions.find((item) => item.value === form.status)?.label || form.status}
+            <span
+              className={`inline-flex rounded-full px-3 py-1 text-sm font-black ${statusClassName[form.status]}`}
+            >
+              {statusOptions.find((item) => item.value === form.status)?.label ||
+                form.status}
             </span>
           )}
         </FormField>
@@ -428,7 +483,11 @@ export function RoomDetailPageContent() {
 
         <FormField label="Diện tích">
           {isEditing ? (
-            <Input value={form.roomSize} onChange={(event) => setValue("roomSize", event.target.value)} className="h-11 rounded-xl border-[#eadfcd]" />
+            <Input
+              value={form.roomSize}
+              onChange={(event) => setValue("roomSize", event.target.value)}
+              className="h-11 rounded-xl border-[#eadfcd]"
+            />
           ) : (
             <ReadOnlyValue>{form.roomSize || "-"}</ReadOnlyValue>
           )}
@@ -457,20 +516,34 @@ export function RoomDetailPageContent() {
         <h3 className="font-serif text-3xl font-bold text-[#211a14]">Ảnh phòng</h3>
         {activeImage ? (
           <div className="mt-4 space-y-4">
-            <img src={activeImage.url} alt={activeImage.label} className="max-h-[440px] w-full rounded-2xl object-cover" />
+            <img
+              src={activeImage.url}
+              alt={activeImage.label}
+              className="max-h-[440px] w-full rounded-2xl object-cover"
+            />
             <div className="flex gap-3 overflow-x-auto pb-1">
               {roomImages.map((image, index) => (
                 <div
                   key={`${image.url}-${index}`}
                   className={`relative h-24 w-32 shrink-0 overflow-hidden rounded-xl border bg-[#fffaf2] transition ${
-                    activeImageIndex === index ? "border-[#c47a34] ring-2 ring-[#c47a34]/25" : "border-[#decdb9] hover:border-[#c47a34]/70"
+                    activeImageIndex === index
+                      ? "border-[#c47a34] ring-2 ring-[#c47a34]/25"
+                      : "border-[#decdb9] hover:border-[#c47a34]/70"
                   }`}
                 >
-                  <button type="button" onClick={() => setActiveImageIndex(index)} className="block size-full">
-                    <img src={image.url} alt={image.label} className="size-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setActiveImageIndex(index)}
+                    className="block size-full"
+                  >
+                    <img
+                      src={image.url}
+                      alt={image.label}
+                      className="size-full object-cover"
+                    />
                   </button>
                   {image.isCover ? (
-                    <span className="absolute left-2 top-2 rounded-full bg-[#21170f]/85 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                    <span className="absolute top-2 left-2 rounded-full bg-[#21170f]/85 px-2 py-0.5 text-[10px] font-black text-white uppercase">
                       Cover
                     </span>
                   ) : null}
@@ -479,10 +552,14 @@ export function RoomDetailPageContent() {
                       type="button"
                       onClick={() => void handleDeleteExistingImage(image.id!)}
                       disabled={isActionBusy}
-                      className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-white/92 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="absolute top-2 right-2 grid size-7 place-items-center rounded-full bg-white/92 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Xóa ảnh phòng"
                     >
-                      {deletingImageId === image.id ? <span className="text-[10px] font-black">...</span> : <X className="h-4 w-4" />}
+                      {deletingImageId === image.id ? (
+                        <span className="text-[10px] font-black">...</span>
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
                     </button>
                   ) : null}
                 </div>
@@ -519,7 +596,9 @@ export function RoomDetailPageContent() {
               <span className="grid size-14 place-items-center rounded-full border-4 border-[#eadfcd] bg-white text-[#9b5c24]">
                 <ImagePlus className="h-8 w-8" />
               </span>
-              <span className="mt-4 text-lg font-semibold text-[#211a14]">Kéo thả tối thiểu 1 ảnh vào đây hoặc</span>
+              <span className="mt-4 text-lg font-semibold text-[#211a14]">
+                Kéo thả tối thiểu 1 ảnh vào đây hoặc
+              </span>
               <span className="mt-3 rounded-full border border-[#d9b98f] bg-white px-5 py-2 text-sm font-bold text-[#9b5c24] shadow-sm">
                 Chọn tệp ảnh
               </span>
@@ -528,7 +607,9 @@ export function RoomDetailPageContent() {
                 accept="image/jpeg,image/jpg,image/png"
                 multiple
                 className="sr-only"
-                onChange={(event) => handleImageFiles(Array.from(event.target.files ?? []))}
+                onChange={(event) =>
+                  handleImageFiles(Array.from(event.target.files ?? []))
+                }
               />
             </label>
 
@@ -539,29 +620,45 @@ export function RoomDetailPageContent() {
 
             {selectedImagePreviews.length > 0 ? (
               <div className="mt-5">
-                <p className="text-base font-black text-[#211a14]">Ảnh đã chọn ({selectedImagePreviews.length})</p>
+                <p className="text-base font-black text-[#211a14]">
+                  Ảnh đã chọn ({selectedImagePreviews.length})
+                </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                   {selectedImagePreviews.map((file, index) => (
                     <div
                       key={`${file.name}-${index}`}
                       className={`group relative overflow-hidden rounded-xl border bg-white ${
-                        coverIndex === index ? "border-[#c47a34] ring-2 ring-[#c47a34]/20" : "border-[#decdb9]"
+                        coverIndex === index
+                          ? "border-[#c47a34] ring-2 ring-[#c47a34]/20"
+                          : "border-[#decdb9]"
                       }`}
                     >
                       <button
                         type="button"
                         onClick={() => removeSelectedImage(index)}
-                        className="absolute right-2 top-2 z-10 grid size-7 place-items-center rounded-full bg-white/90 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-600"
+                        className="absolute top-2 right-2 z-10 grid size-7 place-items-center rounded-full bg-white/90 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-600"
                         aria-label="Bỏ ảnh"
                       >
                         <X className="h-4 w-4" />
                       </button>
-                      <button type="button" onClick={() => setCoverIndex(index)} className="block w-full text-left">
-                        <img src={file.previewUrl} alt={file.name} className="h-28 w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setCoverIndex(index)}
+                        className="block w-full text-left"
+                      >
+                        <img
+                          src={file.previewUrl}
+                          alt={file.name}
+                          className="h-28 w-full object-cover"
+                        />
                         <div className="space-y-1 px-3 py-2">
-                          <p className="truncate text-sm font-semibold text-[#211a14]">{file.name}</p>
+                          <p className="truncate text-sm font-semibold text-[#211a14]">
+                            {file.name}
+                          </p>
                           <p className="text-xs text-[#75695d]">{file.size} KB</p>
-                          <p className={`text-xs font-bold ${coverIndex === index ? "text-[#9b5c24]" : "text-[#8f7c69]"}`}>
+                          <p
+                            className={`text-xs font-bold ${coverIndex === index ? "text-[#9b5c24]" : "text-[#8f7c69]"}`}
+                          >
                             {coverIndex === index ? "Ảnh cover" : "Bấm để chọn cover"}
                           </p>
                         </div>
@@ -635,7 +732,14 @@ function buildRoomImages(room: RoomResponse | null): DisplayImage[] {
   addImage(room.image, "Ảnh cover", true);
   [...(room.images ?? [])]
     .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
-    .forEach((image, index) => addImage(image.url, image.isCover ? "Ảnh cover" : `Ảnh ${index + 1}`, image.isCover, image.id));
+    .forEach((image, index) =>
+      addImage(
+        image.url,
+        image.isCover ? "Ảnh cover" : `Ảnh ${index + 1}`,
+        image.isCover,
+        image.id,
+      ),
+    );
   (room.galleryImages ?? []).forEach((url, index) => addImage(url, `Ảnh ${index + 1}`));
 
   return Array.from(imageMap.values());
@@ -658,23 +762,41 @@ function ReadOnlyValue({ children }: { children: React.ReactNode }) {
   );
 }
 
-function MetricCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function MetricCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-[1.5rem] border border-[#decdb9] bg-white/72 p-5 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm font-bold text-[#75695d]">{label}</p>
         <div className="rounded-2xl bg-[#eadfcd] p-3 text-[#9b5c24]">{icon}</div>
       </div>
-      <p className="mt-4 line-clamp-2 text-xl font-black tracking-tight text-[#211a14]">{value}</p>
+      <p className="mt-4 line-clamp-2 text-xl font-black tracking-tight text-[#211a14]">
+        {value}
+      </p>
     </div>
   );
 }
 
-function Alert({ tone, children }: { tone: "success" | "error"; children: React.ReactNode }) {
+function Alert({
+  tone,
+  children,
+}: {
+  tone: "success" | "error";
+  children: React.ReactNode;
+}) {
   return (
     <div
       className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
-        tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
+        tone === "success"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-red-200 bg-red-50 text-red-700"
       }`}
     >
       {children}

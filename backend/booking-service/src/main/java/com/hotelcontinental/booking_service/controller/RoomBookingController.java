@@ -6,7 +6,6 @@ import com.hotelcontinental.booking_service.dto.request.RoomBookingTotalsUpdateR
 import com.hotelcontinental.booking_service.dto.response.RoomBookingResponse;
 import com.hotelcontinental.booking_service.service.interfaces.RoomBookingService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,7 +22,6 @@ public class RoomBookingController {
     private final RoomBookingService roomBookingService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('BOOKING_CREATE')")
     public ApiResponse<RoomBookingResponse> createRoomBooking(@RequestBody RoomBookingCreationRequest request) {
         return ApiResponse.<RoomBookingResponse>builder()
                 .result(roomBookingService.createRoomBooking(request))
@@ -31,7 +29,6 @@ public class RoomBookingController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('BOOKING_VIEW')")
     public ApiResponse<List<RoomBookingResponse>> getRoomBookings() {
         return ApiResponse.<List<RoomBookingResponse>>builder()
                 .result(roomBookingService.getRoomBookings())
@@ -53,7 +50,6 @@ public class RoomBookingController {
     }
 
     @PostMapping("/{id}/check-in")
-    @PreAuthorize("hasAuthority('BOOKING_CHECKIN')")
     public ApiResponse<RoomBookingResponse> checkIn(@PathVariable String id) {
         return ApiResponse.<RoomBookingResponse>builder()
                 .result(roomBookingService.checkIn(id))
@@ -61,7 +57,6 @@ public class RoomBookingController {
     }
 
     @PostMapping("/{id}/check-out")
-    @PreAuthorize("hasAuthority('BOOKING_CHECKOUT')")
     public ApiResponse<RoomBookingResponse> checkOut(@PathVariable String id) {
         return ApiResponse.<RoomBookingResponse>builder()
                 .result(roomBookingService.checkOut(id))
@@ -69,7 +64,6 @@ public class RoomBookingController {
     }
 
     @PostMapping("/{id}/totals")
-    @PreAuthorize("hasAuthority('BOOKING_UPDATE_TOTALS')")
     public ApiResponse<RoomBookingResponse> updateTotals(
             @PathVariable String id,
             @RequestBody RoomBookingTotalsUpdateRequest request

@@ -51,7 +51,6 @@ const variantClasses: Record<ButtonVariant, string> = {
     "rounded-full border border-outline/20 text-on-surface font-bold text-sm uppercase tracking-widest hover:bg-surface-variant/50 transition-all",
 };
 
-
 // Kích thước thông dụng cần có để đảm bảo nhất quán.
 const sizeClasses: Record<ButtonSize, string> = {
   sm: "h-9 px-4 text-sm",

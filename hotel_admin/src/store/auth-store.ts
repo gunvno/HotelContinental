@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createJSONStorage,persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 export interface UserInfo {
   name?: string;
@@ -17,8 +17,13 @@ interface AuthState {
   userInfo: UserInfo | null;
   permissions: string[];
   isAuthenticated: boolean;
-  
-  login: (token: string, refreshToken: string | null, userInfo: UserInfo, permissions?: string[]) => void;
+
+  login: (
+    token: string,
+    refreshToken: string | null,
+    userInfo: UserInfo,
+    permissions?: string[],
+  ) => void;
   logout: () => void;
 }
 
@@ -52,8 +57,8 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "hotel-admin-auth-storage", // tên key trong localStorage
       storage: createJSONStorage(() => localStorage), // mặc định lưu localStorage
-    }
-  )
+    },
+  ),
 );
 
 export const selectToken = (state: AuthState) => state.token;

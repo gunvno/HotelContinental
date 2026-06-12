@@ -42,7 +42,9 @@ export function RoomDetailAmenities({ title, items }: RoomDetailAmenitiesProps) 
           >
             <span className="text-ring inline-flex">{resolveIcon(item.icon)}</span>
             <h4 className="text-foreground mt-4 text-lg font-semibold">{item.title}</h4>
-            <p className="text-muted-foreground mt-2 text-sm leading-6">{item.description}</p>
+            <p className="text-muted-foreground mt-2 text-sm leading-6">
+              {item.description}
+            </p>
           </article>
         ))}
       </div>

@@ -45,7 +45,9 @@ export function RoomDetailBookingCard({
 
     return `/payment?${params.toString()}`;
   }, [checkIn, checkOut, guests, pricePerNight, roomId, roomTitle]);
-  const bookingHref = token ? paymentHref : `/login?redirect=${encodeURIComponent(paymentHref)}`;
+  const bookingHref = token
+    ? paymentHref
+    : `/login?redirect=${encodeURIComponent(paymentHref)}`;
 
   return (
     <aside className="border-border/60 bg-background sticky top-24 rounded-3xl border p-6 shadow-[0_20px_55px_-35px_rgba(31,41,55,0.4)]">
@@ -120,8 +122,12 @@ export function RoomDetailBookingCard({
         </div>
       </div>
 
-      <Button href={bookingHref} className="mt-6 h-12 w-full rounded-full">Đặt phòng ngay</Button>
-      <p className="text-muted-foreground mt-3 text-center text-xs">Không trừ phí hủy phòng trước 48 giờ</p>
+      <Button href={bookingHref} className="mt-6 h-12 w-full rounded-full">
+        Đặt phòng ngay
+      </Button>
+      <p className="text-muted-foreground mt-3 text-center text-xs">
+        Không trừ phí hủy phòng trước 48 giờ
+      </p>
     </aside>
   );
 }

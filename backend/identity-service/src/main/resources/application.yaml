@@ -14,7 +14,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
   kafka:
     bootstrap-servers: localhost:9094
     producer:
@@ -112,6 +112,7 @@ authorization:
     - BOOKING_VIEW
     - BOOKING_CREATE
     - BOOKING_UPDATE
+    - BOOKING_UPDATE_TOTALS
     - BOOKING_CHECKIN
     - BOOKING_CHECKOUT
     - BOOKING_CANCEL

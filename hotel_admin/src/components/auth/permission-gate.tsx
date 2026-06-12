@@ -11,7 +11,12 @@ type PermissionGateProps = {
   children: ReactNode;
 };
 
-export function PermissionGate({ anyOf, allOf, fallback = null, children }: PermissionGateProps) {
+export function PermissionGate({
+  anyOf,
+  allOf,
+  fallback = null,
+  children,
+}: PermissionGateProps) {
   const permission = usePermission();
 
   const hasAny = !anyOf || anyOf.length === 0 || permission.hasAny(...anyOf);
@@ -24,7 +29,11 @@ export function PermissionGate({ anyOf, allOf, fallback = null, children }: Perm
   return <>{children}</>;
 }
 
-export function PermissionDenied({ message = "Bạn không có quyền sử dụng chức năng này." }: { message?: string }) {
+export function PermissionDenied({
+  message = "Bạn không có quyền sử dụng chức năng này.",
+}: {
+  message?: string;
+}) {
   return (
     <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700">
       {message}

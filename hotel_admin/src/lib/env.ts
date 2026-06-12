@@ -2,10 +2,7 @@ import { z } from "zod";
 
 // Validate biến môi trường public để tránh lỗi khi deploy.
 const clientEnvSchema = z.object({
-  NEXT_PUBLIC_API_BASE_URL: z
-    .string()
-    .url()
-    .default("http://localhost:8888/api/v1"),
+  NEXT_PUBLIC_API_BASE_URL: z.string().url().default("http://localhost:8888/api/v1"),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;

@@ -21,11 +21,15 @@ export type PolicyTypeResponse = {
 };
 
 export async function getPolicyTypes() {
-  const res = await http.get("content/policies").json<ApiResponse<PolicyTypeResponse[]>>();
+  const res = await http
+    .get("content/policies")
+    .json<ApiResponse<PolicyTypeResponse[]>>();
   return (res.result ?? res.content ?? []) as PolicyTypeResponse[];
 }
 
 export async function getPolicyByCode(code: string) {
-  const res = await http.get(`content/policies/${code}`).json<ApiResponse<PolicyTypeResponse>>();
+  const res = await http
+    .get(`content/policies/${code}`)
+    .json<ApiResponse<PolicyTypeResponse>>();
   return (res.result ?? res.content) as PolicyTypeResponse;
 }

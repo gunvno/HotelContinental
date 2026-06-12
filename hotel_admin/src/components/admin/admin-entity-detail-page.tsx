@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { ImagePlus, UploadCloud, X } from "lucide-react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  type AmenityResponse,
+  type AmenityRoomResponse,
   deleteRoomImage,
   getAmenities,
   getAmenity,
@@ -17,8 +19,6 @@ import {
   getRoomType,
   getRoomTypes,
   getRoomTypeService,
-  type AmenityResponse,
-  type AmenityRoomResponse,
   type RoomResponse,
   type RoomTypeResponse,
   type RoomTypeServiceResponse,
@@ -32,7 +32,12 @@ import {
 
 type EntityKind = "room-type" | "amenity" | "amenity-room" | "room-type-service" | "room";
 
-type DetailEntity = RoomTypeResponse | AmenityResponse | AmenityRoomResponse | RoomTypeServiceResponse | RoomResponse;
+type DetailEntity =
+  | RoomTypeResponse
+  | AmenityResponse
+  | AmenityRoomResponse
+  | RoomTypeServiceResponse
+  | RoomResponse;
 
 type FormState = Record<string, string | number | boolean>;
 
@@ -93,8 +98,12 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
       setError(null);
       const [detail, roomTypeResult, amenityResult] = await Promise.all([
         loadEntity(kind, id),
-        kind === "amenity-room" || kind === "room-type-service" || kind === "room" ? getRoomTypes(0, 500) : Promise.resolve({ data: [], total: 0 }),
-        kind === "amenity-room" ? getAmenities(0, 500) : Promise.resolve({ data: [], total: 0 }),
+        kind === "amenity-room" || kind === "room-type-service" || kind === "room"
+          ? getRoomTypes(0, 500)
+          : Promise.resolve({ data: [], total: 0 }),
+        kind === "amenity-room"
+          ? getAmenities(0, 500)
+          : Promise.resolve({ data: [], total: 0 }),
       ]);
       setEntity(detail);
       setForm(toForm(kind, detail));
@@ -111,7 +120,10 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
     }
   };
 
-  const fields = useMemo(() => buildFields(kind, form, roomTypes, amenities), [amenities, form, kind, roomTypes]);
+  const fields = useMemo(
+    () => buildFields(kind, form, roomTypes, amenities),
+    [amenities, form, kind, roomTypes],
+  );
   const selectedImagePreviews = useMemo(
     () =>
       selectedImageFiles.map((file) => ({
@@ -127,8 +139,16 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
     }
 
     const room = entity as RoomResponse;
-    const imageMap = new Map<string, { id?: string; url: string; label: string; isCover?: boolean }>();
-    const addImage = (url?: string, label = "Ảnh phòng", isCover = false, id?: string) => {
+    const imageMap = new Map<
+      string,
+      { id?: string; url: string; label: string; isCover?: boolean }
+    >();
+    const addImage = (
+      url?: string,
+      label = "Ảnh phòng",
+      isCover = false,
+      id?: string,
+    ) => {
       if (!url) {
         return;
       }
@@ -144,12 +164,20 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
     addImage(room.image, "Ảnh cover", true);
     [...(room.images ?? [])]
       .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
-      .forEach((image, index) => addImage(image.url, image.isCover ? "Ảnh cover" : `Ảnh ${index + 1}`, image.isCover, image.id));
+      .forEach((image, index) =>
+        addImage(
+          image.url,
+          image.isCover ? "Ảnh cover" : `Ảnh ${index + 1}`,
+          image.isCover,
+          image.id,
+        ),
+      );
     (room.galleryImages ?? []).forEach((url, index) => addImage(url, `Ảnh ${index + 1}`));
 
     return Array.from(imageMap.values());
   }, [entity, kind]);
-  const activeRoomImage = roomImages[Math.min(activeRoomImageIndex, Math.max(roomImages.length - 1, 0))];
+  const activeRoomImage =
+    roomImages[Math.min(activeRoomImageIndex, Math.max(roomImages.length - 1, 0))];
 
   useEffect(() => {
     return () => {
@@ -174,12 +202,16 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
       .slice(0, 10);
 
     if (files.length > 0 && imageFiles.length === 0) {
-      setError("Vui lòng chọn file ảnh đúng định dạng jpg, jpeg, png và dung lượng không quá 30MB.");
+      setError(
+        "Vui lòng chọn file ảnh đúng định dạng jpg, jpeg, png và dung lượng không quá 30MB.",
+      );
       return;
     }
 
     if (files.length > imageFiles.length) {
-      setError("Một số file không hợp lệ đã bị bỏ qua. Chỉ nhận tối đa 10 ảnh jpg, jpeg, png, mỗi ảnh không quá 30MB.");
+      setError(
+        "Một số file không hợp lệ đã bị bỏ qua. Chỉ nhận tối đa 10 ảnh jpg, jpeg, png, mỗi ảnh không quá 30MB.",
+      );
     } else {
       setError(null);
     }
@@ -226,7 +258,11 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
       setEntity(updated);
       setForm(toForm(kind, updated));
       setIsEditing(false);
-      setMessage(shouldUploadImages ? "Đã cập nhật thông tin và ảnh phòng thành công." : "Đã cập nhật thành công.");
+      setMessage(
+        shouldUploadImages
+          ? "Đã cập nhật thông tin và ảnh phòng thành công."
+          : "Đã cập nhật thành công.",
+      );
       router.refresh();
     } catch (saveError) {
       console.error(saveError);
@@ -237,7 +273,11 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
   };
 
   if (isLoading) {
-    return <div className="rounded-3xl border border-[#decdb9] bg-white/80 p-8 text-[#5f5144]">Đang tải dữ liệu...</div>;
+    return (
+      <div className="rounded-3xl border border-[#decdb9] bg-white/80 p-8 text-[#5f5144]">
+        Đang tải dữ liệu...
+      </div>
+    );
   }
 
   if (!entity) {
@@ -252,17 +292,22 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
     <div className="space-y-6">
       <Link
         href={backHrefByKind[kind]}
-        className="inline-flex h-11 items-center justify-center rounded-full border border-[#decdb9] bg-white/80 px-5 text-sm font-bold uppercase tracking-[0.16em] text-[#211a14] shadow-sm transition hover:bg-[#fffaf2]"
+        className="inline-flex h-11 items-center justify-center rounded-full border border-[#decdb9] bg-white/80 px-5 text-sm font-bold tracking-[0.16em] text-[#211a14] uppercase shadow-sm transition hover:bg-[#fffaf2]"
       >
         ← Quay lại
       </Link>
 
       <div className="flex flex-col gap-4 rounded-[1.75rem] border border-[#decdb9] bg-white/80 p-6 shadow-sm md:flex-row md:items-end md:justify-between">
         <div>
-          <Link href={backHrefByKind[kind]} className="text-sm font-semibold text-[#8b5e22] hover:underline">
+          <Link
+            href={backHrefByKind[kind]}
+            className="text-sm font-semibold text-[#8b5e22] hover:underline"
+          >
             Quay lại danh sách
           </Link>
-          <h2 className="mt-3 font-serif text-4xl font-bold text-[#211a14]">{titleByKind[kind]}</h2>
+          <h2 className="mt-3 font-serif text-4xl font-bold text-[#211a14]">
+            {titleByKind[kind]}
+          </h2>
           <p className="mt-2 text-sm text-[#75695d]">ID: {id}</p>
         </div>
         <div className="flex gap-3">
@@ -295,10 +340,17 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
 
       <section className="grid gap-5 rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm lg:grid-cols-2">
         {fields.map((field) => (
-          <div key={field.key} className={field.type === "textarea" ? "lg:col-span-2" : undefined}>
+          <div
+            key={field.key}
+            className={field.type === "textarea" ? "lg:col-span-2" : undefined}
+          >
             <Label className="text-sm font-bold text-[#5f5144]">{field.label}</Label>
             {isEditing ? (
-              <EditableField field={field} value={form[field.key]} onChange={(value) => setValue(field.key, value)} />
+              <EditableField
+                field={field}
+                value={form[field.key]}
+                onChange={(value) => setValue(field.key, value)}
+              />
             ) : (
               <p className="mt-2 min-h-11 rounded-xl border border-[#eadfcd] bg-[#fffaf2] px-4 py-3 text-sm font-semibold text-[#211a14]">
                 {formatValue(field, form[field.key])}
@@ -313,14 +365,20 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
           <h3 className="font-serif text-2xl font-bold text-[#211a14]">Ảnh phòng</h3>
           {activeRoomImage ? (
             <div className="mt-4 space-y-4">
-              <img src={activeRoomImage.url} alt={activeRoomImage.label} className="max-h-[420px] w-full rounded-2xl object-cover" />
+              <img
+                src={activeRoomImage.url}
+                alt={activeRoomImage.label}
+                className="max-h-[420px] w-full rounded-2xl object-cover"
+              />
               {roomImages.length > 0 ? (
                 <div className="flex gap-3 overflow-x-auto pb-1">
                   {roomImages.map((image, index) => (
                     <div
                       key={image.url}
                       className={`relative h-24 w-32 shrink-0 overflow-hidden rounded-xl border bg-[#fffaf2] transition ${
-                        activeRoomImageIndex === index ? "border-[#c47a34] ring-2 ring-[#c47a34]/25" : "border-[#decdb9] hover:border-[#c47a34]/70"
+                        activeRoomImageIndex === index
+                          ? "border-[#c47a34] ring-2 ring-[#c47a34]/25"
+                          : "border-[#decdb9] hover:border-[#c47a34]/70"
                       }`}
                     >
                       <button
@@ -328,10 +386,14 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
                         onClick={() => setActiveRoomImageIndex(index)}
                         className="block size-full"
                       >
-                        <img src={image.url} alt={image.label} className="size-full object-cover" />
+                        <img
+                          src={image.url}
+                          alt={image.label}
+                          className="size-full object-cover"
+                        />
                       </button>
                       {image.isCover ? (
-                        <span className="absolute left-2 top-2 rounded-full bg-[#21170f]/85 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                        <span className="absolute top-2 left-2 rounded-full bg-[#21170f]/85 px-2 py-0.5 text-[10px] font-black text-white uppercase">
                           Cover
                         </span>
                       ) : null}
@@ -340,7 +402,7 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
                           type="button"
                           onClick={() => void handleDeleteExistingImage(image.id!)}
                           disabled={deletingImageId === image.id}
-                          className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-white/92 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="absolute top-2 right-2 grid size-7 place-items-center rounded-full bg-white/92 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                           aria-label="Xóa ảnh phòng"
                         >
                           {deletingImageId === image.id ? (
@@ -396,34 +458,46 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
                   accept="image/jpeg,image/jpg,image/png"
                   multiple
                   className="sr-only"
-                  onChange={(event) => handleImageFiles(Array.from(event.target.files ?? []))}
+                  onChange={(event) =>
+                    handleImageFiles(Array.from(event.target.files ?? []))
+                  }
                 />
               </label>
 
               <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-[#536989]">
                 <li>Hỗ trợ jpg, jpeg, png. Tối đa 10 ảnh.</li>
-                <li>Kích thước mỗi ảnh tối đa 30MB. Ảnh cover sẽ thay ảnh đại diện phòng.</li>
+                <li>
+                  Kích thước mỗi ảnh tối đa 30MB. Ảnh cover sẽ thay ảnh đại diện phòng.
+                </li>
               </ul>
 
               {selectedImagePreviews.length > 0 ? (
                 <div className="mt-5">
-                  <p className="text-base font-black text-[#07152b]">Ảnh đã chọn ({selectedImagePreviews.length})</p>
+                  <p className="text-base font-black text-[#07152b]">
+                    Ảnh đã chọn ({selectedImagePreviews.length})
+                  </p>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                     {selectedImagePreviews.map((file, index) => (
                       <div
                         key={`${file.name}-${index}`}
                         className={`group relative overflow-hidden rounded-xl border bg-[#f8fbff] ${
-                          coverIndex === index ? "border-[#0ea5e9] ring-2 ring-[#0ea5e9]/20" : "border-[#d7e4f2]"
+                          coverIndex === index
+                            ? "border-[#0ea5e9] ring-2 ring-[#0ea5e9]/20"
+                            : "border-[#d7e4f2]"
                         }`}
                       >
                         <button
                           type="button"
                           onClick={() => {
-                            const nextFiles = selectedImageFiles.filter((_, fileIndex) => fileIndex !== index);
+                            const nextFiles = selectedImageFiles.filter(
+                              (_, fileIndex) => fileIndex !== index,
+                            );
                             setSelectedImageFiles(nextFiles);
-                            setCoverIndex(Math.max(0, Math.min(coverIndex, nextFiles.length - 1)));
+                            setCoverIndex(
+                              Math.max(0, Math.min(coverIndex, nextFiles.length - 1)),
+                            );
                           }}
-                          className="absolute right-2 top-2 z-10 grid size-7 place-items-center rounded-full bg-white/90 text-[#243654] shadow transition hover:bg-red-50 hover:text-red-600"
+                          className="absolute top-2 right-2 z-10 grid size-7 place-items-center rounded-full bg-white/90 text-[#243654] shadow transition hover:bg-red-50 hover:text-red-600"
                           aria-label="Bỏ ảnh"
                         >
                           <X className="h-4 w-4" />
@@ -433,11 +507,19 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
                           onClick={() => setCoverIndex(index)}
                           className="block w-full text-left"
                         >
-                          <img src={file.previewUrl} alt={file.name} className="h-28 w-full object-cover" />
+                          <img
+                            src={file.previewUrl}
+                            alt={file.name}
+                            className="h-28 w-full object-cover"
+                          />
                           <div className="space-y-1 px-3 py-2">
-                            <p className="truncate text-sm font-semibold text-[#243654]">{file.name}</p>
+                            <p className="truncate text-sm font-semibold text-[#243654]">
+                              {file.name}
+                            </p>
                             <p className="text-xs text-[#6b7f9e]">{file.size} KB</p>
-                            <p className={`text-xs font-bold ${coverIndex === index ? "text-[#0284c7]" : "text-[#8ca0bd]"}`}>
+                            <p
+                              className={`text-xs font-bold ${coverIndex === index ? "text-[#0284c7]" : "text-[#8ca0bd]"}`}
+                            >
                               {coverIndex === index ? "Ảnh cover" : "Bấm để chọn cover"}
                             </p>
                           </div>
@@ -455,10 +537,13 @@ export function AdminEntityDetailPage({ kind }: { kind: EntityKind }) {
       {kind !== "room" && "image" in entity && entity.image ? (
         <section className="rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm">
           <h3 className="font-serif text-2xl font-bold text-[#211a14]">Ảnh phòng</h3>
-          <img src={entity.image} alt={entity.name} className="mt-4 max-h-[360px] w-full rounded-2xl object-cover" />
+          <img
+            src={entity.image}
+            alt={entity.name}
+            className="mt-4 max-h-[360px] w-full rounded-2xl object-cover"
+          />
         </section>
       ) : null}
-
     </div>
   );
 }
@@ -522,15 +607,30 @@ function EditableField({
     <Input
       type={field.type === "number" ? "number" : "text"}
       value={String(value ?? "")}
-      onChange={(event) => onChange(field.type === "number" ? Number(event.target.value) : event.target.value)}
+      onChange={(event) =>
+        onChange(
+          field.type === "number" ? Number(event.target.value) : event.target.value,
+        )
+      }
       className="mt-2 h-11 rounded-xl border-[#eadfcd]"
     />
   );
 }
 
-function buildFields(kind: EntityKind, form: FormState, roomTypes: RoomTypeResponse[], amenities: AmenityResponse[]): FieldConfig[] {
-  const roomTypeOptions = roomTypes.map((roomType) => ({ label: roomType.name, value: roomType.id }));
-  const amenityOptions = amenities.map((amenity) => ({ label: amenity.name, value: amenity.id }));
+function buildFields(
+  kind: EntityKind,
+  form: FormState,
+  roomTypes: RoomTypeResponse[],
+  amenities: AmenityResponse[],
+): FieldConfig[] {
+  const roomTypeOptions = roomTypes.map((roomType) => ({
+    label: roomType.name,
+    value: roomType.id,
+  }));
+  const amenityOptions = amenities.map((amenity) => ({
+    label: amenity.name,
+    value: amenity.id,
+  }));
 
   if (kind === "room-type") {
     return [
@@ -546,15 +646,33 @@ function buildFields(kind: EntityKind, form: FormState, roomTypes: RoomTypeRespo
     return [
       { key: "name", label: "Tên cơ sở vật chất" },
       { key: "description", label: "Mô tả", type: "textarea" },
-      { key: "status", label: "Tình trạng", type: "select", options: [{ label: "Có sẵn", value: "AVAILABLE" }, { label: "Không có sẵn", value: "UNAVAILABLE" }] },
+      {
+        key: "status",
+        label: "Tình trạng",
+        type: "select",
+        options: [
+          { label: "Có sẵn", value: "AVAILABLE" },
+          { label: "Không có sẵn", value: "UNAVAILABLE" },
+        ],
+      },
       { key: "deleted", label: "Trạng thái", type: "boolean" },
     ];
   }
 
   if (kind === "amenity-room") {
     return [
-      { key: "roomTypeId", label: "Loại phòng", type: "select", options: roomTypeOptions },
-      { key: "amenityId", label: "Cơ sở vật chất", type: "select", options: amenityOptions },
+      {
+        key: "roomTypeId",
+        label: "Loại phòng",
+        type: "select",
+        options: roomTypeOptions,
+      },
+      {
+        key: "amenityId",
+        label: "Cơ sở vật chất",
+        type: "select",
+        options: amenityOptions,
+      },
       { key: "amount", label: "Số lượng", type: "number" },
       { key: "deleted", label: "Trạng thái", type: "boolean" },
     ];
@@ -562,7 +680,12 @@ function buildFields(kind: EntityKind, form: FormState, roomTypes: RoomTypeRespo
 
   if (kind === "room-type-service") {
     return [
-      { key: "roomTypeId", label: "Loại phòng", type: "select", options: roomTypeOptions },
+      {
+        key: "roomTypeId",
+        label: "Loại phòng",
+        type: "select",
+        options: roomTypeOptions,
+      },
       { key: "serviceId", label: "Mã dịch vụ" },
       { key: "amount", label: "Số lượng", type: "number" },
       { key: "deleted", label: "Trạng thái", type: "boolean" },
@@ -575,12 +698,17 @@ function buildFields(kind: EntityKind, form: FormState, roomTypes: RoomTypeRespo
     { key: "pricePerDay", label: "Giá theo ngày", type: "number" },
     { key: "pricePerHour", label: "Giá theo giờ", type: "number" },
     { key: "roomSize", label: "Diện tích" },
-    { key: "status", label: "Trạng thái", type: "select", options: [
-      { label: "Sẵn sàng", value: "AVAILABLE" },
-      { label: "Đang ở", value: "OCCUPIED" },
-      { label: "Đã giữ", value: "RESERVED" },
-      { label: "Bảo trì", value: "MAINTENANCE" },
-    ] },
+    {
+      key: "status",
+      label: "Trạng thái",
+      type: "select",
+      options: [
+        { label: "Sẵn sàng", value: "AVAILABLE" },
+        { label: "Đang ở", value: "OCCUPIED" },
+        { label: "Đã giữ", value: "RESERVED" },
+        { label: "Bảo trì", value: "MAINTENANCE" },
+      ],
+    },
     { key: "description", label: "Mô tả", type: "textarea" },
   ];
 }
@@ -596,19 +724,40 @@ async function loadEntity(kind: EntityKind, id: string): Promise<DetailEntity> {
 function toForm(kind: EntityKind, entity: DetailEntity): FormState {
   if (kind === "room-type") {
     const item = entity as RoomTypeResponse;
-    return { name: item.name ?? "", description: item.description ?? "", maximumOccupancy: item.maximumOccupancy ?? 1, quantity: item.quantity ?? 0, deleted: !!item.deleted };
+    return {
+      name: item.name ?? "",
+      description: item.description ?? "",
+      maximumOccupancy: item.maximumOccupancy ?? 1,
+      quantity: item.quantity ?? 0,
+      deleted: !!item.deleted,
+    };
   }
   if (kind === "amenity") {
     const item = entity as AmenityResponse;
-    return { name: item.name ?? "", description: item.description ?? "", status: item.status ?? "AVAILABLE", deleted: !!item.deleted };
+    return {
+      name: item.name ?? "",
+      description: item.description ?? "",
+      status: item.status ?? "AVAILABLE",
+      deleted: !!item.deleted,
+    };
   }
   if (kind === "amenity-room") {
     const item = entity as AmenityRoomResponse;
-    return { roomTypeId: item.roomTypeId ?? "", amenityId: item.amenityId ?? "", amount: item.amount ?? 1, deleted: !!item.deleted };
+    return {
+      roomTypeId: item.roomTypeId ?? "",
+      amenityId: item.amenityId ?? "",
+      amount: item.amount ?? 1,
+      deleted: !!item.deleted,
+    };
   }
   if (kind === "room-type-service") {
     const item = entity as RoomTypeServiceResponse;
-    return { roomTypeId: item.roomTypeId ?? "", serviceId: item.serviceId ?? "", amount: item.amount ?? 1, deleted: !!item.deleted };
+    return {
+      roomTypeId: item.roomTypeId ?? "",
+      serviceId: item.serviceId ?? "",
+      amount: item.amount ?? 1,
+      deleted: !!item.deleted,
+    };
   }
   const item = entity as RoomResponse;
   return {
@@ -623,7 +772,11 @@ function toForm(kind: EntityKind, entity: DetailEntity): FormState {
   };
 }
 
-async function saveEntity(kind: EntityKind, id: string, form: FormState): Promise<DetailEntity> {
+async function saveEntity(
+  kind: EntityKind,
+  id: string,
+  form: FormState,
+): Promise<DetailEntity> {
   if (kind === "room-type") {
     return updateRoomType(id, {
       name: String(form.name ?? ""),
@@ -665,7 +818,11 @@ async function saveEntity(kind: EntityKind, id: string, form: FormState): Promis
     pricePerHour: Number(form.pricePerHour ?? 0),
     description: String(form.description ?? ""),
     roomSize: String(form.roomSize ?? ""),
-    status: String(form.status ?? "AVAILABLE") as "AVAILABLE" | "OCCUPIED" | "RESERVED" | "MAINTENANCE",
+    status: String(form.status ?? "AVAILABLE") as
+      | "AVAILABLE"
+      | "OCCUPIED"
+      | "RESERVED"
+      | "MAINTENANCE",
   });
 }
 
@@ -674,7 +831,10 @@ function formatValue(field: FieldConfig, value: string | number | boolean | unde
     return value ? "Đã xóa" : "Hoạt động";
   }
   if (field.type === "select") {
-    return field.options?.find((option) => option.value === String(value))?.label ?? String(value ?? "-");
+    return (
+      field.options?.find((option) => option.value === String(value))?.label ??
+      String(value ?? "-")
+    );
   }
   if (value === "" || value === undefined || value === null) {
     return "-";
@@ -682,11 +842,21 @@ function formatValue(field: FieldConfig, value: string | number | boolean | unde
   return String(value);
 }
 
-function Alert({ tone, children }: { tone: "success" | "error"; children: React.ReactNode }) {
+function Alert({
+  tone,
+  children,
+}: {
+  tone: "success" | "error";
+  children: React.ReactNode;
+}) {
   return (
-    <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
-      tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"
-    }`}>
+    <div
+      className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
+        tone === "success"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-red-200 bg-red-50 text-red-700"
+      }`}
+    >
       {children}
     </div>
   );

@@ -15,6 +15,7 @@ import com.hotelcontinental.promotion_service.repository.VoucherDetailsRepositor
 import com.hotelcontinental.promotion_service.repository.VouchersRepository;
 import com.hotelcontinental.promotion_service.service.interfaces.VoucherService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ public class VoucherServiceImpl implements VoucherService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('VOUCHER_CREATE')")
     public VoucherResponse createVoucher(VoucherCreationRequest request) {
         validateCreation(request);
 
@@ -71,6 +73,7 @@ public class VoucherServiceImpl implements VoucherService {
 
     @Override
     @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('VOUCHER_VIEW')")
     public List<VoucherResponse> getVouchers() {
         return vouchersRepository.findAvailableOrderByCreatedTimeDesc()
                 .stream()

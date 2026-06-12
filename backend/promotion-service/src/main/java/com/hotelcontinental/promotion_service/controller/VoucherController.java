@@ -8,7 +8,6 @@ import com.hotelcontinental.promotion_service.dto.response.VoucherApplyResponse;
 import com.hotelcontinental.promotion_service.dto.response.VoucherResponse;
 import com.hotelcontinental.promotion_service.service.interfaces.VoucherService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,7 +23,6 @@ public class VoucherController {
     private final VoucherService voucherService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('VOUCHER_CREATE')")
     public ApiResponse<VoucherResponse> createVoucher(@RequestBody VoucherCreationRequest request) {
         return ApiResponse.<VoucherResponse>builder()
                 .result(voucherService.createVoucher(request))
@@ -32,7 +30,6 @@ public class VoucherController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('VOUCHER_VIEW')")
     public ApiResponse<List<VoucherResponse>> getVouchers() {
         return ApiResponse.<List<VoucherResponse>>builder()
                 .result(voucherService.getVouchers())

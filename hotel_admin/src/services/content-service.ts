@@ -33,26 +33,36 @@ export type PolicyPayload = {
 };
 
 export async function getPolicyTypes() {
-  const res = await http.get("content/policies").json<ApiResponse<PolicyTypeResponse[]>>();
+  const res = await http
+    .get("content/policies")
+    .json<ApiResponse<PolicyTypeResponse[]>>();
   return (res.result ?? res.content ?? []) as PolicyTypeResponse[];
 }
 
 export async function createPolicyType(payload: PolicyTypePayload) {
-  const res = await http.post("content/policies/types", { json: payload }).json<ApiResponse<PolicyTypeResponse>>();
+  const res = await http
+    .post("content/policies/types", { json: payload })
+    .json<ApiResponse<PolicyTypeResponse>>();
   return (res.result ?? res.content) as PolicyTypeResponse;
 }
 
 export async function updatePolicyType(id: string, payload: PolicyTypePayload) {
-  const res = await http.put(`content/policies/types/${id}`, { json: payload }).json<ApiResponse<PolicyTypeResponse>>();
+  const res = await http
+    .put(`content/policies/types/${id}`, { json: payload })
+    .json<ApiResponse<PolicyTypeResponse>>();
   return (res.result ?? res.content) as PolicyTypeResponse;
 }
 
 export async function createPolicy(payload: PolicyPayload) {
-  const res = await http.post("content/policies", { json: payload }).json<ApiResponse<PolicyResponse>>();
+  const res = await http
+    .post("content/policies", { json: payload })
+    .json<ApiResponse<PolicyResponse>>();
   return (res.result ?? res.content) as PolicyResponse;
 }
 
 export async function updatePolicy(id: string, payload: PolicyPayload) {
-  const res = await http.put(`content/policies/${id}`, { json: payload }).json<ApiResponse<PolicyResponse>>();
+  const res = await http
+    .put(`content/policies/${id}`, { json: payload })
+    .json<ApiResponse<PolicyResponse>>();
   return (res.result ?? res.content) as PolicyResponse;
 }

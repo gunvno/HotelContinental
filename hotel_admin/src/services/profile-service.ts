@@ -13,7 +13,9 @@ export type CreateProfilePayload = {
 export async function createProfile(payload: CreateProfilePayload) {
   // Assuming the endpoint is "users/profile" or similar. Adjust as needed.
   // The user didn't specify the exact endpoint, but based on context:
-  const res = await http.post("identity/profileExpand/create", { json: payload }).json<ApiResponse<ProfileResponse>>();
+  const res = await http
+    .post("identity/profileExpand/create", { json: payload })
+    .json<ApiResponse<ProfileResponse>>();
   return res.result;
 }
 
@@ -27,11 +29,12 @@ export type ProfileResponse = {
 
 export async function getMyProfile() {
   try {
-    const res = await http.get("identity/profileExpand/my-profile").json<ApiResponse<ProfileResponse | null>>();
+    const res = await http
+      .get("identity/profileExpand/my-profile")
+      .json<ApiResponse<ProfileResponse | null>>();
     return res.result;
   } catch (error) {
     console.warn("[profile-service] getMyProfile failed", error);
     return null;
   }
 }
-

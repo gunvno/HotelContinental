@@ -13,6 +13,7 @@ import com.hotelcontinental.booking_service.repository.RoomBookingDetailsReposit
 import com.hotelcontinental.booking_service.repository.RoomBookingsRepository;
 import com.hotelcontinental.booking_service.service.interfaces.RoomBookingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('BOOKING_CREATE')")
     public synchronized RoomBookingResponse createRoomBooking(RoomBookingCreationRequest request) {
         validateRequest(request);
 
@@ -96,6 +98,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('BOOKING_VIEW')")
     public List<RoomBookingResponse> getRoomBookings() {
         return roomBookingsRepository.findAllByDeletedFalseOrderByCreatedTimeDesc().stream()
                 .map(booking -> {
@@ -133,6 +136,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('BOOKING_CHECKIN')")
     public RoomBookingResponse checkIn(String id) {
         RoomBookings booking = getBooking(id);
         RoomBookingDetails detail = getRequiredPrimaryDetail(id);
@@ -163,6 +167,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('BOOKING_CHECKOUT')")
     public RoomBookingResponse checkOut(String id) {
         RoomBookings booking = getBooking(id);
         RoomBookingDetails detail = getRequiredPrimaryDetail(id);
@@ -191,6 +196,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
     @Transactional
     @Override
+    @PreAuthorize("hasAuthority('BOOKING_UPDATE_TOTALS')")
     public RoomBookingResponse updateTotals(String id, RoomBookingTotalsUpdateRequest request) {
         if (request == null || request.getTotalRoomPrice() <= 0 || request.getTotalPrice() <= 0) {
             throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);

@@ -28,19 +28,28 @@ export function Pagination({
 
   if (totalPages <= 1) {
     return (
-      <div className={`border-t border-[#eadfcd] px-6 py-4 text-sm font-semibold text-[#75695d] ${className}`}>
+      <div
+        className={`border-t border-[#eadfcd] px-6 py-4 text-sm font-semibold text-[#75695d] ${className}`}
+      >
         Tổng {total} {itemLabel}
       </div>
     );
   }
 
   return (
-    <div className={`flex flex-col gap-3 border-t border-[#eadfcd] px-6 py-4 text-sm md:flex-row md:items-center md:justify-between ${className}`}>
+    <div
+      className={`flex flex-col gap-3 border-t border-[#eadfcd] px-6 py-4 text-sm md:flex-row md:items-center md:justify-between ${className}`}
+    >
       <p className="font-semibold text-[#75695d]">
         Tổng {total} {itemLabel} · Trang {page + 1} / {totalPages}
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="secondary" onClick={() => onPageChange(Math.max(0, page - 1))} disabled={page === 0}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => onPageChange(Math.max(0, page - 1))}
+          disabled={page === 0}
+        >
           <ChevronLeft className="mr-1 h-4 w-4" />
           Trước
         </Button>
@@ -50,7 +59,9 @@ export function Pagination({
 
           return (
             <span key={pageIndex} className="flex items-center gap-2">
-              {needsGap ? <span className="px-1 font-black text-[#9b8c7d]">...</span> : null}
+              {needsGap ? (
+                <span className="px-1 font-black text-[#9b8c7d]">...</span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => onPageChange(pageIndex)}
@@ -65,7 +76,12 @@ export function Pagination({
             </span>
           );
         })}
-        <Button type="button" variant="secondary" onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))}
+          disabled={page >= totalPages - 1}
+        >
           Sau
           <ChevronRight className="ml-1 h-4 w-4" />
         </Button>

@@ -33,7 +33,9 @@ export type VoucherResponse = {
 };
 
 export async function createVoucher(payload: VoucherPayload) {
-  const res = await http.post("promotion/vouchers", { json: payload }).json<ApiResponse<VoucherResponse>>();
+  const res = await http
+    .post("promotion/vouchers", { json: payload })
+    .json<ApiResponse<VoucherResponse>>();
   return (res.result ?? res.content) as VoucherResponse;
 }
 

@@ -1,18 +1,18 @@
 "use client";
 
+import { ArrowLeft, ImagePlus, UploadCloud, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ImagePlus, UploadCloud, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { PermissionDenied } from "@/components/auth/permission-gate";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePermission } from "@/hooks/use-permission";
 import {
-  createRoom,
   type BuildingResponse,
+  createRoom,
   type CreateRoomPayload,
   type FloorResponse,
   getBuildings,
@@ -58,7 +58,9 @@ export default function CreateRoomPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const selectedBuildingFloors = floors.filter((floor) => floor.buildingId === form.buildingId);
+  const selectedBuildingFloors = floors.filter(
+    (floor) => floor.buildingId === form.buildingId,
+  );
   const filePreviews = useMemo(
     () =>
       selectedFiles.map((file) => ({
@@ -98,13 +100,20 @@ export default function CreateRoomPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const [buildingResult, roomTypeResult] = await Promise.all([getBuildings(), getRoomTypes(0, 200)]);
+      const [buildingResult, roomTypeResult] = await Promise.all([
+        getBuildings(),
+        getRoomTypes(0, 200),
+      ]);
       const floorEntries = await Promise.all(
-        buildingResult.map(async (building) => [building.id, await getFloorsByBuilding(building.id)] as const),
+        buildingResult.map(
+          async (building) =>
+            [building.id, await getFloorsByBuilding(building.id)] as const,
+        ),
       );
       const allFloors = floorEntries.flatMap(([, buildingFloors]) => buildingFloors);
       const firstBuildingId = buildingResult[0]?.id || "";
-      const firstFloorId = allFloors.find((floor) => floor.buildingId === firstBuildingId)?.id || "";
+      const firstFloorId =
+        allFloors.find((floor) => floor.buildingId === firstBuildingId)?.id || "";
 
       setBuildings(buildingResult);
       setFloors(allFloors);
@@ -117,7 +126,9 @@ export default function CreateRoomPage() {
       }));
     } catch (loadError) {
       console.error(loadError);
-      setError("Không tải được dữ liệu tạo phòng. Kiểm tra gateway, room-service và token ADMIN.");
+      setError(
+        "Không tải được dữ liệu tạo phòng. Kiểm tra gateway, room-service và token ADMIN.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +150,9 @@ export default function CreateRoomPage() {
   };
 
   const handleImageFiles = (files: File[]) => {
-    const validFiles = files.filter((file) => file.type.startsWith("image/")).slice(0, 10);
+    const validFiles = files
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, 10);
 
     if (files.length > 0 && validFiles.length === 0) {
       setError("Vui lòng chọn file ảnh đúng định dạng.");
@@ -181,7 +194,12 @@ export default function CreateRoomPage() {
     const pricePerDay = Number(form.pricePerDay);
     const pricePerHour = Number(form.pricePerHour);
 
-    if (!Number.isFinite(pricePerDay) || pricePerDay <= 0 || !Number.isFinite(pricePerHour) || pricePerHour <= 0) {
+    if (
+      !Number.isFinite(pricePerDay) ||
+      pricePerDay <= 0 ||
+      !Number.isFinite(pricePerHour) ||
+      pricePerHour <= 0
+    ) {
       setError("Giá theo ngày và giá theo giờ phải là số lớn hơn 0.");
       return;
     }
@@ -208,11 +226,15 @@ export default function CreateRoomPage() {
         await uploadRoomImages(result.id, selectedFiles, coverIndex);
       }
 
-      setMessage(`Đã tạo phòng "${result.name}"${selectedFiles.length ? ` và upload ${selectedFiles.length} ảnh` : ""}.`);
+      setMessage(
+        `Đã tạo phòng "${result.name}"${selectedFiles.length ? ` và upload ${selectedFiles.length} ảnh` : ""}.`,
+      );
       window.setTimeout(() => router.push("/rooms"), 700);
     } catch (submitError) {
       console.error(submitError);
-      setError("Không thể tạo phòng. Kiểm tra dữ liệu, quyền ADMIN, Cloudinary và API room-service.");
+      setError(
+        "Không thể tạo phòng. Kiểm tra dữ liệu, quyền ADMIN, Cloudinary và API room-service.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -225,21 +247,32 @@ export default function CreateRoomPage() {
   return (
     <div className="space-y-7">
       <section className="rounded-[2rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm">
-        <Link href="/rooms" className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-[#9b5c24]">
+        <Link
+          href="/rooms"
+          className="inline-flex items-center gap-2 text-sm font-black tracking-[0.18em] text-[#9b5c24] uppercase"
+        >
           <ArrowLeft className="h-4 w-4" />
           Quay lại danh sách
         </Link>
-        <p className="mt-8 text-xs font-black uppercase tracking-[0.28em] text-[#9b5c24]">Thêm phòng vật lý</p>
-        <h2 className="mt-2 font-serif text-5xl font-bold text-[#211a14]">Gán phòng vào tầng thật</h2>
+        <p className="mt-8 text-xs font-black tracking-[0.28em] text-[#9b5c24] uppercase">
+          Thêm phòng vật lý
+        </p>
+        <h2 className="mt-2 font-serif text-5xl font-bold text-[#211a14]">
+          Gán phòng vào tầng thật
+        </h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#75695d]">
-          Trang này chỉ dùng để tạo phòng mới. Sau khi tạo xong, bạn sẽ quay lại danh sách quản lý phòng.
+          Trang này chỉ dùng để tạo phòng mới. Sau khi tạo xong, bạn sẽ quay lại danh sách
+          quản lý phòng.
         </p>
       </section>
 
       {error ? <Alert tone="error">{error}</Alert> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
 
-      <form onSubmit={onSubmit} className="rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm">
+      <form
+        onSubmit={onSubmit}
+        className="rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm"
+      >
         {isLoading ? (
           <div className="rounded-2xl border border-[#eadfcd] bg-[#fffaf2] p-8 text-center text-sm font-bold text-[#75695d]">
             Đang tải dữ liệu tạo phòng...
@@ -253,7 +286,9 @@ export default function CreateRoomPage() {
                   onChange={(event) => onChange("buildingId", event.target.value)}
                   className="h-10 w-full rounded-md border border-[#decdb9] bg-[#fffaf2] px-3 text-sm text-[#211a14] outline-none focus-visible:ring-2 focus-visible:ring-[#9b5c24]"
                 >
-                  {buildings.length === 0 ? <option value="">Chưa có tòa nhà</option> : null}
+                  {buildings.length === 0 ? (
+                    <option value="">Chưa có tòa nhà</option>
+                  ) : null}
                   {buildings.map((building) => (
                     <option key={building.id} value={building.id}>
                       {building.name}
@@ -268,7 +303,9 @@ export default function CreateRoomPage() {
                   onChange={(event) => onChange("floorId", event.target.value)}
                   className="h-10 w-full rounded-md border border-[#decdb9] bg-[#fffaf2] px-3 text-sm text-[#211a14] outline-none focus-visible:ring-2 focus-visible:ring-[#9b5c24]"
                 >
-                  {selectedBuildingFloors.length === 0 ? <option value="">Chưa có tầng</option> : null}
+                  {selectedBuildingFloors.length === 0 ? (
+                    <option value="">Chưa có tầng</option>
+                  ) : null}
                   {selectedBuildingFloors.map((floor) => (
                     <option key={floor.id} value={floor.id}>
                       Tầng {floor.floorNumber}
@@ -283,7 +320,9 @@ export default function CreateRoomPage() {
                   onChange={(event) => onChange("roomTypeId", event.target.value)}
                   className="h-10 w-full rounded-md border border-[#decdb9] bg-[#fffaf2] px-3 text-sm text-[#211a14] outline-none focus-visible:ring-2 focus-visible:ring-[#9b5c24]"
                 >
-                  {roomTypes.length === 0 ? <option value="">Chưa có loại phòng</option> : null}
+                  {roomTypes.length === 0 ? (
+                    <option value="">Chưa có loại phòng</option>
+                  ) : null}
                   {roomTypes.map((roomType) => (
                     <option key={roomType.id} value={roomType.id}>
                       {roomType.name} - tối đa {roomType.maximumOccupancy} khách
@@ -293,19 +332,35 @@ export default function CreateRoomPage() {
               </Field>
 
               <Field label="Tên phòng *">
-                <Input value={form.name} onChange={(event) => onChange("name", event.target.value)} placeholder="VD: 601" />
+                <Input
+                  value={form.name}
+                  onChange={(event) => onChange("name", event.target.value)}
+                  placeholder="VD: 601"
+                />
               </Field>
 
               <Field label="Giá theo ngày (VND) *">
-                <PriceInput value={form.pricePerDay} onChange={(value) => onChange("pricePerDay", value)} placeholder="1200000" />
+                <PriceInput
+                  value={form.pricePerDay}
+                  onChange={(value) => onChange("pricePerDay", value)}
+                  placeholder="1200000"
+                />
               </Field>
 
               <Field label="Giá theo giờ (VND) *">
-                <PriceInput value={form.pricePerHour} onChange={(value) => onChange("pricePerHour", value)} placeholder="180000" />
+                <PriceInput
+                  value={form.pricePerHour}
+                  onChange={(value) => onChange("pricePerHour", value)}
+                  placeholder="180000"
+                />
               </Field>
 
               <Field label="Diện tích *">
-                <Input value={form.roomSize} onChange={(event) => onChange("roomSize", event.target.value)} placeholder="32m2" />
+                <Input
+                  value={form.roomSize}
+                  onChange={(event) => onChange("roomSize", event.target.value)}
+                  placeholder="32m2"
+                />
               </Field>
 
               <div className="md:col-span-2">
@@ -334,10 +389,22 @@ export default function CreateRoomPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <Button type="button" variant="secondary" onClick={() => router.push("/rooms")}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.push("/rooms")}
+              >
                 Hủy
               </Button>
-              <Button type="submit" disabled={isSubmitting || buildings.length === 0 || selectedBuildingFloors.length === 0 || roomTypes.length === 0}>
+              <Button
+                type="submit"
+                disabled={
+                  isSubmitting ||
+                  buildings.length === 0 ||
+                  selectedBuildingFloors.length === 0 ||
+                  roomTypes.length === 0
+                }
+              >
                 {isSubmitting ? "Đang tạo..." : "Tạo phòng"}
               </Button>
             </div>
@@ -381,7 +448,9 @@ function ImageUploadPanel({
         <span className="grid size-14 place-items-center rounded-full border-4 border-[#eadfcd] bg-white text-[#9b5c24]">
           <ImagePlus className="h-8 w-8" />
         </span>
-        <span className="mt-4 text-lg font-semibold text-[#211a14]">Kéo thả tối thiểu 1 ảnh vào đây hoặc</span>
+        <span className="mt-4 text-lg font-semibold text-[#211a14]">
+          Kéo thả tối thiểu 1 ảnh vào đây hoặc
+        </span>
         <span className="mt-3 rounded-full border border-[#decdb9] bg-white px-5 py-2 text-sm font-bold text-[#9b5c24] shadow-sm">
           Chọn tệp ảnh
         </span>
@@ -396,32 +465,46 @@ function ImageUploadPanel({
 
       {filePreviews.length > 0 ? (
         <div className="mt-5">
-          <p className="text-base font-black text-[#211a14]">Ảnh đã chọn ({filePreviews.length})</p>
+          <p className="text-base font-black text-[#211a14]">
+            Ảnh đã chọn ({filePreviews.length})
+          </p>
           <div className="mt-3 flex flex-wrap gap-3">
             {filePreviews.map((file, index) => (
               <div
                 key={`${file.name}-${index}`}
                 className={`group relative w-36 overflow-hidden rounded-xl border bg-[#f8fbff] ${
-                  coverIndex === index ? "border-[#9b5c24] ring-2 ring-[#9b5c24]/20" : "border-[#decdb9]"
+                  coverIndex === index
+                    ? "border-[#9b5c24] ring-2 ring-[#9b5c24]/20"
+                    : "border-[#decdb9]"
                 }`}
               >
                 <button
                   type="button"
                   onClick={() => onRemove(index)}
-                  className="absolute right-2 top-2 z-10 grid size-7 place-items-center rounded-full bg-white/92 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-600"
+                  className="absolute top-2 right-2 z-10 grid size-7 place-items-center rounded-full bg-white/92 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-600"
                   aria-label="Bỏ ảnh"
                 >
                   <X className="h-4 w-4" />
                 </button>
                 {coverIndex === index ? (
-                  <span className="absolute left-2 top-2 z-10 rounded-full bg-[#21170f]/90 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                  <span className="absolute top-2 left-2 z-10 rounded-full bg-[#21170f]/90 px-2 py-0.5 text-[10px] font-black text-white uppercase">
                     Cover
                   </span>
                 ) : null}
-                <button type="button" onClick={() => onCoverChange(index)} className="block w-full text-left">
-                  <img src={file.previewUrl} alt={file.name} className="h-28 w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => onCoverChange(index)}
+                  className="block w-full text-left"
+                >
+                  <img
+                    src={file.previewUrl}
+                    alt={file.name}
+                    className="h-28 w-full object-cover"
+                  />
                   <div className="px-3 py-2">
-                    <p className="truncate text-sm font-semibold text-[#211a14]">{file.name}</p>
+                    <p className="truncate text-sm font-semibold text-[#211a14]">
+                      {file.name}
+                    </p>
                     <p className="mt-0.5 text-xs text-[#75695d]">{file.size} KB</p>
                   </div>
                 </button>
@@ -466,7 +549,7 @@ function PriceInput({
         inputMode="numeric"
       />
       {isOpen && suggestions.length > 0 ? (
-        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-[#decdb9] bg-white shadow-[0_18px_45px_-28px_rgba(33,23,15,0.65)]">
+        <div className="absolute top-full right-0 left-0 z-20 mt-2 overflow-hidden rounded-2xl border border-[#decdb9] bg-white shadow-[0_18px_45px_-28px_rgba(33,23,15,0.65)]">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion}
@@ -500,11 +583,19 @@ function getPriceSuggestions(rawValue: string) {
     .slice(0, 4);
 }
 
-function Alert({ tone, children }: { tone: "success" | "error"; children: React.ReactNode }) {
+function Alert({
+  tone,
+  children,
+}: {
+  tone: "success" | "error";
+  children: React.ReactNode;
+}) {
   return (
     <div
       className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
-        tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"
+        tone === "success"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+          : "border-red-200 bg-red-50 text-red-800"
       }`}
     >
       {children}

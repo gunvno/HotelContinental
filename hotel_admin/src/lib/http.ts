@@ -98,7 +98,10 @@ function createHttpClient(): KyInstance {
                 data.token,
                 data.refreshToken,
                 {
-                  name: [data.firstName, data.lastName].filter(Boolean).join(" ") || data.userName || undefined,
+                  name:
+                    [data.firstName, data.lastName].filter(Boolean).join(" ") ||
+                    data.userName ||
+                    undefined,
                   preferred_username: data.userName || undefined,
                   firstName: data.firstName,
                   lastName: data.lastName,

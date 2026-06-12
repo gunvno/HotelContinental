@@ -42,7 +42,10 @@ export async function login(payload: LoginPayload) {
     return response.result ?? response.content;
   } catch (error) {
     if (error instanceof HTTPError) {
-      const body = await error.response.clone().json().catch(() => null) as ApiResponse<unknown> | null;
+      const body = (await error.response
+        .clone()
+        .json()
+        .catch(() => null)) as ApiResponse<unknown> | null;
       throw new Error(normalizeAuthMessage(body?.message));
     }
 
