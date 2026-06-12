@@ -24,7 +24,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     @Autowired
     private RoomTypeRepository roomTypeRepository;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_CREATE')")
     @Transactional
     @Override
     public RoomTypeResponse createRoomType(RoomTypeCreationRequest request){
@@ -59,7 +59,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         return mapToRoomTypeResponseSimple(roomType);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_UPDATE')")
     @Transactional
     @Override
     public RoomTypeResponse updateRoomType(String id, RoomTypeUpdateRequest request) {
@@ -87,7 +87,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         return mapToRoomTypeResponseSimple(updatedRoomType);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_DELETE')")
     @Transactional
     @Override
     public void deleteRoomType(String id) {
@@ -107,7 +107,7 @@ public class RoomTypeServiceImpl implements RoomTypeService {
             .build());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_RESTORE')")
     @Transactional
     @Override
     public void restoreRoomType(String id) {

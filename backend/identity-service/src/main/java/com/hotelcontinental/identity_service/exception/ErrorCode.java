@@ -17,6 +17,7 @@ public enum ErrorCode {
     USERNAME_IS_MISSING(1010, "Please enter username", HttpStatus.BAD_REQUEST),
     USER_NOT_EXISTED(1011, "User not existed", HttpStatus.BAD_REQUEST),
     LOGIN_FAILED(1012, "Tài khoản hoặc mật khẩu không chính xác", HttpStatus.UNAUTHORIZED),
+    PERMISSION_NOT_FOUND(1013, "Permission not found", HttpStatus.BAD_REQUEST),
 
     ;
 

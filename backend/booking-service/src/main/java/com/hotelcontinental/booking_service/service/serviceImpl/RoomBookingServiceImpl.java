@@ -34,7 +34,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
     @Transactional
     @Override
-    public RoomBookingResponse createRoomBooking(RoomBookingCreationRequest request) {
+    public synchronized RoomBookingResponse createRoomBooking(RoomBookingCreationRequest request) {
         validateRequest(request);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -42,6 +42,18 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
         String customerId = authentication.getName();
+
+        List<RoomBookingDetails> existingDetails = roomBookingDetailsRepository.findExistingActiveBookingDetails(
+                customerId,
+                request.getRoomId(),
+                request.getCheckin(),
+                request.getCheckout(),
+                BLOCKING_STATUSES
+        );
+        if (!existingDetails.isEmpty()) {
+            RoomBookingDetails existingDetail = existingDetails.get(0);
+            return map(existingDetail.getRoomBookings(), existingDetail);
+        }
 
         boolean roomBusy = roomBookingDetailsRepository.findBusyRoomIds(
                 request.getCheckin(),
@@ -84,21 +96,26 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     }
 
     @Override
+    public List<RoomBookingResponse> getRoomBookings() {
+        return roomBookingsRepository.findAllByDeletedFalseOrderByCreatedTimeDesc().stream()
+                .map(booking -> {
+                    RoomBookingDetails detail = getPrimaryDetail(booking.getId());
+                    return map(booking, detail);
+                })
+                .toList();
+    }
+
+    @Override
     public RoomBookingResponse getRoomBooking(String id) {
-        RoomBookings booking = roomBookingsRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_BOOKING_REQUEST));
-        List<RoomBookingDetails> details = roomBookingDetailsRepository.findByRoomBookingsId(id);
-        RoomBookingDetails detail = !details.isEmpty()
-                ? details.get(0)
-                : null;
+        RoomBookings booking = getBooking(id);
+        RoomBookingDetails detail = getPrimaryDetail(id);
         return map(booking, detail);
     }
 
     @Transactional
     @Override
     public RoomBookingResponse markDeposited(String id) {
-        RoomBookings booking = roomBookingsRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_BOOKING_REQUEST));
+        RoomBookings booking = getBooking(id);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String actor = authentication != null && authentication.isAuthenticated()
@@ -110,10 +127,65 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         booking.setModifiedBy(actor);
         booking = roomBookingsRepository.save(booking);
 
-        List<RoomBookingDetails> details = roomBookingDetailsRepository.findByRoomBookingsId(id);
-        RoomBookingDetails detail = !details.isEmpty()
-                ? details.get(0)
-                : null;
+        RoomBookingDetails detail = getPrimaryDetail(id);
+        return map(booking, detail);
+    }
+
+    @Transactional
+    @Override
+    public RoomBookingResponse checkIn(String id) {
+        RoomBookings booking = getBooking(id);
+        RoomBookingDetails detail = getRequiredPrimaryDetail(id);
+
+        if (booking.getStatus() == RoomBookingStatus.CANCEL
+                || booking.getStatus() == RoomBookingStatus.DONE
+                || booking.getStatus() == RoomBookingStatus.CHECKED_IN
+                || detail.getStatus() != RoomBookingDetailStatus.BOOKED) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS);
+        }
+
+        String actor = getCurrentActor();
+        LocalDateTime now = LocalDateTime.now();
+
+        booking.setStatus(RoomBookingStatus.CHECKED_IN);
+        booking.setModifiedTime(now);
+        booking.setModifiedBy(actor);
+        booking = roomBookingsRepository.save(booking);
+
+        detail.setStatus(RoomBookingDetailStatus.CHECKED_IN);
+        detail.setCheckinReality(now);
+        detail.setModifiedTime(now);
+        detail.setModifiedBy(actor);
+        detail = roomBookingDetailsRepository.save(detail);
+
+        return map(booking, detail);
+    }
+
+    @Transactional
+    @Override
+    public RoomBookingResponse checkOut(String id) {
+        RoomBookings booking = getBooking(id);
+        RoomBookingDetails detail = getRequiredPrimaryDetail(id);
+
+        if (booking.getStatus() != RoomBookingStatus.CHECKED_IN
+                || detail.getStatus() != RoomBookingDetailStatus.CHECKED_IN) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS);
+        }
+
+        String actor = getCurrentActor();
+        LocalDateTime now = LocalDateTime.now();
+
+        booking.setStatus(RoomBookingStatus.DONE);
+        booking.setModifiedTime(now);
+        booking.setModifiedBy(actor);
+        booking = roomBookingsRepository.save(booking);
+
+        detail.setStatus(RoomBookingDetailStatus.CHECKED_OUT);
+        detail.setCheckoutReality(now);
+        detail.setModifiedTime(now);
+        detail.setModifiedBy(actor);
+        detail = roomBookingDetailsRepository.save(detail);
+
         return map(booking, detail);
     }
 
@@ -124,8 +196,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
         }
 
-        RoomBookings booking = roomBookingsRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_BOOKING_REQUEST));
+        RoomBookings booking = getBooking(id);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String actor = authentication != null && authentication.isAuthenticated()
@@ -140,11 +211,38 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         booking.setModifiedBy(actor);
         booking = roomBookingsRepository.save(booking);
 
-        List<RoomBookingDetails> details = roomBookingDetailsRepository.findByRoomBookingsId(id);
-        RoomBookingDetails detail = !details.isEmpty()
-                ? details.get(0)
-                : null;
+        RoomBookingDetails detail = getPrimaryDetail(id);
         return map(booking, detail);
+    }
+
+    private RoomBookings getBooking(String id) {
+        return roomBookingsRepository.findById(id)
+                .filter(booking -> !Boolean.TRUE.equals(booking.getDeleted()))
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+    }
+
+    private RoomBookingDetails getPrimaryDetail(String bookingId) {
+        List<RoomBookingDetails> details = roomBookingDetailsRepository.findByRoomBookingsId(bookingId);
+        return details.stream()
+                .filter(detail -> !Boolean.TRUE.equals(detail.getDeleted()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private RoomBookingDetails getRequiredPrimaryDetail(String bookingId) {
+        RoomBookingDetails detail = getPrimaryDetail(bookingId);
+        if (detail == null) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
+        }
+        return detail;
+    }
+
+    private String getCurrentActor() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        return authentication.getName();
     }
 
     private void validateRequest(RoomBookingCreationRequest request) {
@@ -171,6 +269,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .detailStatus(detail != null ? detail.getStatus() : null)
                 .checkin(detail != null ? detail.getCheckin() : null)
                 .checkout(detail != null ? detail.getCheckout() : null)
+                .checkinReality(detail != null ? detail.getCheckinReality() : null)
+                .checkoutReality(detail != null ? detail.getCheckoutReality() : null)
                 .roomPrice(detail != null ? detail.getPrice() : 0)
                 .totalRoomPrice(booking.getTotalRoomPrice())
                 .totalServicePrice(booking.getTotalServicePrice())

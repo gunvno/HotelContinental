@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PermissionDenied } from "@/components/auth/permission-gate";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Pagination } from "@/components/ui/pagination";
+import { usePermission } from "@/hooks/use-permission";
 import {
   type AmenityResponse,
   type AmenityRoomResponse,
@@ -36,28 +38,38 @@ import {
 } from "@/services/room-service";
 
 export default function AdminPage() {
+  const permission = usePermission();
   const sections = [
     {
       title: "Loại Phòng",
       description: "Quản lý danh sách loại phòng và thông tin số lượng.",
       href: "/admin/room-types",
+      requiredPermission: "ROOM_TYPE_VIEW",
     },
     {
       title: "Cơ Sở Vật Chất",
       description: "Quản lý các cơ sở vật chất của khách sạn.",
       href: "/admin/amenities",
+      requiredPermission: "AMENITY_VIEW",
     },
     {
       title: "Cơ Sở Vật Chất Theo Loại",
       description: "Bảng trung gian gán cơ sở vật chất và số lượng cho từng loại phòng.",
       href: "/admin/amenity-rooms",
+      requiredPermission: "AMENITY_ROOM_VIEW",
     },
     {
       title: "Dịch Vụ Bổ Sung Theo Loại Phòng",
       description: "Bảng trung gian gán mã dịch vụ và số lượng cho từng loại phòng.",
       href: "/admin/room-type-services",
+      requiredPermission: "ROOM_TYPE_SERVICE_VIEW",
     },
   ];
+  const visibleSections = sections.filter((section) => permission.has(section.requiredPermission));
+
+  if (visibleSections.length === 0) {
+    return <PermissionDenied message="Bạn không có quyền xem nhóm danh mục nào." />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-8">
@@ -70,7 +82,7 @@ export default function AdminPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {sections.map((section) => (
+          {visibleSections.map((section) => (
             <Link
               key={section.href}
               href={section.href}
@@ -118,6 +130,7 @@ type DeleteTarget = {
 // ============= ROOM TYPES SECTION =============
 export function RoomTypesSection() {
   const router = useRouter();
+  const permission = usePermission();
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -128,12 +141,22 @@ export function RoomTypesSection() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   useAutoDismissAlerts(error, setError, success, setSuccess);
 
   useEffect(() => {
     loadRoomTypes(page);
   }, [page]);
+
+  const canCreateRoomType = permission.has("ROOM_TYPE_CREATE");
+  const canUpdateRoomType = permission.has("ROOM_TYPE_UPDATE");
+  const canDeleteRoomType = permission.has("ROOM_TYPE_DELETE");
+  const isActionBusy = pendingAction !== null;
+
+  if (!permission.has("ROOM_TYPE_VIEW")) {
+    return <PermissionDenied message="Bạn không có quyền ROOM_TYPE_VIEW để xem loại phòng." />;
+  }
 
   const loadRoomTypes = async (pageIndex = page) => {
     try {
@@ -151,6 +174,7 @@ export function RoomTypesSection() {
   };
 
   const handleEdit = (roomType: RoomTypeResponse) => {
+    if (isActionBusy) return;
     setEditingId(roomType.id);
     setFormData({
       name: roomType.name,
@@ -163,12 +187,14 @@ export function RoomTypesSection() {
   };
 
   const handleSave = async () => {
+    if (isActionBusy) return;
     if (!formData.name.trim()) {
       setError("Tên loại phòng không được để trống");
       return;
     }
 
     try {
+      setPendingAction("save");
       if (editingId) {
         await updateRoomType(editingId, formData);
         setSuccess("Cập nhật loại phòng thành công");
@@ -183,11 +209,15 @@ export function RoomTypesSection() {
     } catch (e) {
       setError("Lỗi lưu loại phòng");
       console.error(e);
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleDelete = async (id: string) => {
+    if (isActionBusy) return;
     try {
+      setPendingAction(`delete:${id}`);
       await deleteRoomType(id);
       setDeleteTarget(null);
       setSuccess("Xóa loại phòng thành công");
@@ -195,9 +225,10 @@ export function RoomTypesSection() {
     } catch (e) {
       setError("Lỗi xóa loại phòng");
       console.error(e);
+    } finally {
+      setPendingAction(null);
     }
   };
-
 
   return (
     <div className="p-6">
@@ -208,7 +239,9 @@ export function RoomTypesSection() {
             Hiển thị cả bản ghi hoạt động lẫn đã xóa.
           </p>
         </div>
+        {canCreateRoomType ? (
         <Button
+          disabled={isActionBusy}
           onClick={() => {
             setEditingId(null);
             setFormData({ name: "", description: "", maximumOccupancy: 1, quantity: 0, deleted: false });
@@ -218,6 +251,7 @@ export function RoomTypesSection() {
         >
           + Thêm Loại Phòng
         </Button>
+        ) : null}
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-200 rounded">{error}</div>}
@@ -257,13 +291,14 @@ export function RoomTypesSection() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                        <Button type="button" variant="outline" onClick={() => handleEdit(rt)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                        <Button type="button" variant="outline" disabled={!canUpdateRoomType || isActionBusy} onClick={() => handleEdit(rt)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-45 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
                           Sửa
                         </Button>
-                        {!rt.deleted && (
+                        {canDeleteRoomType && !rt.deleted && (
                           <Button
                             type="button"
                             variant="outline"
+                            disabled={isActionBusy}
                             onClick={() => setDeleteTarget({
                               id: rt.id,
                               title: "Xóa loại phòng",
@@ -366,12 +401,13 @@ export function RoomTypesSection() {
             <div className="flex gap-3 mt-6">
               <Button
                 onClick={() => setIsModalOpen(false)}
+                disabled={isActionBusy}
                 className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 dark:bg-gray-600 dark:hover:bg-gray-700 dark:text-gray-100"
               >
                 Hủy
               </Button>
-              <Button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-                Lưu
+              <Button onClick={handleSave} disabled={isActionBusy} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
+                {pendingAction === "save" ? "Đang lưu..." : "Lưu"}
               </Button>
             </div>
           </div>
@@ -382,6 +418,7 @@ export function RoomTypesSection() {
         open={!!deleteTarget}
         title={deleteTarget?.title}
         description={deleteTarget?.description ?? ""}
+        isLoading={isActionBusy}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => deleteTarget && handleDelete(deleteTarget.id)}
       />
@@ -392,6 +429,7 @@ export function RoomTypesSection() {
 // ============= AMENITIES SECTION =============
 export function AmenitiesSection() {
   const router = useRouter();
+  const permission = usePermission();
   const [amenities, setAmenities] = useState<AmenityResponse[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -402,12 +440,19 @@ export function AmenitiesSection() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   useAutoDismissAlerts(error, setError, success, setSuccess);
 
   useEffect(() => {
     loadAmenities(page);
   }, [page]);
+
+  const isActionBusy = pendingAction !== null;
+
+  if (!permission.has("AMENITY_VIEW")) {
+    return <PermissionDenied message="Bạn không có quyền AMENITY_VIEW để xem cơ sở vật chất." />;
+  }
 
   const loadAmenities = async (pageIndex = page) => {
     try {
@@ -424,18 +469,21 @@ export function AmenitiesSection() {
   };
 
   const handleEdit = (amenity: AmenityResponse) => {
+    if (isActionBusy) return;
     setEditingId(amenity.id);
     setFormData({ name: amenity.name, description: amenity.description || "", deleted: !!amenity.deleted });
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
+    if (isActionBusy) return;
     if (!formData.name.trim()) {
       setError("Tên cơ sở vật chất không được để trống");
       return;
     }
 
     try {
+      setPendingAction("save");
       if (editingId) {
         await updateAmenity(editingId, formData);
         setSuccess("Cập nhật cơ sở vật chất thành công");
@@ -450,11 +498,15 @@ export function AmenitiesSection() {
     } catch (e) {
       setError("Lỗi lưu cơ sở vật chất");
       console.error(e);
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleDelete = async (id: string) => {
+    if (isActionBusy) return;
     try {
+      setPendingAction(`delete:${id}`);
       await deleteAmenity(id);
       setDeleteTarget(null);
       setSuccess("Xóa cơ sở vật chất thành công");
@@ -462,9 +514,10 @@ export function AmenitiesSection() {
     } catch (e) {
       setError("Lỗi xóa cơ sở vật chất");
       console.error(e);
+    } finally {
+      setPendingAction(null);
     }
   };
-
 
   return (
     <div className="p-6">
@@ -524,10 +577,10 @@ export function AmenitiesSection() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                        <Button type="button" variant="outline" onClick={() => handleEdit(amenity)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                        <Button type="button" variant="outline" disabled={!permission.has("AMENITY_UPDATE")} onClick={() => handleEdit(amenity)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-45 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
                           Sửa
                         </Button>
-                        {!amenity.deleted && (
+                        {permission.has("AMENITY_DELETE") && !amenity.deleted && (
                           <Button
                             type="button"
                             variant="outline"
@@ -627,6 +680,7 @@ export function AmenitiesSection() {
 // ============= AMENITY ROOMS SECTION =============
 export function AmenityRoomsSection() {
   const router = useRouter();
+  const permission = usePermission();
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
   const [amenityRooms, setAmenityRooms] = useState<AmenityRoomResponse[]>([]);
@@ -652,6 +706,10 @@ export function AmenityRoomsSection() {
       loadAmenityRooms(page);
     }
   }, [selectedRoomTypeId, page]);
+
+  if (!permission.has("AMENITY_ROOM_VIEW")) {
+    return <PermissionDenied message="Bạn không có quyền AMENITY_ROOM_VIEW để xem gán cơ sở vật chất theo loại phòng." />;
+  }
 
   const loadInitialData = async () => {
     try {
@@ -778,6 +836,7 @@ export function AmenityRoomsSection() {
 
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-gray-900 dark:text-white">Danh Sách Cơ Sở Vật Chất</h3>
+            {permission.has("AMENITY_ROOM_CREATE") ? (
             <Button
               onClick={() => {
                 setEditingId(null);
@@ -788,6 +847,7 @@ export function AmenityRoomsSection() {
             >
               + Thêm Cơ Sở Vật Chất
             </Button>
+            ) : null}
           </div>
 
           <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
@@ -817,10 +877,10 @@ export function AmenityRoomsSection() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                          <Button type="button" variant="outline" onClick={() => handleEdit(ar)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                          <Button type="button" variant="outline" disabled={!permission.has("AMENITY_ROOM_UPDATE")} onClick={() => handleEdit(ar)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-45 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
                             Sửa
                           </Button>
-                          {!ar.deleted && (
+                          {permission.has("AMENITY_ROOM_DELETE") && !ar.deleted && (
                             <Button
                               type="button"
                               variant="outline"
@@ -962,6 +1022,7 @@ const ALL_ROOM_TYPES_VALUE = "all";
 
 export function RoomTypeServicesSection() {
   const router = useRouter();
+  const permission = usePermission();
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
   const [services, setServices] = useState<ServiceResponse[]>([]);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>(ALL_ROOM_TYPES_VALUE);
@@ -987,6 +1048,10 @@ export function RoomTypeServicesSection() {
       loadRoomTypeServices(page, selectedRoomTypeId);
     }
   }, [selectedRoomTypeId, page]);
+
+  if (!permission.has("ROOM_TYPE_SERVICE_VIEW")) {
+    return <PermissionDenied message="Bạn không có quyền ROOM_TYPE_SERVICE_VIEW để xem gán dịch vụ bổ sung theo loại phòng." />;
+  }
 
   const loadInitialData = async () => {
     try {
@@ -1113,6 +1178,7 @@ export function RoomTypeServicesSection() {
             Quản lý dịch vụ bán thêm được áp dụng cho từng loại phòng.
           </p>
         </div>
+        {permission.has("ROOM_TYPE_SERVICE_CREATE") ? (
         <Button
           onClick={() => {
             setEditingId(null);
@@ -1128,6 +1194,7 @@ export function RoomTypeServicesSection() {
         >
           + Thêm dịch vụ bổ sung
         </Button>
+        ) : null}
       </div>
 
       {error && <div className="mb-4 rounded bg-red-100 p-3 text-red-700 dark:bg-red-900/30 dark:text-red-200">{error}</div>}
@@ -1188,10 +1255,10 @@ export function RoomTypeServicesSection() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                          <Button type="button" variant="outline" onClick={() => handleEdit(item)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                          <Button type="button" variant="outline" disabled={!permission.has("ROOM_TYPE_SERVICE_UPDATE")} onClick={() => handleEdit(item)} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-45 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
                             Sửa
                           </Button>
-                          {!item.deleted && (
+                          {permission.has("ROOM_TYPE_SERVICE_DELETE") && !item.deleted && (
                             <Button
                               type="button"
                               variant="outline"
@@ -1333,4 +1400,6 @@ export function RoomTypeServicesSection() {
     </div>
   );
 }
+
+
 

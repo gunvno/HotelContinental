@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
+import { usePermission } from "@/hooks/use-permission";
 import {
   type BuildingResponse,
   type FloorResponse,
@@ -26,6 +27,7 @@ const ROOM_PAGE_SIZE = 10;
 
 export default function RoomsPage() {
   const router = useRouter();
+  const permission = usePermission();
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
   const [roomPage, setRoomPage] = useState(0);
   const [totalRooms, setTotalRooms] = useState(0);
@@ -35,6 +37,8 @@ export default function RoomsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const availableRooms = rooms.filter((room) => room.status === "AVAILABLE").length;
+  const canCreateRoom = permission.has("ROOM_CREATE");
+  const canOpenRoomDetail = permission.hasAny("ROOM_UPDATE", "ROOM_IMAGE_UPDATE", "ROOM_IMAGE_DELETE");
 
   useEffect(() => {
     void loadRooms(roomPage);
@@ -115,6 +119,8 @@ export default function RoomsPage() {
         isLoading={isLoading}
         page={roomPage}
         total={totalRooms}
+        canCreate={canCreateRoom}
+        canOpenDetail={canOpenRoomDetail}
         onCreate={() => router.push("/rooms/create")}
         onPageChange={setRoomPage}
         onOpen={(roomId) => router.push(`/rooms/${roomId}`)}
@@ -130,6 +136,8 @@ function RoomTableView({
   isLoading,
   page,
   total,
+  canCreate,
+  canOpenDetail,
   onCreate,
   onPageChange,
   onOpen,
@@ -140,6 +148,8 @@ function RoomTableView({
   isLoading: boolean;
   page: number;
   total: number;
+  canCreate: boolean;
+  canOpenDetail: boolean;
   onCreate: () => void;
   onPageChange: (page: number) => void;
   onOpen: (roomId: string) => void;
@@ -165,10 +175,12 @@ function RoomTableView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" onClick={onCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Thêm phòng
-          </Button>
+          {canCreate ? (
+            <Button type="button" onClick={onCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Thêm phòng
+            </Button>
+          ) : null}
           <div className="rounded-full border border-[#eadfcd] bg-[#fffaf2] px-4 py-2 text-sm font-black text-[#9b5c24]">
             Trang {page + 1} / {totalPages}
           </div>
@@ -203,8 +215,10 @@ function RoomTableView({
                 return (
                   <tr
                     key={room.id || room.name}
-                    onClick={() => room.id && onOpen(room.id)}
-                    className="cursor-pointer border-b border-[#f0e6d8] transition last:border-b-0 hover:bg-[#fff6e8]"
+                    onClick={() => room.id && canOpenDetail && onOpen(room.id)}
+                    className={`border-b border-[#f0e6d8] transition last:border-b-0 ${
+                      canOpenDetail ? "cursor-pointer hover:bg-[#fff6e8]" : ""
+                    }`}
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">

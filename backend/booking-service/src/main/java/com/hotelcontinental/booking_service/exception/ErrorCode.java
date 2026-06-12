@@ -19,6 +19,8 @@ public enum ErrorCode {
     INVALID_DATE_RANGE(1012, "Start time must be before end time", HttpStatus.BAD_REQUEST),
     ROOM_ALREADY_BOOKED(1013, "Room is already booked for selected time", HttpStatus.CONFLICT),
     INVALID_BOOKING_REQUEST(1014, "Invalid booking request", HttpStatus.BAD_REQUEST),
+    BOOKING_NOT_FOUND(1015, "Booking not found", HttpStatus.NOT_FOUND),
+    INVALID_BOOKING_STATUS(1016, "Invalid booking status for this action", HttpStatus.BAD_REQUEST),
 
     ;
 

@@ -5,6 +5,8 @@ import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, BedDouble, CalendarDays, Check, ReceiptText, Users } from "lucide-react";
 
+import { ProtectedRoute } from "@/components/auth/protected-route";
+
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const currencyFormatter = new Intl.NumberFormat("vi-VN");
@@ -92,7 +94,9 @@ function Info({ label, value, icon }: { label: string; value: string; icon?: Rea
 export default function PaymentSuccessPage() {
   return (
     <Suspense fallback={<main className="min-h-screen bg-background p-10 text-center">Đang tải xác nhận...</main>}>
-      <PaymentSuccessContent />
+      <ProtectedRoute>
+        <PaymentSuccessContent />
+      </ProtectedRoute>
     </Suspense>
   );
 }

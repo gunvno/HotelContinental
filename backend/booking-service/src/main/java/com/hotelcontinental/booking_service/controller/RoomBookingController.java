@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/room-bookings")
 @RequiredArgsConstructor
@@ -21,9 +23,18 @@ public class RoomBookingController {
     private final RoomBookingService roomBookingService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('BOOKING_CREATE')")
     public ApiResponse<RoomBookingResponse> createRoomBooking(@RequestBody RoomBookingCreationRequest request) {
         return ApiResponse.<RoomBookingResponse>builder()
                 .result(roomBookingService.createRoomBooking(request))
+                .build();
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('BOOKING_VIEW')")
+    public ApiResponse<List<RoomBookingResponse>> getRoomBookings() {
+        return ApiResponse.<List<RoomBookingResponse>>builder()
+                .result(roomBookingService.getRoomBookings())
                 .build();
     }
 
@@ -41,8 +52,24 @@ public class RoomBookingController {
                 .build();
     }
 
+    @PostMapping("/{id}/check-in")
+    @PreAuthorize("hasAuthority('BOOKING_CHECKIN')")
+    public ApiResponse<RoomBookingResponse> checkIn(@PathVariable String id) {
+        return ApiResponse.<RoomBookingResponse>builder()
+                .result(roomBookingService.checkIn(id))
+                .build();
+    }
+
+    @PostMapping("/{id}/check-out")
+    @PreAuthorize("hasAuthority('BOOKING_CHECKOUT')")
+    public ApiResponse<RoomBookingResponse> checkOut(@PathVariable String id) {
+        return ApiResponse.<RoomBookingResponse>builder()
+                .result(roomBookingService.checkOut(id))
+                .build();
+    }
+
     @PostMapping("/{id}/totals")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('BOOKING_UPDATE_TOTALS')")
     public ApiResponse<RoomBookingResponse> updateTotals(
             @PathVariable String id,
             @RequestBody RoomBookingTotalsUpdateRequest request

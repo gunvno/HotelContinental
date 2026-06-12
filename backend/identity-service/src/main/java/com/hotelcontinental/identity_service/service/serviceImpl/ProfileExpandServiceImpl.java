@@ -30,6 +30,7 @@ public class ProfileExpandServiceImpl implements ProfileExpandService {
     @Autowired
     private UserRepository userRepository;
 
+    @PreAuthorize("hasAuthority('UPDATE_USER')")
     @Override
     public ProfileExpandResponse createProfileExpand(ProfileExpandCreationRequest request) {
         String userId = request.getUserId();
@@ -67,6 +68,7 @@ public class ProfileExpandServiceImpl implements ProfileExpandService {
         return buildUserProfileResponse(user, request);
     }
 
+    @PreAuthorize("hasAuthority('GET_MY_INFO')")
     @Override
     public ProfileExpandResponse getMyProfile() {
         var context = SecurityContextHolder.getContext();
@@ -87,7 +89,7 @@ public class ProfileExpandServiceImpl implements ProfileExpandService {
                 .identityNumber(profile != null ? profile.getIdentityNumber() : null)
                 .build();
     }
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('GET_ALL_USER')")
     @Override
     public Page<ProfileExpandResponse> getAllProfileExpands(Pageable pageable) {
         return profileExpandRepository.findAll(pageable)

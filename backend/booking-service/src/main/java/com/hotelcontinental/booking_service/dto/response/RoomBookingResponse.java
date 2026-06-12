@@ -23,6 +23,8 @@ public class RoomBookingResponse {
     RoomBookingDetailStatus detailStatus;
     LocalDateTime checkin;
     LocalDateTime checkout;
+    LocalDateTime checkinReality;
+    LocalDateTime checkoutReality;
     float roomPrice;
     float totalRoomPrice;
     float totalServicePrice;

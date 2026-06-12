@@ -16,6 +16,27 @@ public interface RoomBookingDetailsRepository extends JpaRepository<RoomBookingD
     List<RoomBookingDetails> findByRoomBookingsId(String roomBookingId);
 
     @Query("""
+            select detail
+            from RoomBookingDetails detail
+            join detail.roomBookings booking
+            where (detail.deleted = false or detail.deleted is null)
+              and (booking.deleted = false or booking.deleted is null)
+              and booking.customerId = :customerId
+              and detail.roomId = :roomId
+              and detail.checkin = :checkin
+              and detail.checkout = :checkout
+              and detail.status in :blockingStatuses
+            order by detail.createdTime desc
+            """)
+    List<RoomBookingDetails> findExistingActiveBookingDetails(
+            @Param("customerId") String customerId,
+            @Param("roomId") String roomId,
+            @Param("checkin") LocalDateTime checkin,
+            @Param("checkout") LocalDateTime checkout,
+            @Param("blockingStatuses") Collection<RoomBookingDetailStatus> blockingStatuses
+    );
+
+    @Query("""
             select distinct detail.roomId
             from RoomBookingDetails detail
             where (detail.deleted = false or detail.deleted is null)

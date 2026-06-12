@@ -20,10 +20,12 @@ export type RoomBookingResponse = {
   customerId: string;
   roomId: string;
   bookingType: "ONLINE" | "OFFLINE";
-  status: "PENDING" | "DEPOSITED" | "CANCEL" | "DONE";
+  status: "PENDING" | "DEPOSITED" | "CHECKED_IN" | "CANCEL" | "DONE";
   detailStatus: "BOOKED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELED" | "NO_SHOW";
   checkin: string;
   checkout: string;
+  checkinReality?: string;
+  checkoutReality?: string;
   roomPrice: number;
   totalRoomPrice: number;
   totalServicePrice: number;

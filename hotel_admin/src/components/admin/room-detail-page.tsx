@@ -6,8 +6,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePermission } from "@/hooks/use-permission";
 import {
   deleteRoomImage,
   getAllRooms,
@@ -58,6 +60,7 @@ const statusClassName: Record<RoomFormState["status"], string> = {
 export function RoomDetailPageContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const permission = usePermission();
   const id = params.id;
 
   const [room, setRoom] = useState<RoomResponse | null>(null);
@@ -113,6 +116,11 @@ export function RoomDetailPageContent() {
   const selectedFloor = floors.find((floor) => floor.id === form.floorId);
   const selectedBuilding = buildings.find((building) => building.id === selectedFloor?.buildingId);
   const selectedRoomType = roomTypes.find((roomType) => roomType.id === form.roomTypeId);
+  const canUpdateRoom = permission.has("ROOM_UPDATE");
+  const canUploadImages = permission.has("ROOM_IMAGE_UPDATE");
+  const canDeleteImages = permission.has("ROOM_IMAGE_DELETE");
+  const canUseDetail = permission.hasAny("ROOM_UPDATE", "ROOM_IMAGE_UPDATE", "ROOM_IMAGE_DELETE");
+  const isActionBusy = isSaving || deletingImageId !== null;
 
   useEffect(() => {
     if (activeImageIndex >= roomImages.length) {
@@ -181,7 +189,7 @@ export function RoomDetailPageContent() {
   }
 
   async function handleDeleteExistingImage(imageId: string) {
-    if (deletingImageId) {
+    if (isActionBusy) {
       return;
     }
 
@@ -203,6 +211,7 @@ export function RoomDetailPageContent() {
   }
 
   async function handleSave() {
+    if (isActionBusy) return;
     try {
       setIsSaving(true);
       setError(null);
@@ -254,6 +263,10 @@ export function RoomDetailPageContent() {
     );
   }
 
+  if (!canUseDetail) {
+    return <PermissionDenied message="Bạn không có quyền xem/sửa chi tiết phòng." />;
+  }
+
   return (
     <div className="space-y-6">
       <Link
@@ -277,7 +290,8 @@ export function RoomDetailPageContent() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button
+            {canUpdateRoom ? (
+              <Button
               type="button"
               variant="secondary"
               onClick={() => {
@@ -287,13 +301,15 @@ export function RoomDetailPageContent() {
                   setCoverIndex(0);
                 }
                 setIsEditing((value) => !value);
-              }}
-              className="border-white/15 bg-white/10 text-white hover:bg-white/15"
+                }}
+                disabled={isActionBusy}
+                className="border-white/15 bg-white/10 text-white hover:bg-white/15"
             >
               {isEditing ? "Hủy sửa" : "Chỉnh sửa"}
-            </Button>
-            {isEditing ? (
-              <Button type="button" onClick={handleSave} disabled={isSaving}>
+              </Button>
+            ) : null}
+            {isEditing && canUpdateRoom ? (
+              <Button type="button" onClick={handleSave} disabled={isActionBusy}>
                 <Save className="mr-2 h-4 w-4" />
                 {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
               </Button>
@@ -458,11 +474,11 @@ export function RoomDetailPageContent() {
                       Cover
                     </span>
                   ) : null}
-                  {isEditing && image.id ? (
+                  {canDeleteImages && image.id ? (
                     <button
                       type="button"
                       onClick={() => void handleDeleteExistingImage(image.id!)}
-                      disabled={deletingImageId === image.id}
+                      disabled={isActionBusy}
                       className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-white/92 text-[#211a14] shadow transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Xóa ảnh phòng"
                     >
@@ -479,7 +495,7 @@ export function RoomDetailPageContent() {
           </div>
         )}
 
-        {isEditing ? (
+        {isEditing && canUploadImages ? (
           <div className="mt-5 rounded-[1.5rem] border border-[#decdb9] bg-[#fffaf2] p-5 shadow-[0_14px_40px_-30px_rgba(33,23,15,0.55)]">
             <div className="flex items-start gap-3">
               <UploadCloud className="mt-0.5 h-6 w-6 text-[#a86424]" />

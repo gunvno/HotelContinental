@@ -11,7 +11,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const permissions = useAuthStore((state) => state.permissions);
   const logout = useAuthStore((state) => state.logout);
-  const canAccessAdmin = isAuthenticated && permissions.includes("ROLE_ADMIN");
+  const canAccessAdmin = isAuthenticated && permissions.includes("ADMIN_PORTAL_ACCESS");
 
   useEffect(() => {
     if (isAuthenticated && !canAccessAdmin) {

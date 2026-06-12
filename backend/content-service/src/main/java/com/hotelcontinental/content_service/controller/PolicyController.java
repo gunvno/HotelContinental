@@ -40,7 +40,7 @@ public class PolicyController {
     }
 
     @PostMapping("/types")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('POLICY_TYPE_CREATE')")
     public ApiResponse<PolicyTypeResponse> createPolicyType(@RequestBody PolicyTypeRequest request) {
         return ApiResponse.<PolicyTypeResponse>builder()
                 .result(policyService.createPolicyType(request))
@@ -48,7 +48,7 @@ public class PolicyController {
     }
 
     @PutMapping("/types/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('POLICY_TYPE_UPDATE')")
     public ApiResponse<PolicyTypeResponse> updatePolicyType(@PathVariable String id, @RequestBody PolicyTypeRequest request) {
         return ApiResponse.<PolicyTypeResponse>builder()
                 .result(policyService.updatePolicyType(id, request))
@@ -56,14 +56,14 @@ public class PolicyController {
     }
 
     @DeleteMapping("/types/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('POLICY_TYPE_DELETE')")
     public ApiResponse<Void> deletePolicyType(@PathVariable String id) {
         policyService.deletePolicyType(id);
         return ApiResponse.<Void>builder().build();
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('POLICY_CREATE')")
     public ApiResponse<PolicyResponse> createPolicy(@RequestBody PolicyRequest request) {
         return ApiResponse.<PolicyResponse>builder()
                 .result(policyService.createPolicy(request))
@@ -71,7 +71,7 @@ public class PolicyController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('POLICY_UPDATE')")
     public ApiResponse<PolicyResponse> updatePolicy(@PathVariable String id, @RequestBody PolicyRequest request) {
         return ApiResponse.<PolicyResponse>builder()
                 .result(policyService.updatePolicy(id, request))
@@ -79,7 +79,7 @@ public class PolicyController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('POLICY_DELETE')")
     public ApiResponse<Void> deletePolicy(@PathVariable String id) {
         policyService.deletePolicy(id);
         return ApiResponse.<Void>builder().build();

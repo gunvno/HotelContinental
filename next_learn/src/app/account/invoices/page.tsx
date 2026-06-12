@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CreditCard, ReceiptText, Settings, UserRound } from "lucide-react";
 
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import { Container } from "@/components/ui/container";
 import { getMyPayments, type PaymentHistoryResponse } from "@/services/billing-service";
 import { useAuthStore } from "@/store/auth-store";
@@ -45,6 +46,7 @@ export default function InvoicesPage() {
   }, [token]);
 
   return (
+    <ProtectedRoute>
     <section className="min-h-screen bg-white">
       <Container className="py-12 md:py-20 lg:py-24">
         <div className="flex flex-col items-start gap-16 md:flex-row">
@@ -127,5 +129,6 @@ export default function InvoicesPage() {
         </div>
       </Container>
     </section>
+    </ProtectedRoute>
   );
 }

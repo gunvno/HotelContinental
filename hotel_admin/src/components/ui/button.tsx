@@ -47,7 +47,7 @@ export type ButtonProps = ConditionalProps;
 export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
   function Button({ children, className, href, variant = "primary", size = "md", ...rest }, ref) {
     const composedClasses = cn(
-      "inline-flex items-center justify-center rounded-full border border-transparent font-semibold transition-transform duration-200 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      "inline-flex items-center justify-center rounded-full border border-transparent font-semibold transition-transform duration-200 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-55",
       variantClasses[variant],
       sizeClasses[size],
       className,

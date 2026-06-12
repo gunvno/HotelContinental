@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Plus, RefreshCcw, TicketPercent } from "lucide-react";
 
+import { PermissionDenied } from "@/components/auth/permission-gate";
+import { usePermission } from "@/hooks/use-permission";
 import {
   createVoucher,
   getVouchers,
@@ -21,14 +23,19 @@ const initialForm = {
 };
 
 export default function AdminVouchersPage() {
+  const permission = usePermission();
   const [vouchers, setVouchers] = useState<VoucherResponse[]>([]);
   const [form, setForm] = useState(initialForm);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const currency = new Intl.NumberFormat("vi-VN");
+  const canViewVouchers = permission.has("VOUCHER_VIEW");
+  const canCreateVoucher = permission.has("VOUCHER_CREATE");
+  const isActionBusy = isLoading || isSaving;
 
   async function loadVouchers() {
+    if (isSaving) return;
     setIsLoading(true);
     setMessage(null);
     try {
@@ -46,6 +53,7 @@ export default function AdminVouchersPage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isActionBusy) return;
     setIsSaving(true);
     setMessage(null);
 
@@ -67,6 +75,10 @@ export default function AdminVouchersPage() {
     }
   }
 
+  if (!canViewVouchers) {
+    return <PermissionDenied message="Bạn không có quyền VOUCHER_VIEW để xem voucher." />;
+  }
+
   return (
     <section className="space-y-6">
       <div className="rounded-[1.5rem] border border-[#decdb9] bg-white/75 p-6 shadow-sm">
@@ -81,6 +93,7 @@ export default function AdminVouchersPage() {
           <button
             type="button"
             onClick={() => void loadVouchers()}
+            disabled={isActionBusy}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-[#decdb9] px-5 text-sm font-semibold text-[#5f5144]"
           >
             <RefreshCcw className="h-4 w-4" />
@@ -90,6 +103,7 @@ export default function AdminVouchersPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
+        {canCreateVoucher ? (
         <form onSubmit={handleSubmit} className="rounded-[1.5rem] border border-[#decdb9] bg-white/80 p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#9b5c24] text-white">
@@ -140,13 +154,16 @@ export default function AdminVouchersPage() {
 
           <button
             type="submit"
-            disabled={isSaving}
+            disabled={isActionBusy}
             className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#9b5c24] px-5 text-sm font-bold uppercase tracking-[0.12em] text-white disabled:opacity-60"
           >
             <Plus className="h-4 w-4" />
             {isSaving ? "Đang lưu..." : "Thêm voucher"}
           </button>
         </form>
+        ) : (
+          <PermissionDenied message="Bạn không có quyền VOUCHER_CREATE để tạo voucher mới." />
+        )}
 
         <div className="rounded-[1.5rem] border border-[#decdb9] bg-white/80 p-6 shadow-sm">
           <div className="overflow-x-auto">

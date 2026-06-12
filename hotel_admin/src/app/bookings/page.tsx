@@ -1,32 +1,23 @@
 "use client";
 
-import { BadgeDollarSign, BedDouble,CalendarDays, Filter, Search, UserRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { BadgeDollarSign, BedDouble, CalendarDays, CheckCircle2, Filter, LogOut, RefreshCcw, Search, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Input } from "@/components/ui/input";
+import { usePermission } from "@/hooks/use-permission";
+import {
+  checkInRoomBooking,
+  checkOutRoomBooking,
+  getRoomBookings,
+  type RoomBookingResponse,
+} from "@/services/booking-service";
+import { getAllRooms } from "@/services/room-service";
 
-type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED";
+type DisplayStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED";
 
-type Booking = {
-  id: string;
-  code: string;
-  guestName: string;
-  roomName: string;
-  checkIn: string;
-  checkOut: string;
-  total: string;
-  status: BookingStatus;
-};
-
-const sampleBookings: Booking[] = [
-  { id: "1", code: "BK-2026-001", guestName: "Nguyễn Văn A", roomName: "Deluxe City View", checkIn: "2026-04-14", checkOut: "2026-04-16", total: "4,200,000", status: "CONFIRMED" },
-  { id: "2", code: "BK-2026-002", guestName: "Trần Thị B", roomName: "Suite Ocean", checkIn: "2026-04-15", checkOut: "2026-04-18", total: "9,600,000", status: "CHECKED_IN" },
-  { id: "3", code: "BK-2026-003", guestName: "Lê C", roomName: "Family Room", checkIn: "2026-04-20", checkOut: "2026-04-22", total: "3,100,000", status: "PENDING" },
-  { id: "4", code: "BK-2026-004", guestName: "Phạm D", roomName: "Standard Twin", checkIn: "2026-04-10", checkOut: "2026-04-12", total: "2,800,000", status: "CANCELLED" },
-];
-
-const statusLabel: Record<BookingStatus, string> = {
+const statusLabel: Record<DisplayStatus, string> = {
   PENDING: "Chờ xác nhận",
   CONFIRMED: "Đã xác nhận",
   CHECKED_IN: "Đang ở",
@@ -35,57 +26,142 @@ const statusLabel: Record<BookingStatus, string> = {
 };
 
 export default function BookingsPage() {
+  const permission = usePermission();
+  const canViewBookings = permission.has("BOOKING_VIEW");
+  const canCheckIn = permission.has("BOOKING_CHECKIN");
+  const canCheckOut = permission.has("BOOKING_CHECKOUT");
+
+  const [bookings, setBookings] = useState<RoomBookingResponse[]>([]);
+  const [roomNames, setRoomNames] = useState<Record<string, string>>({});
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<BookingStatus | "ALL">("ALL");
+  const [status, setStatus] = useState<DisplayStatus | "ALL">("ALL");
+  const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const isActionBusy = actionId !== null;
+
+  async function loadData() {
+    if (isActionBusy) return;
+    setLoading(true);
+    setMessage(null);
+    try {
+      const [bookingData, roomData] = await Promise.all([
+        getRoomBookings(),
+        getAllRooms(0, 200).catch(() => ({ data: [], total: 0 })),
+      ]);
+
+      setBookings(bookingData);
+      setRoomNames(
+        Object.fromEntries(
+          roomData.data.map((room) => [room.id, room.name]),
+        ),
+      );
+    } catch {
+      setMessage("Không thể tải danh sách đặt phòng. Kiểm tra booking-service, gateway và quyền BOOKING_VIEW.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadData();
+  }, []);
 
   const filtered = useMemo(() => {
-    return sampleBookings.filter((booking) => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return bookings.filter((booking) => {
+      const displayStatus = getDisplayStatus(booking);
+      const roomName = roomNames[booking.roomId] ?? booking.roomId;
       const matchesQuery =
-        booking.code.toLowerCase().includes(query.toLowerCase()) ||
-        booking.guestName.toLowerCase().includes(query.toLowerCase()) ||
-        booking.roomName.toLowerCase().includes(query.toLowerCase());
-      const matchesStatus = status === "ALL" || booking.status === status;
+        shortCode(booking.id).toLowerCase().includes(normalizedQuery) ||
+        booking.customerId.toLowerCase().includes(normalizedQuery) ||
+        roomName.toLowerCase().includes(normalizedQuery);
+      const matchesStatus = status === "ALL" || displayStatus === status;
       return matchesQuery && matchesStatus;
     });
-  }, [query, status]);
+  }, [bookings, query, roomNames, status]);
+
+  const checkedInCount = bookings.filter((booking) => getDisplayStatus(booking) === "CHECKED_IN").length;
+  const checkOutSoonCount = bookings.filter((booking) => {
+    if (getDisplayStatus(booking) !== "CHECKED_IN" || !booking.checkout) return false;
+    const checkout = new Date(booking.checkout).getTime();
+    const now = Date.now();
+    return checkout >= now && checkout - now <= 24 * 60 * 60 * 1000;
+  }).length;
+  const totalRevenue = bookings.reduce((sum, booking) => sum + (booking.totalPrice || 0), 0);
+
+  async function handleCheckIn(booking: RoomBookingResponse) {
+    if (isActionBusy) return;
+    setActionId(booking.id);
+    setMessage(null);
+    try {
+      const updated = await checkInRoomBooking(booking.id);
+      setBookings((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      setMessage(`Đã check-in booking ${shortCode(updated.id)}.`);
+    } catch {
+      setMessage("Không thể check-in booking này. Kiểm tra trạng thái booking và quyền BOOKING_CHECKIN.");
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleCheckOut(booking: RoomBookingResponse) {
+    if (isActionBusy) return;
+    setActionId(booking.id);
+    setMessage(null);
+    try {
+      const updated = await checkOutRoomBooking(booking.id);
+      setBookings((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      setMessage(`Đã check-out booking ${shortCode(updated.id)}.`);
+    } catch {
+      setMessage("Không thể check-out booking này. Chỉ booking đang ở mới được trả phòng.");
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  if (!canViewBookings) {
+    return <PermissionDenied message="Bạn không có quyền BOOKING_VIEW để xem danh sách đặt phòng." />;
+  }
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-gray-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-lg dark:border-gray-700">
+      <div className="rounded-2xl border border-[#decdb9] bg-white/80 p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-sky-300/80">Quản lý đặt phòng</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight">Bookings</h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-300">Theo dõi trạng thái đặt phòng, lọc theo nhu cầu và xử lý nhanh trên cùng một màn hình.</p>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#9b5c24]">Quản lý đặt phòng</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">Check-in / Check-out</h2>
+            <p className="mt-2 max-w-2xl text-sm text-[#7c6f63]">
+              Theo dõi trạng thái đặt phòng và xử lý khách nhận phòng, trả phòng từ dữ liệu booking thật.
+            </p>
           </div>
-          <div className="flex gap-3">
-            <Button className="bg-white text-slate-900 hover:bg-slate-100">
-              Xuất báo cáo
-            </Button>
-            <Button className="bg-sky-600 text-white hover:bg-sky-500">
-              + Tạo booking
-            </Button>
-          </div>
+          <Button type="button" onClick={() => void loadData()} disabled={loading || isActionBusy} className="gap-2">
+            <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Tải lại
+          </Button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Tổng booking" value="128" icon={<CalendarDays className="h-4 w-4" />} sub="+12 hôm nay" />
-        <MetricCard title="Đang ở" value="34" icon={<BedDouble className="h-4 w-4" />} sub="8 phòng sắp checkout" />
-        <MetricCard title="Doanh thu" value="245.8M" icon={<BadgeDollarSign className="h-4 w-4" />} sub="+18% so với tháng trước" />
-        <MetricCard title="Khách mới" value="57" icon={<UserRound className="h-4 w-4" />} sub="Check-in trong tuần" />
+        <MetricCard title="Tổng booking" value={bookings.length.toString()} icon={<CalendarDays className="h-4 w-4" />} sub="Từ hệ thống booking" />
+        <MetricCard title="Đang ở" value={checkedInCount.toString()} icon={<BedDouble className="h-4 w-4" />} sub={`${checkOutSoonCount} phòng sắp checkout`} />
+        <MetricCard title="Doanh thu booking" value={formatCompactMoney(totalRevenue)} icon={<BadgeDollarSign className="h-4 w-4" />} sub="Tổng giá trị booking" />
+        <MetricCard title="Chờ xử lý" value={bookings.filter((booking) => getDisplayStatus(booking) === "PENDING").length.toString()} icon={<UserRound className="h-4 w-4" />} sub="Chưa xác nhận tiền cọc" />
       </div>
 
+      {message ? <div className="rounded-xl bg-[#fff6df] p-3 text-sm text-[#8a5724]">{message}</div> : null}
+
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Danh sách đặt phòng</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Tìm kiếm, lọc trạng thái và xem nhanh booking.</p>
+              <h3 className="text-lg font-semibold text-[#17213a]">Danh sách đặt phòng</h3>
+              <p className="text-sm text-[#7c6f63]">Tìm kiếm, lọc trạng thái và thao tác nhanh.</p>
             </div>
             <div className="flex flex-col gap-3 md:flex-row">
               <div className="relative w-full md:w-72">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
@@ -95,8 +171,8 @@ export default function BookingsPage() {
               </div>
               <select
                 value={status}
-                onChange={(event) => setStatus(event.target.value as BookingStatus | "ALL")}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                onChange={(event) => setStatus(event.target.value as DisplayStatus | "ALL")}
+                className="rounded-md border border-[#decdb9] bg-white px-3 py-2 text-sm text-[#17213a]"
               >
                 <option value="ALL">Tất cả trạng thái</option>
                 <option value="PENDING">Chờ xác nhận</option>
@@ -111,44 +187,67 @@ export default function BookingsPage() {
           <div className="mt-6 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                <tr className="border-b border-[#decdb9] text-left text-[#7c6f63]">
                   <th className="py-3 pr-4 font-medium">Mã</th>
                   <th className="py-3 pr-4 font-medium">Khách</th>
                   <th className="py-3 pr-4 font-medium">Phòng</th>
                   <th className="py-3 pr-4 font-medium">Nhận / Trả</th>
                   <th className="py-3 pr-4 font-medium">Tổng tiền</th>
                   <th className="py-3 pr-4 font-medium">Trạng thái</th>
+                  <th className="py-3 pr-4 font-medium">Hành động</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((booking) => (
-                  <tr key={booking.id} className="border-b border-gray-100 last:border-b-0 dark:border-gray-800">
-                    <td className="py-4 pr-4 font-medium text-gray-900 dark:text-white">{booking.code}</td>
-                    <td className="py-4 pr-4 text-gray-700 dark:text-gray-300">{booking.guestName}</td>
-                    <td className="py-4 pr-4 text-gray-700 dark:text-gray-300">{booking.roomName}</td>
-                    <td className="py-4 pr-4 text-gray-700 dark:text-gray-300">
-                      <div>{booking.checkIn}</div>
-                      <div className="text-xs text-gray-400">→ {booking.checkOut}</div>
-                    </td>
-                    <td className="py-4 pr-4 text-gray-700 dark:text-gray-300">{booking.total} VND</td>
-                    <td className="py-4 pr-4">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(booking.status)}`}>
-                        {statusLabel[booking.status]}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((booking) => {
+                  const displayStatus = getDisplayStatus(booking);
+                  const isBusy = actionId === booking.id;
+                  return (
+                    <tr key={booking.id} className="border-b border-[#eee3d5] last:border-b-0">
+                      <td className="py-4 pr-4 font-medium text-[#17213a]">{shortCode(booking.id)}</td>
+                      <td className="py-4 pr-4 text-[#5f5144]">{booking.customerId}</td>
+                      <td className="py-4 pr-4 text-[#5f5144]">{roomNames[booking.roomId] ?? booking.roomId}</td>
+                      <td className="py-4 pr-4 text-[#5f5144]">
+                        <div>{formatDateTime(booking.checkin)}</div>
+                        <div className="text-xs text-[#9f8a77]">→ {formatDateTime(booking.checkout)}</div>
+                        {booking.checkinReality ? <div className="mt-1 text-xs text-green-700">Thực nhận: {formatDateTime(booking.checkinReality)}</div> : null}
+                        {booking.checkoutReality ? <div className="text-xs text-slate-600">Thực trả: {formatDateTime(booking.checkoutReality)}</div> : null}
+                      </td>
+                      <td className="py-4 pr-4 text-[#5f5144]">{formatMoney(booking.totalPrice)}</td>
+                      <td className="py-4 pr-4">
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(displayStatus)}`}>
+                          {statusLabel[displayStatus]}
+                        </span>
+                      </td>
+                      <td className="py-4 pr-4">
+                        {displayStatus === "CONFIRMED" || displayStatus === "PENDING" ? (
+                          <Button type="button" size="sm" disabled={!canCheckIn || isActionBusy} onClick={() => void handleCheckIn(booking)} className="gap-2">
+                            <CheckCircle2 className="h-4 w-4" />
+                            Check-in
+                          </Button>
+                        ) : displayStatus === "CHECKED_IN" ? (
+                          <Button type="button" size="sm" disabled={!canCheckOut || isActionBusy} onClick={() => void handleCheckOut(booking)} className="gap-2 bg-[#5f5144] hover:bg-[#4c4036]">
+                            <LogOut className="h-4 w-4" />
+                            Check-out
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-[#9f8a77]">Không có thao tác</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            {filtered.length === 0 && (
-              <div className="py-10 text-center text-gray-500">Không tìm thấy booking nào phù hợp.</div>
-            )}
+            {!loading && filtered.length === 0 ? (
+              <div className="py-10 text-center text-[#7c6f63]">Không tìm thấy booking nào phù hợp.</div>
+            ) : null}
+            {loading ? <div className="py-10 text-center text-[#7c6f63]">Đang tải booking...</div> : null}
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+          <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#17213a]">
               <Filter className="h-4 w-4" /> Bộ lọc nhanh
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -158,8 +257,8 @@ export default function BookingsPage() {
                   onClick={() => setStatus(item.value)}
                   className={`rounded-xl border px-3 py-2 text-left transition-colors ${
                     status === item.value
-                      ? "border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-900/20 dark:text-sky-300"
-                      : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                      ? "border-[#9b5c24] bg-[#fff6df] text-[#8a5724]"
+                      : "border-[#decdb9] bg-[#fbf6ed] text-[#5f5144] hover:bg-[#f4eadc]"
                   }`}
                 >
                   <div className="font-semibold">{item.label}</div>
@@ -169,26 +268,30 @@ export default function BookingsPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Booking đang chú ý</h3>
+          <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
+            <h3 className="text-lg font-semibold text-[#17213a]">Booking đang chú ý</h3>
             <div className="mt-4 space-y-4">
-              {sampleBookings.slice(0, 3).map((booking) => (
-                <div key={booking.id} className="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">{booking.guestName}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{booking.roomName}</div>
+              {bookings.slice(0, 4).map((booking) => {
+                const displayStatus = getDisplayStatus(booking);
+                return (
+                  <div key={booking.id} className="rounded-xl border border-[#eee3d5] p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="font-semibold text-[#17213a]">{shortCode(booking.id)}</div>
+                        <div className="text-sm text-[#7c6f63]">{roomNames[booking.roomId] ?? booking.roomId}</div>
+                      </div>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(displayStatus)}`}>
+                        {statusLabel[displayStatus]}
+                      </span>
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(booking.status)}`}>
-                      {statusLabel[booking.status]}
-                    </span>
+                    <div className="mt-3 flex justify-between text-sm text-[#7c6f63]">
+                      <span>{formatDateTime(booking.checkin)}</span>
+                      <span>{formatMoney(booking.totalPrice)}</span>
+                    </div>
                   </div>
-                  <div className="mt-3 flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                    <span>{booking.checkIn}</span>
-                    <span>{booking.total} VND</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
+              {!loading && bookings.length === 0 ? <p className="text-sm text-[#7c6f63]">Chưa có booking nào.</p> : null}
             </div>
           </div>
         </div>
@@ -199,37 +302,83 @@ export default function BookingsPage() {
 
 function MetricCard({ title, value, sub, icon }: { title: string; value: string; sub: string; icon: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-        <div className="rounded-full bg-sky-100 p-2 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">{icon}</div>
+        <p className="text-sm font-medium text-[#7c6f63]">{title}</p>
+        <div className="rounded-full bg-[#fff6df] p-2 text-[#9b5c24]">{icon}</div>
       </div>
-      <div className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">{value}</div>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{sub}</p>
+      <div className="mt-4 text-3xl font-bold text-[#17213a]">{value}</div>
+      <p className="mt-1 text-xs text-[#7c6f63]">{sub}</p>
     </div>
   );
 }
 
 const statusButtons = [
   { value: "ALL" as const, label: "Tất cả", desc: "Xem toàn bộ booking" },
-  { value: "PENDING" as const, label: "Chờ xác nhận", desc: "Cần duyệt" },
+  { value: "PENDING" as const, label: "Chờ xác nhận", desc: "Chưa ghi nhận cọc" },
   { value: "CONFIRMED" as const, label: "Đã xác nhận", desc: "Sẵn sàng check-in" },
   { value: "CHECKED_IN" as const, label: "Đang ở", desc: "Khách đang lưu trú" },
   { value: "CHECKED_OUT" as const, label: "Đã trả phòng", desc: "Hoàn tất" },
   { value: "CANCELLED" as const, label: "Đã hủy", desc: "Booking bị hủy" },
 ];
 
-function badgeClass(status: BookingStatus) {
+function getDisplayStatus(booking: RoomBookingResponse): DisplayStatus {
+  if (booking.status === "CANCEL" || booking.detailStatus === "CANCELED" || booking.detailStatus === "NO_SHOW") {
+    return "CANCELLED";
+  }
+  if (booking.status === "DONE" || booking.detailStatus === "CHECKED_OUT") {
+    return "CHECKED_OUT";
+  }
+  if (booking.status === "CHECKED_IN" || booking.detailStatus === "CHECKED_IN") {
+    return "CHECKED_IN";
+  }
+  if (booking.status === "DEPOSITED") {
+    return "CONFIRMED";
+  }
+  return "PENDING";
+}
+
+function badgeClass(status: DisplayStatus) {
   switch (status) {
     case "PENDING":
-      return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
+      return "bg-amber-100 text-amber-700";
     case "CONFIRMED":
-      return "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300";
+      return "bg-sky-100 text-sky-700";
     case "CHECKED_IN":
-      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+      return "bg-green-100 text-green-700";
     case "CHECKED_OUT":
-      return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
+      return "bg-gray-100 text-gray-700";
     case "CANCELLED":
-      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
+      return "bg-red-100 text-red-700";
   }
+}
+
+function shortCode(id: string) {
+  return `BK-${id.slice(0, 8).toUpperCase()}`;
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
+
+function formatCompactMoney(value: number) {
+  if (value >= 1_000_000) {
+    return `${Math.round(value / 1_000_000)}M`;
+  }
+  return formatMoney(value);
 }

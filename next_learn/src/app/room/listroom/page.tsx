@@ -923,6 +923,7 @@ export default function RoomListPage() {
   }, [currentPage, activeFilter]);
 
   const handleSearch = () => {
+    if (isLoading) return;
     setCurrentPage(0);
     setActiveFilter({
       stayType,
@@ -1078,9 +1079,10 @@ export default function RoomListPage() {
                 <button
                   type="button"
                   onClick={handleSearch}
-                  className="h-[52px] w-full rounded-xl bg-gradient-to-r from-[#c47a34] to-[#ffd45e] px-5 text-sm font-black text-white shadow-[0_16px_36px_-20px_rgba(196,122,52,0.8)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_45px_-22px_rgba(196,122,52,0.95)] sm:w-[190px] xl:shrink-0"
+                  disabled={isLoading}
+                  className="h-[52px] w-full rounded-xl bg-gradient-to-r from-[#c47a34] to-[#ffd45e] px-5 text-sm font-black text-white shadow-[0_16px_36px_-20px_rgba(196,122,52,0.8)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_45px_-22px_rgba(196,122,52,0.95)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-[190px] xl:shrink-0"
                 >
-                  Kiểm tra phòng trống
+                  {isLoading ? "Đang kiểm tra..." : "Kiểm tra phòng trống"}
                 </button>
               </div>
             </div>

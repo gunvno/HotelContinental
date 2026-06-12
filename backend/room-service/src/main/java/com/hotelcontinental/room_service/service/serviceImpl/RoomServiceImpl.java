@@ -50,7 +50,7 @@ public class RoomServiceImpl implements RoomService {
     @Value("${cloudinary.folder:hotelcontinental_rooms}")
     private String cloudinaryFolder;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_DELETE')")
     @Transactional
     @Override
     public void deleteRoom(String id){
@@ -89,7 +89,7 @@ public class RoomServiceImpl implements RoomService {
                    .build());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_CREATE')")
     @Transactional
     @Override
     public RoomResponse createRoom(RoomCreationRequest request){
@@ -136,7 +136,7 @@ public class RoomServiceImpl implements RoomService {
                 .build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_UPDATE')")
     @Transactional
     @Override
     public RoomResponse updateRoom(String id, RoomCreationRequest request) {
@@ -188,7 +188,7 @@ public class RoomServiceImpl implements RoomService {
                 .build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_IMAGE_UPDATE')")
     @Transactional
     @Override
     public List<RoomImageResponse> uploadRoomImages(String roomId, List<MultipartFile> files, Integer coverIndex) {
@@ -285,7 +285,7 @@ public class RoomServiceImpl implements RoomService {
         return responses;
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_IMAGE_DELETE')")
     @Transactional
     @Override
     public void deleteRoomImage(String roomId, String imageId) {

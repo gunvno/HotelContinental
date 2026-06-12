@@ -14,7 +14,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (token) {
-      router.replace("/");
+      const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/";
+      router.replace(redirectTo);
     }
   }, [token, router]);
 

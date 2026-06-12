@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Building2, Copy, QrCode, ShieldCheck, TicketPercent } from "lucide-react";
 
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import { createPayment } from "@/services/billing-service";
 import {
   createRoomBooking,
@@ -34,12 +35,15 @@ function PaymentContent() {
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherApplyResponse | null>(null);
   const [voucherMessage, setVoucherMessage] = useState<string | null>(null);
+  const submitLockRef = useRef(false);
+  const bookingRef = useRef<RoomBookingResponse | null>(null);
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
     phoneNumber: "",
     email: "",
     note: "",
   });
+  const isActionBusy = isSubmitting || isApplyingVoucher;
 
   const paymentData = useMemo(() => {
     const roomId = searchParams.get("roomId") || "";
@@ -126,10 +130,12 @@ function PaymentContent() {
   const qrUrl = `https://img.vietqr.io/image/${BANK_ID}-${BANK_ACCOUNT_NO}-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(BANK_ACCOUNT_NAME)}`;
 
   async function copyText(value: string) {
+    if (isActionBusy) return;
     await navigator.clipboard?.writeText(value);
   }
 
   async function handleApplyVoucher() {
+    if (isActionBusy) return;
     const code = voucherCode.trim();
     if (!code) {
       setVoucherMessage("Vui lòng nhập mã voucher.");
@@ -152,11 +158,14 @@ function PaymentContent() {
   }
 
   function handleRemoveVoucher() {
+    if (isActionBusy) return;
     setAppliedVoucher(null);
     setVoucherMessage(null);
   }
 
   async function handleConfirmPayment() {
+    if (submitLockRef.current || isActionBusy) return;
+    submitLockRef.current = true;
     setIsSubmitting(true);
     setBookingError(null);
     try {
@@ -164,17 +173,21 @@ function PaymentContent() {
         await updateMyPhoneNumber(customerInfo.phoneNumber.trim());
       }
 
-      const createdBooking = await createRoomBooking({
-        roomId: paymentData.roomId,
-        checkin: buildCheckin(paymentData.checkIn, paymentData.checkInTime),
-        checkout: buildCheckout(paymentData.checkIn, paymentData.checkOut, paymentData.checkInTime, paymentData.stayType, paymentData.stayDuration),
-        roomPrice: paymentData.unitPrice,
-        totalRoomPrice: paymentData.roomAmount,
-        totalServicePrice: paymentData.tax,
-        totalExtraPrice,
-        totalPrice: finalTotal,
-      });
-      setBooking(createdBooking);
+      let createdBooking = bookingRef.current;
+      if (!createdBooking) {
+        createdBooking = await createRoomBooking({
+          roomId: paymentData.roomId,
+          checkin: buildCheckin(paymentData.checkIn, paymentData.checkInTime),
+          checkout: buildCheckout(paymentData.checkIn, paymentData.checkOut, paymentData.checkInTime, paymentData.stayType, paymentData.stayDuration),
+          roomPrice: paymentData.unitPrice,
+          totalRoomPrice: paymentData.roomAmount,
+          totalServicePrice: paymentData.tax,
+          totalExtraPrice,
+          totalPrice: finalTotal,
+        });
+        bookingRef.current = createdBooking;
+        setBooking(createdBooking);
+      }
 
       const payment = await createPayment({
         roomBookingId: createdBooking.id,
@@ -204,7 +217,7 @@ function PaymentContent() {
       }).toString()}`);
     } catch {
       setBookingError("Không thể ghi nhận thanh toán. Vui lòng kiểm tra lại dịch vụ billing/booking/promotion.");
-    } finally {
+      submitLockRef.current = false;
       setIsSubmitting(false);
     }
   }
@@ -246,8 +259,9 @@ function PaymentContent() {
                     suppressHydrationWarning
                     value={customerInfo.phoneNumber}
                     onChange={(event) => setCustomerInfo((prev) => ({ ...prev, phoneNumber: event.target.value }))}
+                    disabled={isActionBusy}
                     placeholder="Nhập số điện thoại"
-                    className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-ring"
+                    className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-ring disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </label>
 
@@ -263,8 +277,9 @@ function PaymentContent() {
                     rows={3}
                     value={customerInfo.note}
                     onChange={(event) => setCustomerInfo((prev) => ({ ...prev, note: event.target.value }))}
+                    disabled={isActionBusy}
                     placeholder="Ví dụ: Phòng tầng cao, nôi cho em bé, ăn chay..."
-                    className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-ring"
+                    className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-ring disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </label>
               </div>
@@ -283,20 +298,20 @@ function PaymentContent() {
                     suppressHydrationWarning
                     value={voucherCode}
                     onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
-                    disabled={!!appliedVoucher}
+                    disabled={!!appliedVoucher || isActionBusy}
                     placeholder="Nhập mã voucher"
                     className="h-11 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-ring disabled:opacity-70"
                   />
                 </label>
                 {appliedVoucher ? (
-                  <button type="button" onClick={handleRemoveVoucher} className="h-11 rounded-full border border-border px-5 text-sm font-semibold text-foreground">
+                  <button type="button" onClick={handleRemoveVoucher} disabled={isActionBusy} className="h-11 rounded-full border border-border px-5 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-60">
                     Bỏ mã
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={handleApplyVoucher}
-                    disabled={isApplyingVoucher}
+                    disabled={isActionBusy}
                     className="h-11 rounded-full bg-ring px-5 text-sm font-semibold text-background disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isApplyingVoucher ? "Đang kiểm tra..." : "Áp dụng"}
@@ -327,10 +342,10 @@ function PaymentContent() {
 
                 <div className="space-y-3">
                   <BankInfoRow label="Ngân hàng" value="MB Bank" />
-                  <BankInfoRow label="Số tài khoản" value={BANK_ACCOUNT_NO} copyValue={BANK_ACCOUNT_NO} onCopy={copyText} />
+                  <BankInfoRow label="Số tài khoản" value={BANK_ACCOUNT_NO} copyValue={BANK_ACCOUNT_NO} onCopy={copyText} disabled={isActionBusy} />
                   <BankInfoRow label="Chủ tài khoản" value={BANK_ACCOUNT_NAME} />
-                  <BankInfoRow label="Số tiền" value={`${currencyFormatter.format(finalTotal)}đ`} copyValue={String(finalTotal)} onCopy={copyText} />
-                  <BankInfoRow label="Nội dung chuyển khoản" value={transferContent} copyValue={transferContent} onCopy={copyText} />
+                  <BankInfoRow label="Số tiền" value={`${currencyFormatter.format(finalTotal)}đ`} copyValue={String(finalTotal)} onCopy={copyText} disabled={isActionBusy} />
+                  <BankInfoRow label="Nội dung chuyển khoản" value={transferContent} copyValue={transferContent} onCopy={copyText} disabled={isActionBusy} />
                   <p className="rounded-xl bg-ring/10 p-3 text-sm leading-6 text-muted-foreground">
                     Khi quét mã bằng app ngân hàng, số tiền và nội dung sẽ được tự điền. Sau khi chuyển khoản, bấm xác nhận để hệ thống ghi nhận thanh toán demo.
                   </p>
@@ -397,7 +412,7 @@ function PaymentContent() {
                 suppressHydrationWarning
                 type="button"
                 onClick={handleConfirmPayment}
-                disabled={isSubmitting || !!bookingError}
+                disabled={isActionBusy || !!bookingError}
                 className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-ring text-sm font-semibold uppercase tracking-[0.16em] text-background shadow-[0_16px_30px_-18px_rgba(196,122,52,0.75)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <ShieldCheck className="h-4 w-4" />
@@ -423,11 +438,13 @@ function BankInfoRow({
   value,
   copyValue,
   onCopy,
+  disabled = false,
 }: {
   label: string;
   value: string;
   copyValue?: string;
   onCopy?: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="rounded-xl border border-border bg-background px-4 py-3">
@@ -435,7 +452,7 @@ function BankInfoRow({
       <div className="mt-1 flex items-center justify-between gap-3">
         <p className="break-all text-sm font-semibold text-foreground">{value}</p>
         {copyValue && onCopy ? (
-          <button suppressHydrationWarning type="button" onClick={() => onCopy(copyValue)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-ring">
+          <button suppressHydrationWarning type="button" disabled={disabled} onClick={() => onCopy(copyValue)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-ring disabled:cursor-not-allowed disabled:opacity-50">
             <Copy className="h-4 w-4" />
           </button>
         ) : null}
@@ -479,7 +496,10 @@ function toLocalDateTimeString(value: Date) {
 export default function PaymentPage() {
   return (
     <Suspense fallback={<main className="min-h-screen bg-background p-10 text-center">Đang tải thanh toán...</main>}>
-      <PaymentContent />
+      <ProtectedRoute>
+        <PaymentContent />
+      </ProtectedRoute>
     </Suspense>
   );
 }
+

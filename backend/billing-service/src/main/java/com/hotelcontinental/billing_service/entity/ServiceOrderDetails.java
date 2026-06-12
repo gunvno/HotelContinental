@@ -31,6 +31,9 @@ public class ServiceOrderDetails {
     @Column(name = "service_id", nullable = false)
     String serviceId;
 
+    @Column(name = "room_booking_id")
+    String roomBookingId;
+
     @Column(name = "room_booking_detail_id", nullable = false)
     String roomBookingDetailId;
 

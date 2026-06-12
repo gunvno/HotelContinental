@@ -12,11 +12,13 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageCircle,
   Settings,
   ShieldCheck,
   Sparkles,
   TicketPercent,
   Users,
+  Utensils,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -28,47 +30,46 @@ import { logoutAuthToken } from "@/services/auth-service";
 import { useAuthStore } from "@/store/auth-store";
 
 const primaryNav = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Tòa nhà & tầng", href: "/buildings", icon: Building2 },
-  { label: "Phòng", href: "/rooms", icon: BedDouble },
-  { label: "Đặt phòng", href: "/bookings", icon: CalendarCheck },
-  { label: "Khách hàng", href: "/users", icon: Users },
+  { label: "Dashboard", href: "/", icon: LayoutDashboard, requiredPermission: "ADMIN_PORTAL_ACCESS" },
+  { label: "Tòa nhà & tầng", href: "/buildings", icon: Building2, requiredPermission: "BUILDING_SETUP" },
+  { label: "Phòng", href: "/rooms", icon: BedDouble, requiredPermission: "ROOM_VIEW" },
+  { label: "Đặt phòng", href: "/bookings", icon: CalendarCheck, requiredPermission: "BOOKING_VIEW" },
+  { label: "Dịch vụ phát sinh", href: "/service-orders", icon: Utensils, requiredPermission: "SERVICE_ORDER_VIEW" },
+  { label: "Tin nhắn", href: "/chats", icon: MessageCircle, requiredPermission: "CHAT_STAFF_VIEW" },
+  { label: "Nhân viên & quyền", href: "/users", icon: Users, requiredPermission: "PERMISSION_MANAGE" },
 ];
 
 const catalogNav = [
-  { label: "Tổng quan danh mục", href: "/admin", icon: Grid3X3 },
-  { label: "Loại phòng", href: "/admin/room-types", icon: DoorOpen },
-  { label: "Cơ sở vật chất", href: "/admin/amenities", icon: Sparkles },
-  { label: "Gán cơ sở vật chất theo loại", href: "/admin/amenity-rooms", icon: ClipboardList },
-  { label: "Gán dịch vụ bổ sung theo loại", href: "/admin/room-type-services", icon: ShieldCheck },
+  { label: "Tổng quan danh mục", href: "/admin", icon: Grid3X3, requiredPermission: "ROOM_TYPE_VIEW" },
+  { label: "Loại phòng", href: "/admin/room-types", icon: DoorOpen, requiredPermission: "ROOM_TYPE_VIEW" },
+  { label: "Cơ sở vật chất", href: "/admin/amenities", icon: Sparkles, requiredPermission: "AMENITY_VIEW" },
+  { label: "Gắn cơ sở vật chất theo loại", href: "/admin/amenity-rooms", icon: ClipboardList, requiredPermission: "AMENITY_ROOM_VIEW" },
+  { label: "Gắn dịch vụ bổ sung theo loại", href: "/admin/room-type-services", icon: ShieldCheck, requiredPermission: "ROOM_TYPE_SERVICE_VIEW" },
 ];
-
-const systemNav = [{ label: "Cài đặt", href: "/settings", icon: Settings }];
 
 const promotionNav = [
-  { label: "Voucher", href: "/admin/vouchers", icon: TicketPercent },
-  { label: "Chính sách", href: "/admin/policies", icon: FileText },
+  { label: "Voucher", href: "/admin/vouchers", icon: TicketPercent, requiredPermission: "VOUCHER_VIEW" },
+  { label: "Chính sách", href: "/admin/policies", icon: FileText, requiredPermission: "POLICY_VIEW" },
 ];
+
+const systemNav = [{ label: "Cài đặt", href: "/settings", icon: Settings, requiredPermission: "SETTINGS_VIEW" }];
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const userInfo = useAuthStore((state) => state.userInfo);
   const token = useAuthStore((state) => state.token);
+  const permissions = useAuthStore((state) => state.permissions);
   const logoutLocal = useAuthStore((state) => state.logout);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
-
     const closeMobileMenu = () => {
-      if (mediaQuery.matches) {
-        setMobileOpen(false);
-      }
+      if (mediaQuery.matches) setMobileOpen(false);
     };
 
     closeMobileMenu();
     mediaQuery.addEventListener("change", closeMobileMenu);
-
     return () => mediaQuery.removeEventListener("change", closeMobileMenu);
   }, []);
 
@@ -90,9 +91,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     .toUpperCase();
 
   const handleLogout = () => {
-    if (token) {
-      void logoutAuthToken(token).catch(() => undefined);
-    }
+    if (token) void logoutAuthToken(token).catch(() => undefined);
     logoutLocal();
   };
 
@@ -109,69 +108,45 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <Menu className="h-5 w-5" />
       </button>
 
-      {mobileOpen ? (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      ) : null}
+      {mobileOpen ? <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} /> : null}
 
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[19rem] flex-col border-r border-[#decdb9] bg-[#1f1710] text-[#f9efe1] shadow-2xl transition-transform duration-300 lg:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 flex w-[19rem] flex-col border-r border-[#decdb9] bg-[#1f1710] text-[#f9efe1] shadow-2xl transition-transform duration-300 lg:translate-x-0",
+        mobileOpen ? "translate-x-0" : "-translate-x-full",
+      )}>
         <div className="relative overflow-hidden border-b border-white/10 p-5">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(236,183,110,0.35),transparent_35%)]" />
           <div className="relative flex items-center justify-between gap-3">
             <Link href="/" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e8c990]/40 bg-[#9b5c24] font-serif text-2xl font-bold shadow-[0_20px_50px_-28px_rgba(0,0,0,0.95)]">
-                C
-              </span>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#e8c990]/40 bg-[#9b5c24] font-serif text-2xl font-bold shadow-[0_20px_50px_-28px_rgba(0,0,0,0.95)]">C</span>
               <span className="leading-tight">
-                <span className="block font-serif text-2xl font-bold tracking-wide">
-                  Continental
-                </span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d9bf9a]">
-                  Admin House
-                </span>
+                <span className="block font-serif text-2xl font-bold tracking-wide">Continental</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d9bf9a]">Admin House</span>
               </span>
             </Link>
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="rounded-full p-2 text-white/70 hover:bg-white/10 lg:hidden"
-              aria-label="Đóng menu"
-            >
+            <button type="button" onClick={() => setMobileOpen(false)} className="rounded-full p-2 text-white/70 hover:bg-white/10 lg:hidden" aria-label="Đóng menu">
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-5">
-          <NavGroup title="Vận hành" items={primaryNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
-          <NavGroup title="Danh mục phòng" items={catalogNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
-          <NavGroup title="Khuyến mãi" items={promotionNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
-          <NavGroup title="Hệ thống" items={systemNav} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+          <NavGroup title="Vận hành" items={primaryNav} permissions={permissions} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+          <NavGroup title="Danh mục phòng" items={catalogNav} permissions={permissions} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+          <NavGroup title="Khuyến mãi" items={promotionNav} permissions={permissions} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+          <NavGroup title="Hệ thống" items={systemNav} permissions={permissions} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
         </div>
 
         <div className="border-t border-white/10 p-4">
           <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#e8c990] text-sm font-black text-[#1f1710]">
-                {initials || "A"}
-              </div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#e8c990] text-sm font-black text-[#1f1710]">{initials || "A"}</div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{displayName}</p>
                 <p className="truncate text-xs text-[#d9bf9a]">{userInfo?.email || "Quản trị viên"}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10"
-            >
+            <button type="button" onClick={handleLogout} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10">
               <LogOut className="h-4 w-4" />
               Đăng xuất
             </button>
@@ -188,18 +163,10 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <ChevronRight className="h-3.5 w-3.5" />
                 Admin
               </div>
-              <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight lg:text-4xl">
-                {pageTitle}
-              </h1>
+              <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight lg:text-4xl">{pageTitle}</h1>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden rounded-full border border-[#decdb9] bg-white/60 px-4 py-2 text-sm font-semibold text-[#5f5144] shadow-sm dark:border-[#3a2e24] dark:bg-white/[0.05] dark:text-[#d8c9b7] md:block">
-                {new Intl.DateTimeFormat("vi-VN", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                }).format(new Date())}
-              </div>
+            <div className="hidden rounded-full border border-[#decdb9] bg-white/60 px-4 py-2 text-sm font-semibold text-[#5f5144] shadow-sm dark:border-[#3a2e24] dark:bg-white/[0.05] dark:text-[#d8c9b7] md:block">
+              {new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date())}
             </div>
           </div>
         </header>
@@ -216,41 +183,31 @@ type NavItem = {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  requiredPermission?: string;
 };
 
-function NavGroup({
-  title,
-  items,
-  pathname,
-  onNavigate,
-}: {
+function NavGroup({ title, items, permissions, pathname, onNavigate }: {
   title: string;
   items: NavItem[];
+  permissions: string[];
   pathname: string;
   onNavigate: () => void;
 }) {
+  const visibleItems = items.filter((item) => !item.requiredPermission || permissions.includes(item.requiredPermission));
+  if (visibleItems.length === 0) return null;
+
   return (
     <div className="mb-7">
-      <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.24em] text-[#b79b74]">
-        {title}
-      </p>
+      <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.24em] text-[#b79b74]">{title}</p>
       <nav className="space-y-1">
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const active = item.href === "/" || item.href === "/admin" ? pathname === item.href : pathname.startsWith(item.href);
-
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                "group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold transition",
-                active
-                  ? "bg-[#e8c990] text-[#1f1710] shadow-[0_18px_50px_-30px_rgba(232,201,144,0.85)]"
-                  : "text-[#eadbc4]/82 hover:bg-white/10 hover:text-white",
-              )}
-            >
+            <Link key={item.href} href={item.href} onClick={onNavigate} className={cn(
+              "group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold transition",
+              active ? "bg-[#e8c990] text-[#1f1710] shadow-[0_18px_50px_-30px_rgba(232,201,144,0.85)]" : "text-[#eadbc4]/82 hover:bg-white/10 hover:text-white",
+            )}>
               <Icon className="h-4 w-4" />
               <span className="flex-1">{item.label}</span>
               {active ? <span className="h-2 w-2 rounded-full bg-[#1f1710]" /> : null}
@@ -268,12 +225,14 @@ function getPathTitle(pathname: string) {
   if (pathname === "/admin") return "Danh mục vận hành";
   if (pathname.startsWith("/admin/room-types")) return "Loại phòng";
   if (pathname.startsWith("/admin/amenities")) return "Cơ sở vật chất";
-  if (pathname.startsWith("/admin/amenity-rooms")) return "Gán cơ sở vật chất theo loại phòng";
-  if (pathname.startsWith("/admin/room-type-services")) return "Gán dịch vụ bổ sung theo loại phòng";
+  if (pathname.startsWith("/admin/amenity-rooms")) return "Gắn cơ sở vật chất theo loại phòng";
+  if (pathname.startsWith("/admin/room-type-services")) return "Gắn dịch vụ bổ sung theo loại phòng";
   if (pathname.startsWith("/admin/vouchers")) return "Quản lý voucher";
   if (pathname.startsWith("/admin/policies")) return "Quản lý chính sách";
   if (pathname.startsWith("/bookings")) return "Đặt phòng";
-  if (pathname.startsWith("/users")) return "Khách hàng";
+  if (pathname.startsWith("/service-orders")) return "Dịch vụ phát sinh";
+  if (pathname.startsWith("/chats")) return "Tin nhắn hỗ trợ";
+  if (pathname.startsWith("/users")) return "Nhân viên & quyền";
   if (pathname.startsWith("/settings")) return "Cài đặt";
   if (pathname.startsWith("/buildings")) return "Tòa nhà & tầng";
   return "Hotel Admin";

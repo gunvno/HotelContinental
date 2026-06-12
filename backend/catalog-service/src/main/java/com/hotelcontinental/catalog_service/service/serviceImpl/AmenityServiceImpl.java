@@ -25,7 +25,7 @@ public class AmenityServiceImpl implements AmenityService {
     @Autowired
     private AmenitiesRepository amenitiesRepository;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('AMENITY_CREATE')")
     @Transactional
     @Override
     public AmenityResponse createAmenity(AmenityCreationRequest request) {
@@ -60,7 +60,7 @@ public class AmenityServiceImpl implements AmenityService {
         return mapToAmenityResponse(amenity);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('AMENITY_UPDATE')")
     @Transactional
     @Override
     public AmenityResponse updateAmenity(String id, AmenityUpdateRequest request) {
@@ -86,7 +86,7 @@ public class AmenityServiceImpl implements AmenityService {
         return mapToAmenityResponse(updatedAmenity);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('AMENITY_DELETE')")
     @Transactional
     @Override
     public void deleteAmenity(String id) {
@@ -106,7 +106,7 @@ public class AmenityServiceImpl implements AmenityService {
             .build());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('AMENITY_RESTORE')")
     @Transactional
     @Override
     public void restoreAmenity(String id) {

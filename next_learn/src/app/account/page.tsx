@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import { Container } from "@/components/ui/container";
 import { getMyProfile, type ProfileResponse } from "@/services/profile-service";
 import {
   selectFirstName,
   selectLastName,
+  selectToken,
   selectUserName,
   useAuthStore,
 } from "@/store/auth-store";
@@ -26,12 +28,17 @@ export default function AccountPage() {
   const logoutLocal = useAuthStore((state) => state.logout);
   const storeFirstName = useAuthStore(selectFirstName);
   const storeLastName = useAuthStore(selectLastName);
+  const token = useAuthStore(selectToken);
   const userName = useAuthStore(selectUserName);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!token) {
+      return;
+    }
+
     let alive = true;
 
     const loadProfile = async () => {
@@ -56,7 +63,7 @@ export default function AccountPage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [token]);
 
   const displayName = [storeFirstName, storeLastName].filter(Boolean).join(" ") || userName || "Khách lưu trú";
   const email = userName || "Chưa có email";
@@ -69,6 +76,7 @@ export default function AccountPage() {
   };
 
   return (
+    <ProtectedRoute>
     <section className="min-h-screen bg-white">
       <Container className="py-12 md:py-20 lg:py-24">
         <div className="flex flex-col md:flex-row gap-16 items-start">
@@ -259,5 +267,6 @@ export default function AccountPage() {
         </div>
       </Container>
     </section>
+    </ProtectedRoute>
   );
 }

@@ -5,6 +5,8 @@ import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, BedDouble, Download, Printer } from "lucide-react";
 
+import { ProtectedRoute } from "@/components/auth/protected-route";
+
 function InvoiceContent() {
   const searchParams = useSearchParams();
   const currency = new Intl.NumberFormat("vi-VN");
@@ -102,6 +104,7 @@ function Price({ label, value }: { label: string; value: string }) {
 
 export default function InvoicePage() {
   return (
+    <ProtectedRoute>
     <main className="min-h-screen bg-background">
       <section className="mx-auto w-full max-w-[980px] px-5 py-8 sm:px-8 lg:px-10">
         <Link href="/payment/success" className="inline-flex items-center gap-2 text-sm font-medium text-ring">
@@ -134,5 +137,6 @@ export default function InvoicePage() {
         </Suspense>
       </section>
     </main>
+    </ProtectedRoute>
   );
 }

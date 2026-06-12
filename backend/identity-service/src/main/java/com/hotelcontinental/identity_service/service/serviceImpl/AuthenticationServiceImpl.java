@@ -300,27 +300,34 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private Set<String> buildAuthorities(Accounts account) {
-        if (account.getRoles() == null) {
-            return Set.of();
+        Set<String> authorities = new LinkedHashSet<>();
+
+        if (account.getRoles() != null) {
+            account.getRoles().stream()
+                    .filter(role -> !Boolean.TRUE.equals(role.getDeleted()))
+                    .forEach(role -> {
+                        if (role.getName() != null) {
+                            authorities.add("ROLE_" + role.getName().name());
+                        }
+                        if (role.getPermissions() != null) {
+                            role.getPermissions().stream()
+                                    .filter(permission -> !Boolean.TRUE.equals(permission.getDeleted()))
+                                    .map(Permissions::getName)
+                                    .filter(StringUtils::hasText)
+                                    .forEach(authorities::add);
+                        }
+                    });
         }
 
-        return account.getRoles().stream()
-                .filter(role -> !Boolean.TRUE.equals(role.getDeleted()))
-                .flatMap(role -> {
-                    Set<String> authorities = new LinkedHashSet<>();
-                    if (role.getName() != null) {
-                        authorities.add("ROLE_" + role.getName().name());
-                    }
-                    if (role.getPermissions() != null) {
-                        authorities.addAll(role.getPermissions().stream()
-                                .filter(permission -> !Boolean.TRUE.equals(permission.getDeleted()))
-                                .map(Permissions::getName)
-                                .filter(StringUtils::hasText)
-                                .collect(Collectors.toCollection(LinkedHashSet::new)));
-                    }
-                    return authorities.stream();
-                })
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (account.getPermissions() != null) {
+            account.getPermissions().stream()
+                    .filter(permission -> !Boolean.TRUE.equals(permission.getDeleted()))
+                    .map(Permissions::getName)
+                    .filter(StringUtils::hasText)
+                    .forEach(authorities::add);
+        }
+
+        return authorities;
     }
 
     private boolean isActiveAccount(Accounts account) {

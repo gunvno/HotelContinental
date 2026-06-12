@@ -1,9 +1,17 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Input } from "@/components/ui/input";
+import { usePermission } from "@/hooks/use-permission";
 
 export default function SettingsPage() {
+  const permission = usePermission();
+
+  if (!permission.has("SETTINGS_VIEW")) {
+    return <PermissionDenied message="Bạn không có quyền SETTINGS_VIEW để xem cài đặt." />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">

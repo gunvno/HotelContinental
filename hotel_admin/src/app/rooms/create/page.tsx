@@ -6,8 +6,10 @@ import { ArrowLeft, ImagePlus, UploadCloud, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePermission } from "@/hooks/use-permission";
 import {
   createRoom,
   type BuildingResponse,
@@ -44,6 +46,7 @@ const defaultFormState: FormState = {
 
 export default function CreateRoomPage() {
   const router = useRouter();
+  const permission = usePermission();
   const [buildings, setBuildings] = useState<BuildingResponse[]>([]);
   const [floors, setFloors] = useState<FloorResponse[]>([]);
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
@@ -65,6 +68,8 @@ export default function CreateRoomPage() {
       })),
     [selectedFiles],
   );
+
+  const canCreateRoom = permission.has("ROOM_CREATE");
 
   useEffect(() => {
     void loadInitialData();
@@ -212,6 +217,10 @@ export default function CreateRoomPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!canCreateRoom) {
+    return <PermissionDenied message="Bạn không có quyền ROOM_CREATE để tạo phòng." />;
+  }
 
   return (
     <div className="space-y-7">

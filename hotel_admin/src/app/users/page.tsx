@@ -1,67 +1,227 @@
 "use client";
 
-import { Search, Shield, UserRound } from "lucide-react";
+import { RefreshCcw, Save, Search, Shield, ShieldCheck, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-const users = [
-  { id: "1", name: "Admin User", email: "admin@system.com", role: "ADMIN", status: "Active" },
-  { id: "2", name: "Nguyễn Văn A", email: "a@mail.com", role: "STAFF", status: "Active" },
-  { id: "3", name: "Trần Thị B", email: "b@mail.com", role: "CUSTOMER", status: "Locked" },
-];
+import {
+  getPermissions,
+  getStaffAccounts,
+  updateStaffPermissions,
+  type PermissionResponse,
+  type StaffPermissionResponse,
+} from "@/services/permission-service";
+import { useAuthStore } from "@/store/auth-store";
 
 export default function UsersPage() {
+  const permissions = useAuthStore((state) => state.permissions);
+  const canManagePermissions = permissions.includes("PERMISSION_MANAGE");
+
+  const [staffAccounts, setStaffAccounts] = useState<StaffPermissionResponse[]>([]);
+  const [allPermissions, setAllPermissions] = useState<PermissionResponse[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [selectedDirectPermissions, setSelectedDirectPermissions] = useState<string[]>([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const isActionBusy = loading || saving;
+
+  const selectedStaff = useMemo(
+    () => staffAccounts.find((staff) => staff.accountId === selectedAccountId) ?? null,
+    [selectedAccountId, staffAccounts],
+  );
+
+  const filteredStaff = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return staffAccounts.filter((staff) =>
+      staff.fullName.toLowerCase().includes(normalizedQuery) ||
+      staff.username.toLowerCase().includes(normalizedQuery) ||
+      (staff.email ?? "").toLowerCase().includes(normalizedQuery),
+    );
+  }, [query, staffAccounts]);
+
+  const availableToAdd = useMemo(() => {
+    if (!selectedStaff) return [];
+    const blocked = new Set([...selectedStaff.rolePermissions, ...selectedDirectPermissions]);
+    return allPermissions.filter((permission) => !blocked.has(permission.name));
+  }, [allPermissions, selectedDirectPermissions, selectedStaff]);
+
+  async function loadData(nextSelectedId?: string) {
+    if (!canManagePermissions) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    try {
+      const [permissionData, staffData] = await Promise.all([getPermissions(), getStaffAccounts()]);
+      setAllPermissions(permissionData);
+      setStaffAccounts(staffData);
+
+      const nextId = nextSelectedId || selectedAccountId || staffData[0]?.accountId || "";
+      setSelectedAccountId(nextId);
+      const nextStaff = staffData.find((staff) => staff.accountId === nextId) ?? staffData[0] ?? null;
+      setSelectedDirectPermissions(nextStaff?.directPermissions ?? []);
+    } catch {
+      setMessage("Không thể tải danh sách nhân viên hoặc quyền. Kiểm tra identity-service và quyền PERMISSION_MANAGE.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadData();
+  }, [canManagePermissions]);
+
+  useEffect(() => {
+    if (!selectedStaff) return;
+    setSelectedDirectPermissions(selectedStaff.directPermissions);
+  }, [selectedStaff]);
+
+  function togglePermission(permissionName: string) {
+    if (isActionBusy) return;
+    setSelectedDirectPermissions((items) =>
+      items.includes(permissionName)
+        ? items.filter((item) => item !== permissionName)
+        : [...items, permissionName].sort(),
+    );
+  }
+
+  async function handleSave() {
+    if (!selectedStaff || isActionBusy) return;
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const updated = await updateStaffPermissions(selectedStaff.accountId, selectedDirectPermissions);
+      setStaffAccounts((items) => items.map((item) => (item.accountId === updated.accountId ? updated : item)));
+      setSelectedDirectPermissions(updated.directPermissions);
+      setMessage(`Đã cập nhật quyền cho ${updated.fullName}. Nhân viên cần đăng nhập lại để token nhận quyền mới.`);
+    } catch {
+      setMessage("Không thể lưu quyền nhân viên. Kiểm tra quyền PERMISSION_MANAGE và dữ liệu quyền.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!canManagePermissions) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+        Tài khoản hiện tại không có quyền PERMISSION_MANAGE để quản lý phân quyền nhân viên.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Quản lý người dùng</h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Danh sách tài khoản, vai trò và trạng thái hệ thống.</p>
+      <div className="rounded-2xl border border-[#decdb9] bg-white/85 p-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#9b5c24]">Phân quyền</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">Nhân viên & quyền chức năng</h2>
+            <p className="mt-2 max-w-2xl text-sm text-[#7c6f63]">
+              Role STAFF giữ quyền mặc định. Quyền gán riêng ở đây sẽ cộng thêm cho từng nhân viên cụ thể.
+            </p>
+          </div>
+          <Button type="button" onClick={() => void loadData()} disabled={isActionBusy} className="gap-2">
+            <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Tải lại
+          </Button>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900 md:flex-row md:items-center md:justify-between">
-        <div className="relative md:w-96">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input className="pl-9" placeholder="Tìm theo tên hoặc email" />
-        </div>
-        <Button className="bg-sky-600 text-white hover:bg-sky-500">+ Thêm người dùng</Button>
-      </div>
+      {message ? <div className="rounded-xl bg-[#fff6df] p-3 text-sm text-[#8a5724]">{message}</div> : null}
 
       <div className="grid gap-4 md:grid-cols-3">
-        <InfoCard icon={<UserRound className="h-4 w-4" />} title="Tổng tài khoản" value="1,245" />
-        <InfoCard icon={<Shield className="h-4 w-4" />} title="Quản trị viên" value="12" />
-        <InfoCard icon={<UserRound className="h-4 w-4" />} title="Người dùng bị khóa" value="8" />
+        <InfoCard icon={<UserRound className="h-4 w-4" />} title="Nhân viên" value={staffAccounts.length.toString()} />
+        <InfoCard icon={<Shield className="h-4 w-4" />} title="Tổng quyền" value={allPermissions.length.toString()} />
+        <InfoCard icon={<ShieldCheck className="h-4 w-4" />} title="Quyền riêng đang chọn" value={selectedDirectPermissions.length.toString()} />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-            <tr>
-              <th className="px-4 py-3 font-medium">Tên</th>
-              <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Vai trò</th>
-              <th className="px-4 py-3 font-medium">Trạng thái</th>
-              <th className="px-4 py-3 font-medium">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-t border-gray-100 dark:border-gray-800">
-                <td className="px-4 py-4 font-medium text-gray-900 dark:text-white">{user.name}</td>
-                <td className="px-4 py-4 text-gray-600 dark:text-gray-300">{user.email}</td>
-                <td className="px-4 py-4 text-gray-600 dark:text-gray-300">{user.role}</td>
-                <td className="px-4 py-4">
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${user.status === "Active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"}`}>
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-4 py-4">
-                  <Button variant="secondary" size="sm">Chi tiết</Button>
-                </td>
-              </tr>
+      <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+        <aside className="rounded-2xl border border-[#decdb9] bg-white/90 p-4 shadow-sm">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="pl-9"
+              placeholder="Tìm nhân viên..."
+            />
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {loading ? <p className="py-8 text-center text-sm text-[#7c6f63]">Đang tải...</p> : null}
+            {!loading && filteredStaff.length === 0 ? (
+              <p className="py-8 text-center text-sm text-[#7c6f63]">Chưa có nhân viên staff.</p>
+            ) : null}
+            {filteredStaff.map((staff) => (
+              <button
+                key={staff.accountId}
+                type="button"
+                onClick={() => setSelectedAccountId(staff.accountId)}
+                disabled={saving}
+                className={`w-full rounded-2xl px-4 py-3 text-left transition ${
+                  selectedAccountId === staff.accountId
+                    ? "bg-[#9b5c24] text-white"
+                    : "bg-[#fbf6ed] text-[#17213a] hover:bg-[#f4eadc]"
+                }`}
+              >
+                <span className="block font-semibold">{staff.fullName}</span>
+                <span className="mt-1 block text-xs opacity-75">{staff.username} · {staff.email ?? "Chưa có email"}</span>
+              </button>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </aside>
+
+        <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
+          {!selectedStaff ? (
+            <p className="py-12 text-center text-sm text-[#7c6f63]">Chọn một nhân viên để phân quyền.</p>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-[#17213a]">{selectedStaff.fullName}</h3>
+                  <p className="mt-1 text-sm text-[#7c6f63]">
+                    {selectedStaff.username} · {selectedStaff.email ?? "Chưa có email"}
+                  </p>
+                </div>
+                <Button type="button" onClick={() => void handleSave()} disabled={isActionBusy} className="gap-2">
+                  <Save className="h-4 w-4" />
+                  Lưu quyền riêng
+                </Button>
+              </div>
+
+              <PermissionGroup
+                title="Quyền mặc định từ role STAFF"
+                description="Các quyền này đến từ YAML staff-permission, không chỉnh riêng tại đây."
+                items={selectedStaff.rolePermissions}
+                tone="muted"
+              />
+
+              <EditablePermissionGroup
+                title="Quyền riêng đã gắn cho nhân viên"
+                description="Các quyền này cộng thêm vào role STAFF khi nhân viên đăng nhập."
+                items={selectedDirectPermissions}
+                checked
+                disabled={isActionBusy}
+                onToggle={togglePermission}
+              />
+
+              <EditablePermissionGroup
+                title="Quyền chưa được gắn"
+                description="Tick vào quyền để thêm cho nhân viên này."
+                items={availableToAdd.map((permission) => permission.name)}
+                checked={false}
+                disabled={isActionBusy}
+                onToggle={togglePermission}
+              />
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
@@ -69,12 +229,76 @@ export default function UsersPage() {
 
 function InfoCard({ icon, title, value }: { icon: React.ReactNode; title: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-      <div className="flex items-center justify-between text-gray-500 dark:text-gray-400">
+    <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
+      <div className="flex items-center justify-between text-[#7c6f63]">
         <span>{title}</span>
         {icon}
       </div>
-      <div className="mt-3 text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
+      <div className="mt-3 text-2xl font-bold text-[#17213a]">{value}</div>
+    </div>
+  );
+}
+
+function PermissionGroup({
+  title,
+  description,
+  items,
+}: {
+  title: string;
+  description: string;
+  items: string[];
+  tone?: "muted";
+}) {
+  return (
+    <div>
+      <h4 className="font-bold text-[#17213a]">{title}</h4>
+      <p className="mt-1 text-sm text-[#7c6f63]">{description}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {items.length === 0 ? <span className="text-sm text-[#9f8a77]">Không có quyền.</span> : null}
+        {items.map((item) => (
+          <span key={item} className="rounded-full bg-[#f4eadc] px-3 py-1 text-xs font-semibold text-[#5f5144]">
+            {item}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EditablePermissionGroup({
+  title,
+  description,
+  items,
+  checked,
+  disabled = false,
+  onToggle,
+}: {
+  title: string;
+  description: string;
+  items: string[];
+  checked: boolean;
+  disabled?: boolean;
+  onToggle: (permissionName: string) => void;
+}) {
+  return (
+    <div>
+      <h4 className="font-bold text-[#17213a]">{title}</h4>
+      <p className="mt-1 text-sm text-[#7c6f63]">{description}</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {items.length === 0 ? <span className="text-sm text-[#9f8a77]">Không có quyền.</span> : null}
+        {items.map((item) => (
+          <label key={item} className={`flex items-center gap-2 rounded-xl border border-[#decdb9] bg-[#fbf6ed] px-3 py-2 text-sm font-semibold text-[#17213a] ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={disabled}
+              onChange={() => onToggle(item)}
+              className="h-4 w-4 accent-[#9b5c24]"
+            />
+            <span>{item}</span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

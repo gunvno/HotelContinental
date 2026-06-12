@@ -29,7 +29,7 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
     @Autowired
     private IdentityClient identityClient;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('AMENITY_ROOM_CREATE')")
     @Transactional
     @Override
     public AmenityRoomResponse createAmenityRoom(AmenityRoomCreationRequest request) {
@@ -66,7 +66,7 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
         return mapToAmenityRoomResponse(amenityRoom);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('AMENITY_ROOM_UPDATE')")
     @Transactional
     @Override
     public AmenityRoomResponse updateAmenityRoom(String id, AmenityRoomUpdateRequest request) {
@@ -94,7 +94,7 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
         return mapToAmenityRoomResponse(updatedAmenityRoom);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('AMENITY_ROOM_DELETE')")
     @Transactional
     @Override
     public void deleteAmenityRoom(String id) {
@@ -116,7 +116,7 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
             .build());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('AMENITY_ROOM_RESTORE')")
     @Transactional
     @Override
     public void restoreAmenityRoom(String id) {

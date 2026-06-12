@@ -24,7 +24,7 @@ public class VoucherController {
     private final VoucherService voucherService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('VOUCHER_CREATE')")
     public ApiResponse<VoucherResponse> createVoucher(@RequestBody VoucherCreationRequest request) {
         return ApiResponse.<VoucherResponse>builder()
                 .result(voucherService.createVoucher(request))
@@ -32,7 +32,7 @@ public class VoucherController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('VOUCHER_VIEW')")
     public ApiResponse<List<VoucherResponse>> getVouchers() {
         return ApiResponse.<List<VoucherResponse>>builder()
                 .result(voucherService.getVouchers())

@@ -30,6 +30,8 @@ spring:
 app:
   services:
     identity: http://localhost:8080/identity
+    booking: http://localhost:8082/booking
+    catalog: http://localhost:8083/catalog
 
 idp:
   url: http://localhost:8180

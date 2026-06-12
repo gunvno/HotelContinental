@@ -61,6 +61,13 @@ public class Accounts {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     Set<Roles> roles;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "account_permissions",
+            joinColumns = @JoinColumn(name = "account_id"),
+            inverseJoinColumns = @JoinColumn(name = "permission_id"))
+    Set<Permissions> permissions;
+
     @Column(name = "created_time")
     LocalDateTime createdTime;
 

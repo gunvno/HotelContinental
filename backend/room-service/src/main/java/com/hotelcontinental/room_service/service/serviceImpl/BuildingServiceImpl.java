@@ -40,7 +40,7 @@ public class BuildingServiceImpl implements BuildingService {
     private final RoomRepository roomRepository;
     private final IdentityClient identityClient;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('BUILDING_SETUP')")
     @Transactional
     @Override
     public BuildingSetupResponse setupBuilding(BuildingSetupRequest request) {

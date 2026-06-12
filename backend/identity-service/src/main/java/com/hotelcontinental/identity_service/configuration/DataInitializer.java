@@ -1,12 +1,14 @@
 package com.hotelcontinental.identity_service.configuration;
 
 import com.hotelcontinental.identity_service.entity.Accounts;
+import com.hotelcontinental.identity_service.entity.Permissions;
 import com.hotelcontinental.identity_service.entity.Roles;
 import com.hotelcontinental.identity_service.entity.User;
 import com.hotelcontinental.identity_service.enums.AccountStatus;
 import com.hotelcontinental.identity_service.enums.Role;
 import com.hotelcontinental.identity_service.enums.UserStatus;
 import com.hotelcontinental.identity_service.repository.AccountsRepository;
+import com.hotelcontinental.identity_service.repository.PermissionsRepository;
 import com.hotelcontinental.identity_service.repository.RolesRepository;
 import com.hotelcontinental.identity_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,9 +18,12 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -27,11 +32,19 @@ public class DataInitializer implements ApplicationRunner {
     private static final String ADMIN_USERNAME = "admin";
     private static final String ADMIN_PASSWORD = "admin";
     private static final String ADMIN_EMAIL = "admin@hotelcontinental.local";
+    private static final String STAFF_USERNAME = "staff";
+    private static final String STAFF_PASSWORD = "staff";
+    private static final String STAFF_EMAIL = "staff@hotelcontinental.local";
+    private static final String CUSTOMER_USERNAME = "customer";
+    private static final String CUSTOMER_PASSWORD = "customer";
+    private static final String CUSTOMER_EMAIL = "customer@hotelcontinental.local";
 
     private final AccountsRepository accountsRepository;
     private final RolesRepository rolesRepository;
+    private final PermissionsRepository permissionsRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RolePermissionProperties rolePermissionProperties;
 
     @Override
     @Transactional
@@ -40,43 +53,116 @@ public class DataInitializer implements ApplicationRunner {
         for (Role role : requiredRoles) {
             ensureRole(role);
         }
+        syncRolePermissions();
 
-        if (accountsRepository.existsByUsername(ADMIN_USERNAME)) {
-            return;
-        }
-
-        Roles adminRole = ensureRole(Role.ADMIN);
-        LocalDateTime now = LocalDateTime.now();
-
-        User adminUser = userRepository.save(User.builder()
-                .firstName("System")
-                .lastName("Admin")
-                .email(ADMIN_EMAIL)
-                .status(UserStatus.ACTIVE)
-                .userType(Role.ADMIN.name())
-                .createdBy("system")
-                .createdTime(now)
-                .deleted(false)
-                .build());
-
-        accountsRepository.save(Accounts.builder()
-                .username(ADMIN_USERNAME)
-                .password(passwordEncoder.encode(ADMIN_PASSWORD))
-                .status(AccountStatus.ACTIVE)
-                .userId(adminUser.getId())
-                .roles(Collections.singleton(adminRole))
-                .createdBy("system")
-                .createdTime(now)
-                .deleted(false)
-                .build());
-
-        log.warn("Created default admin account. username={}, password={}", ADMIN_USERNAME, ADMIN_PASSWORD);
+        ensureDefaultAccount(
+                ADMIN_USERNAME,
+                ADMIN_PASSWORD,
+                ADMIN_EMAIL,
+                "System",
+                "Admin",
+                Role.ADMIN
+        );
+        ensureDefaultAccount(
+                STAFF_USERNAME,
+                STAFF_PASSWORD,
+                STAFF_EMAIL,
+                "System",
+                "Staff",
+                Role.STAFF
+        );
+        ensureDefaultAccount(
+                CUSTOMER_USERNAME,
+                CUSTOMER_PASSWORD,
+                CUSTOMER_EMAIL,
+                "Demo",
+                "Customer",
+                Role.CUSTOMER
+        );
     }
 
     private Roles ensureRole(Role role) {
         return rolesRepository.findByName(role)
                 .orElseGet(() -> rolesRepository.save(Roles.builder()
                         .name(role)
+                        .createdBy("system")
+                        .createdTime(LocalDateTime.now())
+                        .deleted(false)
+                        .build()));
+    }
+
+    private void ensureDefaultAccount(
+            String username,
+            String password,
+            String email,
+            String firstName,
+            String lastName,
+            Role roleName
+    ) {
+        if (accountsRepository.existsByUsername(username)) {
+            return;
+        }
+
+        Roles role = ensureRole(roleName);
+        LocalDateTime now = LocalDateTime.now();
+
+        User user = userRepository.save(User.builder()
+                .firstName(firstName)
+                .lastName(lastName)
+                .email(email)
+                .status(UserStatus.ACTIVE)
+                .userType(roleName.name())
+                .createdBy("system")
+                .createdTime(now)
+                .deleted(false)
+                .build());
+
+        accountsRepository.save(Accounts.builder()
+                .username(username)
+                .password(passwordEncoder.encode(password))
+                .status(AccountStatus.ACTIVE)
+                .userId(user.getId())
+                .roles(Set.of(role))
+                .createdBy("system")
+                .createdTime(now)
+                .deleted(false)
+                .build());
+
+        log.warn("Created default {} account. username={}, password={}", roleName, username, password);
+    }
+
+    private void syncRolePermissions() {
+        assignPermissions(Role.ADMIN, rolePermissionProperties.getAdminPermission());
+        assignPermissions(Role.STAFF, rolePermissionProperties.getStaffPermission());
+        assignPermissions(Role.CUSTOMER, rolePermissionProperties.getCustomerPermission());
+    }
+
+    private void assignPermissions(Role roleName, List<String> permissionNames) {
+        Roles role = ensureRole(roleName);
+        Set<Permissions> permissions = new LinkedHashSet<>();
+
+        if (permissionNames == null) {
+            permissionNames = List.of();
+        }
+
+        for (String permissionName : permissionNames) {
+            if (StringUtils.hasText(permissionName)) {
+                permissions.add(ensurePermission(permissionName));
+            }
+        }
+
+        role.setPermissions(permissions);
+        role.setModifiedBy("system");
+        role.setModifiedTime(LocalDateTime.now());
+        rolesRepository.save(role);
+    }
+
+    private Permissions ensurePermission(String permissionName) {
+        String normalizedName = permissionName.trim().toUpperCase();
+        return permissionsRepository.findByName(normalizedName)
+                .orElseGet(() -> permissionsRepository.save(Permissions.builder()
+                        .name(normalizedName)
+                        .description(normalizedName)
                         .createdBy("system")
                         .createdTime(LocalDateTime.now())
                         .deleted(false)

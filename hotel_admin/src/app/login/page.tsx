@@ -56,7 +56,7 @@ export default function AdminLoginPage() {
     try {
       const result = await login(values);
 
-      if (!result?.token || !result.permissions?.includes("ROLE_ADMIN")) {
+      if (!result?.token || !result.permissions?.includes("ADMIN_PORTAL_ACCESS")) {
         logout();
         setError(LOGIN_ERROR_MESSAGE);
         return;
@@ -98,9 +98,9 @@ export default function AdminLoginPage() {
       <div className="mb-7 rounded-3xl border border-[#decdb9] bg-white/55 p-4 text-sm text-[#6d5b49]">
         <div className="mb-2 flex items-center gap-2 font-bold text-[#211a14]">
           <ShieldCheck className="h-4 w-4 text-[#9b5c24]" />
-          Chỉ tài khoản ADMIN được truy cập trang quản trị.
+          Chỉ tài khoản quản trị hoặc nhân viên được phân quyền mới được truy cập trang quản trị.
         </div>
-        Tài khoản khách hoặc nhân viên thường sẽ được báo như sai tài khoản/mật khẩu.
+        Tài khoản khách hoặc tài khoản chưa được cấp quyền sẽ được báo như sai tài khoản/mật khẩu.
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">

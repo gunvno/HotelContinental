@@ -31,7 +31,7 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
     @Autowired
     private ServicesRepository servicesRepository;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_SERVICE_CREATE')")
     @Transactional
     @Override
     public RoomTypeServiceResponse createRoomTypeService(RoomTypeServiceCreationRequest request) {
@@ -72,7 +72,7 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND)));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_SERVICE_UPDATE')")
     @Transactional
     @Override
     public RoomTypeServiceResponse updateRoomTypeService(String id, RoomTypeServiceUpdateRequest request) {
@@ -105,7 +105,7 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
         return map(roomTypeServicesRepository.save(updated));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_SERVICE_DELETE')")
     @Transactional
     @Override
     public void deleteRoomTypeService(String id) {
@@ -125,7 +125,7 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
                 .build());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_SERVICE_RESTORE')")
     @Transactional
     @Override
     public void restoreRoomTypeService(String id) {

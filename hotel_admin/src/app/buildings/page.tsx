@@ -4,8 +4,10 @@ import { Building2, Layers3, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePermission } from "@/hooks/use-permission";
 import {
   getBuildings,
   getFloorsByBuilding,
@@ -47,6 +49,7 @@ const defaultFormState: SetupFormState = {
 };
 
 export default function BuildingsPage() {
+  const permission = usePermission();
   const [buildings, setBuildings] = useState<BuildingResponse[]>([]);
   const [floorsByBuilding, setFloorsByBuilding] = useState<Record<string, FloorResponse[]>>({});
   const [roomTypes, setRoomTypes] = useState<RoomTypeResponse[]>([]);
@@ -60,6 +63,8 @@ export default function BuildingsPage() {
     () => Object.values(floorsByBuilding).reduce((sum, floors) => sum + floors.length, 0),
     [floorsByBuilding],
   );
+
+  const canSetupBuilding = permission.has("BUILDING_SETUP");
 
   useEffect(() => {
     void loadData();
@@ -163,6 +168,10 @@ export default function BuildingsPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!canSetupBuilding) {
+    return <PermissionDenied message="Bạn không có quyền BUILDING_SETUP để quản lý tòa nhà và tầng." />;
+  }
 
   return (
     <div className="space-y-7">
