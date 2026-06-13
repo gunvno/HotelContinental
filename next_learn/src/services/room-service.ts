@@ -36,7 +36,7 @@ type AmenityRoomResponse = {
   amenity?: AmenityResponse | null;
 };
 
-type ServiceResponse = {
+export type ServiceResponse = {
   id: string;
   name: string;
   description?: string;
@@ -188,7 +188,7 @@ async function getAmenityRoomsByRoomType(
   }));
 }
 
-async function getCatalogServices(page = 0, size = 500): Promise<ServiceResponse[]> {
+export async function getCatalogServices(page = 0, size = 500): Promise<ServiceResponse[]> {
   const res = await http
     .get("catalog/service", {
       searchParams: { page, size },

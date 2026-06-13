@@ -25,4 +25,5 @@ spring:
 app:
   services:
     identity: http://localhost:8080/identity
-
+    booking: http://localhost:8084/booking
+    billing: http://localhost:8085/billing

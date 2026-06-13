@@ -2,6 +2,7 @@ import { http } from "@/lib/http";
 import type { ApiResponse } from "@/types/api-types";
 
 export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "ONLINE_PAYMENT";
+export type PaymentRequestStatus = "PENDING" | "PAID" | "EXPIRED" | "FAILED";
 
 export type CreatePaymentPayload = {
   roomBookingId: string;
@@ -18,6 +19,38 @@ export type PaymentHistoryResponse = {
   paymentTime: string;
   note?: string;
   createdTime?: string;
+};
+
+export type PaymentRequestResponse = {
+  id: string;
+  roomBookingId: string;
+  paymentMethod: PaymentMethod;
+  amount: number;
+  bankAccountNo: string;
+  bankAccountName: string;
+  bankName: string;
+  transferContent: string;
+  status: PaymentRequestStatus;
+  providerTransactionId?: string;
+  paidTime?: string;
+  expiredTime?: string;
+  createdTime?: string;
+};
+
+export type InvoiceResponse = {
+  invoiceNo: string;
+  roomBookingId: string;
+  paymentId: string;
+  customerId: string;
+  roomId: string;
+  totalRoomPrice: number;
+  totalServicePrice: number;
+  totalExtraPrice: number;
+  totalPrice: number;
+  paidAmount: number;
+  paymentMethod: PaymentMethod;
+  paymentTime: string;
+  issuedTime: string;
 };
 
 export async function createPayment(payload: CreatePaymentPayload) {
@@ -39,4 +72,35 @@ export async function getMyPayments() {
     .get("billing/payments/my")
     .json<ApiResponse<PaymentHistoryResponse[]>>();
   return (res.result ?? res.content ?? []) as PaymentHistoryResponse[];
+}
+
+export async function createPaymentRequest(payload: {
+  roomBookingId: string;
+  amount: number;
+}) {
+  const res = await http
+    .post("billing/payment-requests", { json: payload })
+    .json<ApiResponse<PaymentRequestResponse>>();
+  return (res.result ?? res.content) as PaymentRequestResponse;
+}
+
+export async function getPaymentRequest(id: string) {
+  const res = await http
+    .get(`billing/payment-requests/${id}`)
+    .json<ApiResponse<PaymentRequestResponse>>();
+  return (res.result ?? res.content) as PaymentRequestResponse;
+}
+
+export async function getLatestPaymentRequestByBooking(roomBookingId: string) {
+  const res = await http
+    .get(`billing/payment-requests/booking/${roomBookingId}`)
+    .json<ApiResponse<PaymentRequestResponse>>();
+  return (res.result ?? res.content) as PaymentRequestResponse;
+}
+
+export async function getInvoiceByBooking(roomBookingId: string) {
+  const res = await http
+    .get(`billing/invoices/booking/${roomBookingId}`)
+    .json<ApiResponse<InvoiceResponse>>();
+  return (res.result ?? res.content) as InvoiceResponse;
 }

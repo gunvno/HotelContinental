@@ -14,5 +14,6 @@ public interface RoomTypeServicesService {
     RoomTypeServiceResponse updateRoomTypeService(String id, RoomTypeServiceUpdateRequest request);
     void deleteRoomTypeService(String id);
     void restoreRoomTypeService(String id);
+    boolean isServiceIncludedInRoomType(String roomTypeId, String serviceId);
 }
 

@@ -1,6 +1,13 @@
-"use client";
+﻿"use client";
 
-import { ArrowRight, CreditCard, ReceiptText, Settings, UserRound } from "lucide-react";
+import {
+  ArrowRight,
+  CreditCard,
+  ReceiptText,
+  Settings,
+  UserRound,
+  Utensils,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -75,6 +82,13 @@ export default function InvoicesPage() {
                 >
                   <ReceiptText className="h-[18px] w-[18px]" />
                   Lịch sử hóa đơn
+                </Link>
+                <Link
+                  href="/account/services"
+                  className="flex items-center gap-4 text-[#8c8277] transition-colors hover:text-[#1f1a17]"
+                >
+                  <Utensils className="h-[18px] w-[18px]" />
+                  Gọi thêm dịch vụ
                 </Link>
                 <Link
                   href="/payment"

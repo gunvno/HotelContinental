@@ -94,3 +94,9 @@ spring:
             - Path=${app.api-prefix}/chat/**
           filters:
             - StripPrefix=2
+        - id: ai_assistant_service
+          uri: ${AI_ASSISTANT_SERVICE_URI:http://localhost:8091}
+          predicates:
+            - Path=${app.api-prefix}/ai/**
+          filters:
+            - StripPrefix=2

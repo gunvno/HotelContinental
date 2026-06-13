@@ -35,6 +35,13 @@ public class RoomBookingController {
                 .build();
     }
 
+    @GetMapping("/me")
+    public ApiResponse<List<RoomBookingResponse>> getMyRoomBookings() {
+        return ApiResponse.<List<RoomBookingResponse>>builder()
+                .result(roomBookingService.getMyRoomBookings())
+                .build();
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<RoomBookingResponse> getRoomBooking(@PathVariable String id) {
         return ApiResponse.<RoomBookingResponse>builder()

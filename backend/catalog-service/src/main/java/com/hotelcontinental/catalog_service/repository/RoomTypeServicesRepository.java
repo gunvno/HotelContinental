@@ -13,5 +13,6 @@ import java.util.Optional;
 public interface RoomTypeServicesRepository extends JpaRepository<RoomTypeServices, String> {
     List<RoomTypeServices> findByRoomTypesId(String roomTypeId);
     Page<RoomTypeServices> findByRoomTypesId(String roomTypeId, Pageable pageable);
+    boolean existsByRoomTypesIdAndServiceIdAndDeletedFalse(String roomTypeId, String serviceId);
 }
 

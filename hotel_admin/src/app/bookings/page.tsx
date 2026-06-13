@@ -5,6 +5,7 @@ import {
   BedDouble,
   CalendarDays,
   CheckCircle2,
+  CreditCard,
   Filter,
   LogOut,
   RefreshCcw,
@@ -23,6 +24,10 @@ import {
   getRoomBookings,
   type RoomBookingResponse,
 } from "@/services/booking-service";
+import {
+  getLatestPaymentRequestByBooking,
+  mockPaymentRequestPaid,
+} from "@/services/billing-service";
 import { getAllRooms } from "@/services/room-service";
 
 type DisplayStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED";
@@ -40,6 +45,7 @@ export default function BookingsPage() {
   const canViewBookings = permission.has("BOOKING_VIEW");
   const canCheckIn = permission.has("BOOKING_CHECKIN");
   const canCheckOut = permission.has("BOOKING_CHECKOUT");
+  const canConfirmPayment = permission.has("PAYMENT_CONFIRM");
 
   const [bookings, setBookings] = useState<RoomBookingResponse[]>([]);
   const [roomNames, setRoomNames] = useState<Record<string, string>>({});
@@ -136,6 +142,25 @@ export default function BookingsPage() {
     } catch {
       setMessage(
         "Không thể check-out booking này. Chỉ booking đang ở mới được trả phòng.",
+      );
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleMockConfirmPayment(booking: RoomBookingResponse) {
+    if (isActionBusy) return;
+    setActionId(booking.id);
+    setMessage(null);
+    try {
+      const paymentRequest = await getLatestPaymentRequestByBooking(booking.id);
+      await mockPaymentRequestPaid(paymentRequest.id);
+      setActionId(null);
+      await loadData();
+      setMessage(`Đã xác nhận chuyển khoản cho booking ${shortCode(booking.id)}.`);
+    } catch {
+      setMessage(
+        "Không thể xác nhận chuyển khoản. Kiểm tra payment request, billing-service và quyền PAYMENT_CONFIRM.",
       );
     } finally {
       setActionId(null);
@@ -304,7 +329,18 @@ export default function BookingsPage() {
                         </span>
                       </td>
                       <td className="py-4 pr-4">
-                        {displayStatus === "CONFIRMED" || displayStatus === "PENDING" ? (
+                        {displayStatus === "PENDING" ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!canConfirmPayment || isActionBusy}
+                            onClick={() => void handleMockConfirmPayment(booking)}
+                            className="gap-2"
+                          >
+                            <CreditCard className="h-4 w-4" />
+                            Xác nhận CK
+                          </Button>
+                        ) : displayStatus === "CONFIRMED" ? (
                           <Button
                             type="button"
                             size="sm"

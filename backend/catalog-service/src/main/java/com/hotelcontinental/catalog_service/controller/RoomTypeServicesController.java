@@ -69,5 +69,15 @@ public class RoomTypeServicesController {
         roomTypeServicesService.restoreRoomTypeService(id);
         return ApiResponse.<Void>builder().build();
     }
-}
 
+    @GetMapping("/check")
+    public ApiResponse<Boolean> isServiceIncludedInRoomType(
+            @RequestParam String roomTypeId,
+            @RequestParam String serviceId
+    ) {
+        boolean included = roomTypeServicesService.isServiceIncludedInRoomType(roomTypeId, serviceId);
+        return ApiResponse.<Boolean>builder()
+                .result(included)
+                .build();
+    }
+}

@@ -196,10 +196,16 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      booking-service:
+        condition: service_started
+      billing-service:
+        condition: service_started
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/report_service
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      APP_SERVICES_BOOKING: http://booking-service:8084/booking
+      APP_SERVICES_BILLING: http://billing-service:8085/billing
     networks:
       - hotel-network
 
@@ -220,6 +226,26 @@ services:
     networks:
       - hotel-network
 
+  ai-assistant-service:
+    build: ./ai-assistant-service
+    container_name: hotel-ai-assistant-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      room-service:
+        condition: service_started
+      booking-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ai_assistant_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      APP_ROOM_SERVICE_URL: http://room-service:8081/room
+      APP_BOOKING_SERVICE_URL: http://booking-service:8084/booking
+    networks:
+      - hotel-network
+
   api-gateway:
     build: ./api-gateway
     container_name: hotel-api-gateway
@@ -236,6 +262,7 @@ services:
       - content-service
       - report-service
       - chat-service
+      - ai-assistant-service
     environment:
       IDENTITY_SERVICE_URI: http://identity-service:8080
       ROOM_SERVICE_URI: http://room-service:8081
@@ -248,6 +275,7 @@ services:
       CONTENT_SERVICE_URI: http://content-service:8088
       REPORT_SERVICE_URI: http://report-service:8089
       CHAT_SERVICE_URI: http://chat-service:8090
+      AI_ASSISTANT_SERVICE_URI: http://ai-assistant-service:8091
     ports:
       - "${GATEWAY_PORT:-8888}:8888"
     networks:

@@ -9,6 +9,7 @@ import com.hotelcontinental.billing_service.exception.ErrorCode;
 import com.hotelcontinental.billing_service.repository.PaymentHistoryRepository;
 import com.hotelcontinental.billing_service.service.interfaces.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -59,6 +60,15 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public List<PaymentHistoryResponse> getMyPayments() {
         return paymentHistoryRepository.findByCreatedByAndDeletedFalseOrderByCreatedTimeDesc(getCurrentActor())
+                .stream()
+                .map(this::map)
+                .toList();
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('REVENUE_VIEW')")
+    public List<PaymentHistoryResponse> getAllPayments() {
+        return paymentHistoryRepository.findByDeletedFalseOrderByCreatedTimeDesc()
                 .stream()
                 .map(this::map)
                 .toList();

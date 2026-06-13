@@ -57,6 +57,13 @@ export async function getRoomBooking(id: string) {
   return (res.result ?? res.content) as RoomBookingResponse;
 }
 
+export async function getMyRoomBookings() {
+  const res = await http
+    .get("booking/room-bookings/me")
+    .json<ApiResponse<RoomBookingResponse[]>>();
+  return (res.result ?? res.content ?? []) as RoomBookingResponse[];
+}
+
 export async function markRoomBookingDeposited(id: string) {
   const res = await http
     .post(`booking/room-bookings/${id}/mark-deposited`)

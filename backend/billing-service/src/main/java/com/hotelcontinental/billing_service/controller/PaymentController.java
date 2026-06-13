@@ -40,4 +40,11 @@ public class PaymentController {
                 .result(paymentService.getMyPayments())
                 .build();
     }
+
+    @GetMapping
+    public ApiResponse<List<PaymentHistoryResponse>> getAllPayments() {
+        return ApiResponse.<List<PaymentHistoryResponse>>builder()
+                .result(paymentService.getAllPayments())
+                .build();
+    }
 }

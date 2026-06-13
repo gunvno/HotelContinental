@@ -15,6 +15,7 @@ import com.hotelcontinental.booking_service.service.interfaces.RoomBookingServic
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,14 +68,16 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         }
 
         LocalDateTime now = LocalDateTime.now();
+        float initialServicePrice = 0;
+        float initialTotalPrice = request.getTotalRoomPrice() + request.getTotalExtraPrice();
         RoomBookings booking = new RoomBookings();
         booking.setCustomerId(customerId);
         booking.setBookingType(request.getBookingType());
         booking.setStatus(RoomBookingStatus.PENDING);
         booking.setTotalRoomPrice(request.getTotalRoomPrice());
-        booking.setTotalServicePrice(request.getTotalServicePrice());
+        booking.setTotalServicePrice(initialServicePrice);
         booking.setTotalExtraPrice(request.getTotalExtraPrice());
-        booking.setTotalPrice(request.getTotalPrice());
+        booking.setTotalPrice(initialTotalPrice);
         booking.setCreatedTime(now);
         booking.setCreatedBy(customerId);
         booking.setDeleted(false);
@@ -87,7 +90,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         detail.setTotalPrice(request.getTotalRoomPrice());
         detail.setCheckin(request.getCheckin());
         detail.setCheckout(request.getCheckout());
-        detail.setDeposit(request.getDeposit());
+        detail.setDeposit(0);
         detail.setStatus(RoomBookingDetailStatus.BOOKED);
         detail.setCreatedTime(now);
         detail.setCreatedBy(customerId);
@@ -100,6 +103,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @Override
     @PreAuthorize("hasAuthority('BOOKING_VIEW')")
     public List<RoomBookingResponse> getRoomBookings() {
+        if (!canAccessAdminPortal()) {
+            return getMyRoomBookings();
+        }
+
         return roomBookingsRepository.findAllByDeletedFalseOrderByCreatedTimeDesc().stream()
                 .map(booking -> {
                     RoomBookingDetails detail = getPrimaryDetail(booking.getId());
@@ -109,8 +116,22 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('BOOKING_VIEW')")
+    public List<RoomBookingResponse> getMyRoomBookings() {
+        String customerId = getCurrentActor();
+        return roomBookingsRepository.findByCustomerIdAndDeletedFalseOrderByCreatedTimeDesc(customerId).stream()
+                .map(booking -> {
+                    RoomBookingDetails detail = getPrimaryDetail(booking.getId());
+                    return map(booking, detail);
+                })
+                .toList();
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('BOOKING_VIEW')")
     public RoomBookingResponse getRoomBooking(String id) {
         RoomBookings booking = getBooking(id);
+        validateBookingAccess(booking);
         RoomBookingDetails detail = getPrimaryDetail(id);
         return map(booking, detail);
     }
@@ -203,6 +224,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         }
 
         RoomBookings booking = getBooking(id);
+        validateBookingAccess(booking);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String actor = authentication != null && authentication.isAuthenticated()
@@ -251,6 +273,27 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         return authentication.getName();
     }
 
+    private boolean canAccessAdminPortal() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ADMIN_PORTAL_ACCESS"::equals);
+    }
+
+    private void validateBookingAccess(RoomBookings booking) {
+        if (canAccessAdminPortal()) {
+            return;
+        }
+
+        if (!getCurrentActor().equals(booking.getCustomerId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+    }
+
     private void validateRequest(RoomBookingCreationRequest request) {
         if (request == null || request.getRoomId() == null || request.getRoomId().isBlank()
                 || request.getCheckin() == null || request.getCheckout() == null) {
@@ -259,7 +302,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         if (!request.getCheckin().isBefore(request.getCheckout())) {
             throw new AppException(ErrorCode.INVALID_DATE_RANGE);
         }
-        if (request.getTotalPrice() <= 0 || request.getTotalRoomPrice() <= 0 || request.getRoomPrice() <= 0) {
+        float initialTotalPrice = request.getTotalRoomPrice() + request.getTotalExtraPrice();
+        if (initialTotalPrice <= 0 || request.getTotalRoomPrice() <= 0 || request.getRoomPrice() <= 0) {
             throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
         }
     }

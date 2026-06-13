@@ -9,6 +9,7 @@ import java.util.List;
 public interface RoomBookingService {
     RoomBookingResponse createRoomBooking(RoomBookingCreationRequest request);
     List<RoomBookingResponse> getRoomBookings();
+    List<RoomBookingResponse> getMyRoomBookings();
     RoomBookingResponse getRoomBooking(String id);
     RoomBookingResponse markDeposited(String id);
     RoomBookingResponse checkIn(String id);

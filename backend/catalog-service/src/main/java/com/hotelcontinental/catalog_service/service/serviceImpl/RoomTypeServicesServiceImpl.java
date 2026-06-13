@@ -132,6 +132,24 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        RoomTypeServices roomTypeService = roomTypeServicesRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+
+        roomTypeServicesRepository.save(roomTypeService.toBuilder()
+                .deleted(true)
+                .deletedTime(LocalDateTime.now())
+                .deletedBy(deletedBy)
+                .build());
+    }
+
+    @PreAuthorize("hasAuthority('ROOM_TYPE_SERVICE_RESTORE')")
+    @Transactional
+    @Override
+    public void restoreRoomTypeService(String id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
         String modifiedBy = authentication.getName();
 
@@ -145,6 +163,11 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
                 .modifiedTime(LocalDateTime.now())
                 .modifiedBy(modifiedBy)
                 .build());
+    }
+
+    @Override
+    public boolean isServiceIncludedInRoomType(String roomTypeId, String serviceId) {
+        return roomTypeServicesRepository.existsByRoomTypesIdAndServiceIdAndDeletedFalse(roomTypeId, serviceId);
     }
 
     private RoomTypeServiceResponse map(RoomTypeServices entity) {
@@ -165,4 +188,3 @@ public class RoomTypeServicesServiceImpl implements RoomTypeServicesService {
                 .build();
     }
 }
-

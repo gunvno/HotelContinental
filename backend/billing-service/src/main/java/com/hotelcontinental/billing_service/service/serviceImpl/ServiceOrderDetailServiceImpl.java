@@ -31,9 +31,26 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
     @Transactional
     @PreAuthorize("hasAuthority('SERVICE_ORDER_CREATE')")
     public ServiceOrderDetailResponse create(ServiceOrderDetailCreationRequest request) {
+        return createInternal(request, false);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAuthority('SERVICE_ORDER_CUSTOMER_CREATE')")
+    public ServiceOrderDetailResponse createForCurrentCustomer(ServiceOrderDetailCreationRequest request) {
+        return createInternal(request, true);
+    }
+
+    private ServiceOrderDetailResponse createInternal(
+            ServiceOrderDetailCreationRequest request,
+            boolean currentCustomerOnly
+    ) {
         validateCreateRequest(request);
 
         RoomBookingSnapshotResponse booking = externalServiceClient.getBooking(request.getRoomBookingId().trim());
+        if (currentCustomerOnly) {
+            validateCustomerBookingCanOrderService(booking);
+        }
         if (booking.getBookingDetailId() == null || booking.getBookingDetailId().isBlank()) {
             throw new AppException(ErrorCode.INVALID_SERVICE_ORDER_REQUEST);
         }
@@ -77,6 +94,22 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
         }
 
         RoomBookingSnapshotResponse booking = externalServiceClient.getBooking(roomBookingId.trim());
+        return serviceOrderDetailsRepository.findByRoomBookingDetailIdAndDeletedFalseOrderByCreatedTimeDesc(booking.getBookingDetailId())
+                .stream()
+                .map(detail -> map(detail, detail.getRoomBookingId(), null))
+                .toList();
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('SERVICE_ORDER_CUSTOMER_VIEW')")
+    public List<ServiceOrderDetailResponse> getForCurrentCustomer(String roomBookingId) {
+        if (roomBookingId == null || roomBookingId.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_SERVICE_ORDER_REQUEST);
+        }
+
+        RoomBookingSnapshotResponse booking = externalServiceClient.getBooking(roomBookingId.trim());
+        validateCustomerBookingAccess(booking);
+
         return serviceOrderDetailsRepository.findByRoomBookingDetailIdAndDeletedFalseOrderByCreatedTimeDesc(booking.getBookingDetailId())
                 .stream()
                 .map(detail -> map(detail, detail.getRoomBookingId(), null))
@@ -136,6 +169,20 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
                 || request.getServiceId() == null || request.getServiceId().isBlank()
                 || request.getQuantity() == null || request.getQuantity() <= 0) {
             throw new AppException(ErrorCode.INVALID_SERVICE_ORDER_REQUEST);
+        }
+    }
+
+    private void validateCustomerBookingCanOrderService(RoomBookingSnapshotResponse booking) {
+        validateCustomerBookingAccess(booking);
+
+        if (!"CHECKED_IN".equals(booking.getStatus()) || !"CHECKED_IN".equals(booking.getDetailStatus())) {
+            throw new AppException(ErrorCode.BOOKING_NOT_AVAILABLE_FOR_SERVICE_ORDER);
+        }
+    }
+
+    private void validateCustomerBookingAccess(RoomBookingSnapshotResponse booking) {
+        if (booking == null || booking.getCustomerId() == null || !booking.getCustomerId().equals(getCurrentActor())) {
+            throw new AppException(ErrorCode.SERVICE_ORDER_BOOKING_FORBIDDEN);
         }
     }
 

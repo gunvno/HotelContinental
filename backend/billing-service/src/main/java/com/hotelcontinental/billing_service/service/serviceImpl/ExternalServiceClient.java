@@ -57,6 +57,21 @@ public class ExternalServiceClient {
         return response.getResult();
     }
 
+    public RoomBookingSnapshotResponse markBookingDeposited(String roomBookingId) {
+        ApiResponse<RoomBookingSnapshotResponse> response = restClientBuilder.baseUrl(bookingServiceUrl).build()
+                .post()
+                .uri("/room-bookings/{id}/mark-deposited", roomBookingId)
+                .header("Authorization", bearerHeader())
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+
+        if (response == null || response.getResult() == null) {
+            throw new AppException(ErrorCode.BOOKING_SYNC_FAILED);
+        }
+
+        return response.getResult();
+    }
+
     public CatalogServiceSnapshotResponse getCatalogService(String serviceId) {
         ApiResponse<CatalogServiceSnapshotResponse> response = restClientBuilder.baseUrl(catalogServiceUrl).build()
                 .get()

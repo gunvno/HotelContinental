@@ -4,6 +4,7 @@ import {
   BedDouble,
   Building2,
   CalendarCheck,
+  ChartColumnIncreasing,
   ChevronRight,
   ClipboardList,
   DoorOpen,
@@ -48,6 +49,12 @@ const primaryNav = [
     href: "/bookings",
     icon: CalendarCheck,
     requiredPermission: "BOOKING_VIEW",
+  },
+  {
+    label: "Doanh thu",
+    href: "/revenue",
+    icon: ChartColumnIncreasing,
+    requiredPermission: "REVENUE_VIEW",
   },
   {
     label: "Dịch vụ phát sinh",

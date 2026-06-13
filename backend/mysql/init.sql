@@ -8,3 +8,4 @@ CREATE DATABASE IF NOT EXISTS feedback_service CHARACTER SET utf8mb4 COLLATE utf
 CREATE DATABASE IF NOT EXISTS content_service CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS report_service CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS chat_service CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS ai_assistant_service CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

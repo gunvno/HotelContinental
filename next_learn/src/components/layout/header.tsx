@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { BadgeInfo, ChevronDown, LogOut, Mail, UserRound } from "lucide-react";
+import { BadgeInfo, ChevronDown, LogOut, Mail, Utensils, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -320,6 +320,21 @@ export function Header() {
                       </span>
                     </span>
                   </div>
+                  <Link
+                    href="/account/services"
+                    onClick={() => setAccountOpen(false)}
+                    className="border-border/50 hover:border-ring/30 hover:bg-muted/40 flex items-center gap-3 rounded-2xl border px-3 py-3 transition"
+                  >
+                    <Utensils className="h-4 w-4 text-[#8b5e22]" />
+                    <span className="flex-1">
+                      <span className="text-foreground block font-medium">
+                        Gọi thêm dịch vụ
+                      </span>
+                      <span className="text-muted-foreground block text-xs">
+                        Yêu cầu dịch vụ phát sinh trong thời gian lưu trú
+                      </span>
+                    </span>
+                  </Link>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
@@ -407,6 +422,15 @@ export function Header() {
                   onClick={() => setMobileOpen(false)}
                 >
                   Thông tin tài khoản
+                </Button>
+                <Button
+                  href="/account/services"
+                  size="sm"
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Gọi thêm dịch vụ
                 </Button>
                 <Button
                   size="sm"

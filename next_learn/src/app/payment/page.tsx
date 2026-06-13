@@ -13,10 +13,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { createPayment } from "@/services/billing-service";
+import {
+  createPaymentRequest,
+  getLatestPaymentByBooking,
+  getPaymentRequest,
+  type PaymentRequestResponse,
+} from "@/services/billing-service";
 import {
   createRoomBooking,
-  markRoomBookingDeposited,
   type RoomBookingResponse,
 } from "@/services/booking-service";
 import { getMyProfile, updateMyPhoneNumber } from "@/services/profile-service";
@@ -42,12 +46,15 @@ function PaymentContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
   const [booking, setBooking] = useState<RoomBookingResponse | null>(null);
+  const [paymentRequest, setPaymentRequest] = useState<PaymentRequestResponse | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherApplyResponse | null>(null);
   const [voucherMessage, setVoucherMessage] = useState<string | null>(null);
   const submitLockRef = useRef(false);
   const bookingRef = useRef<RoomBookingResponse | null>(null);
+  const voucherConsumedRef = useRef(false);
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
     phoneNumber: "",
@@ -103,7 +110,7 @@ function PaymentContent() {
 
   const voucherDiscount = appliedVoucher?.discountAmount ?? 0;
   const finalTotal = Math.max(0, paymentData.baseTotal - voucherDiscount);
-  const totalExtraPrice = -paymentData.memberDiscount - voucherDiscount;
+  const totalExtraPrice = paymentData.tax - paymentData.memberDiscount - voucherDiscount;
 
   useEffect(() => {
     const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
@@ -145,8 +152,9 @@ function PaymentContent() {
     return `CHECKOUT ${roomSuffix} ${paymentData.checkIn.replaceAll("-", "")}`;
   }, [paymentData.checkIn, paymentData.roomId]);
   const bookingId = booking?.id ?? "TẠO KHI XÁC NHẬN";
-  const transferContent = booking?.id ? `BOOKING ${booking.id}` : checkoutCode;
-  const qrUrl = `https://img.vietqr.io/image/${BANK_ID}-${BANK_ACCOUNT_NO}-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(BANK_ACCOUNT_NAME)}`;
+  const transferContent = paymentRequest?.transferContent ?? (booking?.id ? `BOOKING ${booking.id}` : checkoutCode);
+  const transferAmount = paymentRequest?.amount ?? finalTotal;
+  const qrUrl = `https://img.vietqr.io/image/${BANK_ID}-${BANK_ACCOUNT_NO}-compact2.png?amount=${transferAmount}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(BANK_ACCOUNT_NAME)}`;
 
   async function copyText(value: string) {
     if (isActionBusy) return;
@@ -184,11 +192,59 @@ function PaymentContent() {
     setVoucherMessage(null);
   }
 
+  useEffect(() => {
+    if (!paymentRequest || paymentRequest.status !== "PENDING" || !booking) return;
+
+    let alive = true;
+    const intervalId = window.setInterval(async () => {
+      try {
+        const latestRequest = await getPaymentRequest(paymentRequest.id);
+        if (!alive) return;
+        setPaymentRequest(latestRequest);
+
+        if (latestRequest.status === "PAID") {
+          if (appliedVoucher && !voucherConsumedRef.current) {
+            voucherConsumedRef.current = true;
+            await consumeVoucher(appliedVoucher.code, booking.id);
+          }
+
+          const payment = await getLatestPaymentByBooking(booking.id);
+          router.push(
+            `/payment/success?${new URLSearchParams({
+              bookingId: booking.id,
+              paymentId: payment.id,
+              roomId: paymentData.roomId,
+              roomTitle: paymentData.roomTitle,
+              checkIn: paymentData.checkIn,
+              checkOut: paymentData.checkOut,
+              guests: String(paymentData.guests),
+              total: String(latestRequest.amount),
+            }).toString()}`,
+          );
+        }
+
+        if (latestRequest.status === "EXPIRED" || latestRequest.status === "FAILED") {
+          setBookingError("Yêu cầu thanh toán đã hết hạn hoặc thất bại. Vui lòng tạo lại mã chuyển khoản.");
+          submitLockRef.current = false;
+          setIsSubmitting(false);
+        }
+      } catch {
+        // Keep polling; transient API errors should not break the waiting screen.
+      }
+    }, 3000);
+
+    return () => {
+      alive = false;
+      window.clearInterval(intervalId);
+    };
+  }, [appliedVoucher, booking, paymentData, paymentRequest, router]);
+
   async function handleConfirmPayment() {
     if (submitLockRef.current || isActionBusy) return;
     submitLockRef.current = true;
     setIsSubmitting(true);
     setBookingError(null);
+    setPaymentNotice(null);
     try {
       if (customerInfo.phoneNumber.trim()) {
         await updateMyPhoneNumber(customerInfo.phoneNumber.trim());
@@ -208,7 +264,7 @@ function PaymentContent() {
           ),
           roomPrice: paymentData.unitPrice,
           totalRoomPrice: paymentData.roomAmount,
-          totalServicePrice: paymentData.tax,
+          totalServicePrice: 0,
           totalExtraPrice,
           totalPrice: finalTotal,
         });
@@ -216,39 +272,20 @@ function PaymentContent() {
         setBooking(createdBooking);
       }
 
-      const payment = await createPayment({
-        roomBookingId: createdBooking.id,
-        amount: finalTotal,
-        note: [
-          `BOOKING ${createdBooking.id}`,
-          checkoutCode,
-          appliedVoucher ? `Voucher ${appliedVoucher.code}` : "",
-          customerInfo.note.trim(),
-        ]
-          .filter(Boolean)
-          .join(" - "),
-      });
-
-      if (appliedVoucher) {
-        await consumeVoucher(appliedVoucher.code, createdBooking.id);
+      if (!paymentRequest) {
+        const createdPaymentRequest = await createPaymentRequest({
+          roomBookingId: createdBooking.id,
+          amount: finalTotal,
+        });
+        setPaymentRequest(createdPaymentRequest);
       }
-      await markRoomBookingDeposited(createdBooking.id);
 
-      router.push(
-        `/payment/success?${new URLSearchParams({
-          bookingId: createdBooking.id,
-          paymentId: payment.id,
-          roomId: paymentData.roomId,
-          roomTitle: paymentData.roomTitle,
-          checkIn: paymentData.checkIn,
-          checkOut: paymentData.checkOut,
-          guests: String(paymentData.guests),
-          total: String(finalTotal),
-        }).toString()}`,
+      setPaymentNotice(
+        "Đã tạo mã chuyển khoản. Hệ thống sẽ tự chuyển trang khi thanh toán được xác nhận.",
       );
     } catch {
       setBookingError(
-        "Không thể ghi nhận thanh toán. Vui lòng kiểm tra lại dịch vụ billing/booking/promotion.",
+        "Không thể tạo yêu cầu thanh toán. Vui lòng kiểm tra lại dịch vụ billing/booking/promotion.",
       );
       submitLockRef.current = false;
       setIsSubmitting(false);
@@ -450,9 +487,14 @@ function PaymentContent() {
                   />
                   <p className="bg-ring/10 text-muted-foreground rounded-xl p-3 text-sm leading-6">
                     Khi quét mã bằng app ngân hàng, số tiền và nội dung sẽ được tự điền.
-                    Sau khi chuyển khoản, bấm xác nhận để hệ thống ghi nhận thanh toán
-                    demo.
+                    Sau khi yêu cầu thanh toán được xác nhận, hệ thống sẽ tự chuyển sang
+                    màn hình thành công.
                   </p>
+                  {paymentNotice ? (
+                    <p className="rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-700">
+                      {paymentNotice}
+                    </p>
+                  ) : null}
                   {bookingError ? (
                     <p className="rounded-xl bg-red-50 p-3 text-sm leading-6 text-red-700">
                       {bookingError}
@@ -513,7 +555,7 @@ function PaymentContent() {
                 value={`${currencyFormatter.format(paymentData.roomAmount)}đ`}
               />
               <SummaryRow
-                label="Thuế & phí dịch vụ (10%)"
+                label="VAT và phụ phí (10%)"
                 value={`${currencyFormatter.format(paymentData.tax)}đ`}
               />
               <SummaryRow
@@ -550,11 +592,15 @@ function PaymentContent() {
                 suppressHydrationWarning
                 type="button"
                 onClick={handleConfirmPayment}
-                disabled={isActionBusy || !!bookingError}
+                disabled={isActionBusy}
                 className="bg-ring text-background mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold tracking-[0.16em] uppercase shadow-[0_16px_30px_-18px_rgba(196,122,52,0.75)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <ShieldCheck className="h-4 w-4" />
-                {isSubmitting ? "Đang xác nhận..." : "Tôi đã chuyển khoản"}
+                {paymentRequest?.status === "PENDING"
+                  ? "Đang chờ xác nhận"
+                  : isSubmitting
+                    ? "Đang tạo mã..."
+                    : "Tạo mã chuyển khoản"}
               </button>
 
               <p className="text-muted-foreground mt-3 text-center text-[10px] leading-5">

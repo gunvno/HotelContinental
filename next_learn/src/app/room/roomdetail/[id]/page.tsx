@@ -189,8 +189,8 @@ export default function RoomDetailPage() {
     stayType === "hour"
       ? Math.round((pricePerNight / 8) * stayHours)
       : pricePerNight * nightCount;
-  const serviceFee = Math.round(roomSubtotal * 0.1);
-  const totalPrice = roomSubtotal + serviceFee;
+  const taxFee = Math.round(roomSubtotal * 0.1);
+  const totalPrice = roomSubtotal + taxFee;
   const stayLabel = stayType === "hour" ? `${stayHours} giờ` : `${nightCount} đêm`;
   const bookingHref = buildBookingHref({
     roomId: roomData.id,
@@ -409,8 +409,8 @@ export default function RoomDetailPage() {
                   <span>{roomSubtotal.toLocaleString("vi-VN")} VNĐ</span>
                 </div>
                 <div className="flex justify-between text-sm text-[#514439] sm:text-base">
-                  <span>Phí dịch vụ & Thuế (10%)</span>
-                  <span>{serviceFee.toLocaleString("vi-VN")} VNĐ</span>
+                  <span>VAT và phụ phí (10%)</span>
+                  <span>{taxFee.toLocaleString("vi-VN")} VNĐ</span>
                 </div>
                 <div className="flex justify-between pt-4 text-lg font-bold sm:text-xl">
                   <span>Tổng cộng</span>

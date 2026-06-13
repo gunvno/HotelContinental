@@ -8,7 +8,11 @@ import java.util.List;
 public interface ServiceOrderDetailService {
     ServiceOrderDetailResponse create(ServiceOrderDetailCreationRequest request);
 
+    ServiceOrderDetailResponse createForCurrentCustomer(ServiceOrderDetailCreationRequest request);
+
     List<ServiceOrderDetailResponse> getAll(String roomBookingId);
+
+    List<ServiceOrderDetailResponse> getForCurrentCustomer(String roomBookingId);
 
     ServiceOrderDetailResponse markServed(String id);
 

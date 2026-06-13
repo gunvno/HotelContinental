@@ -31,10 +31,26 @@ public class ServiceOrderDetailController {
                 .build();
     }
 
+    @GetMapping("/me")
+    public ApiResponse<List<ServiceOrderDetailResponse>> getMine(
+            @RequestParam String roomBookingId
+    ) {
+        return ApiResponse.<List<ServiceOrderDetailResponse>>builder()
+                .result(serviceOrderDetailService.getForCurrentCustomer(roomBookingId))
+                .build();
+    }
+
     @PostMapping
     public ApiResponse<ServiceOrderDetailResponse> create(@RequestBody ServiceOrderDetailCreationRequest request) {
         return ApiResponse.<ServiceOrderDetailResponse>builder()
                 .result(serviceOrderDetailService.create(request))
+                .build();
+    }
+
+    @PostMapping("/me")
+    public ApiResponse<ServiceOrderDetailResponse> createForMe(@RequestBody ServiceOrderDetailCreationRequest request) {
+        return ApiResponse.<ServiceOrderDetailResponse>builder()
+                .result(serviceOrderDetailService.createForCurrentCustomer(request))
                 .build();
     }
 

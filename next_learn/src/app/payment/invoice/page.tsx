@@ -3,40 +3,62 @@
 import { ArrowLeft, BedDouble, Download, Printer } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { getInvoiceByBooking, type InvoiceResponse } from "@/services/billing-service";
 
 function InvoiceContent() {
   const searchParams = useSearchParams();
+  const bookingId = searchParams.get("bookingId") || "";
+  const [invoice, setInvoice] = useState<InvoiceResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const currency = new Intl.NumberFormat("vi-VN");
 
-  const data = useMemo(() => {
-    const bookingId = searchParams.get("bookingId") || "";
-    const paymentId = searchParams.get("paymentId") || "";
-    const roomId = searchParams.get("roomId") || "";
-    const roomTitle = searchParams.get("roomTitle") || "Phòng khách sạn";
-    const checkIn = searchParams.get("checkIn") || "";
-    const checkOut = searchParams.get("checkOut") || "";
-    const guests = Number(searchParams.get("guests") || 1);
-    const total = Number(searchParams.get("total") || 0);
-    const subTotal = Math.round(total / 1.1);
-    const serviceFee = total - subTotal;
+  useEffect(() => {
+    if (!bookingId) {
+      setError("Thiếu mã booking để tải hóa đơn.");
+      setLoading(false);
+      return;
+    }
 
-    return {
-      bookingId,
-      paymentId,
-      roomId,
-      roomTitle,
-      checkIn,
-      checkOut,
-      guests,
-      total,
-      subTotal,
-      serviceFee,
-      invoiceNo: `INV-${new Date().getFullYear()}-${(paymentId || bookingId || "0000").slice(-6).toUpperCase()}`,
+    let alive = true;
+    getInvoiceByBooking(bookingId)
+      .then((data) => {
+        if (!alive) return;
+        setInvoice(data);
+        setError("");
+      })
+      .catch(() => {
+        if (alive) {
+          setError("Không thể tải hóa đơn. Kiểm tra billing-service và trạng thái thanh toán.");
+        }
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+
+    return () => {
+      alive = false;
     };
-  }, [searchParams]);
+  }, [bookingId]);
+
+  if (loading) {
+    return (
+      <div className="border-border bg-background mt-7 rounded-2xl border p-10 text-center">
+        Đang tải hóa đơn...
+      </div>
+    );
+  }
+
+  if (error || !invoice) {
+    return (
+      <div className="mt-7 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+        {error || "Không tìm thấy hóa đơn."}
+      </div>
+    );
+  }
 
   return (
     <article className="border-border bg-background mt-7 overflow-hidden rounded-2xl border">
@@ -48,13 +70,13 @@ function InvoiceContent() {
               Hóa đơn
             </p>
             <h2 className="text-foreground mt-2 font-serif text-3xl font-semibold">
-              {data.invoiceNo}
+              {invoice.invoiceNo}
             </h2>
             <p className="text-muted-foreground mt-2 text-sm">
-              Mã booking: {data.bookingId || "Chưa có"}
+              Mã booking: {invoice.roomBookingId}
             </p>
             <p className="text-muted-foreground text-sm">
-              Mã thanh toán: {data.paymentId || "Chưa có"}
+              Mã thanh toán: {invoice.paymentId}
             </p>
           </section>
 
@@ -66,46 +88,40 @@ function InvoiceContent() {
               Continental Grand Hotel
             </h3>
             <p className="text-muted-foreground mt-1 text-sm">
-              Thanh toán chuyển khoản MB Bank
+              Thanh toán {invoice.paymentMethod}
             </p>
             <p className="text-muted-foreground text-sm">0386404269 - TA VAN LONG</p>
           </section>
         </div>
 
         <div className="mt-6">
-          <div className="border-border text-muted-foreground grid grid-cols-[1fr_90px_150px] border-b pb-3 text-[10px] font-semibold tracking-[0.16em] uppercase">
-            <p>Dịch vụ</p>
-            <p className="text-center">SL</p>
+          <div className="border-border text-muted-foreground grid grid-cols-[1fr_150px] border-b pb-3 text-[10px] font-semibold tracking-[0.16em] uppercase">
+            <p>Khoản mục</p>
             <p className="text-right">Thành tiền</p>
           </div>
 
-          <div className="border-border/50 grid grid-cols-[1fr_90px_150px] items-center border-b py-4">
-            <div className="flex items-center gap-3">
-              <span className="bg-muted text-ring inline-flex h-10 w-10 items-center justify-center rounded-lg">
-                <BedDouble className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-foreground font-semibold">{data.roomTitle}</p>
-                <p className="text-muted-foreground text-xs">
-                  {data.checkIn} - {data.checkOut} • {data.roomId}
-                </p>
-              </div>
-            </div>
-            <p className="text-foreground text-center">{data.guests}</p>
-            <p className="text-foreground text-right font-semibold">
-              {currency.format(data.subTotal)}đ
-            </p>
-          </div>
+          <LineItem
+            icon={<BedDouble className="h-4 w-4" />}
+            title="Tiền phòng"
+            description={`Phòng ${invoice.roomId}`}
+            value={`${currency.format(invoice.totalRoomPrice)}đ`}
+          />
+          <LineItem
+            title="Dịch vụ phát sinh"
+            description="Dịch vụ khách gọi thêm trong thời gian lưu trú"
+            value={`${currency.format(invoice.totalServicePrice)}đ`}
+          />
+          <LineItem
+            title="VAT, ưu đãi và phụ phí"
+            description="Tổng phụ phí sau ưu đãi/voucher nếu có"
+            value={`${currency.format(invoice.totalExtraPrice)}đ`}
+          />
 
           <div className="mt-6 flex flex-col items-end gap-2">
-            <Price label="Tạm tính" value={`${currency.format(data.subTotal)}đ`} />
-            <Price
-              label="Thuế & phí dịch vụ"
-              value={`${currency.format(data.serviceFee)}đ`}
-            />
-            <div className="border-border mt-2 flex w-full max-w-[280px] justify-between border-t pt-3 text-lg font-bold">
+            <Price label="Tổng bill" value={`${currency.format(invoice.totalPrice)}đ`} />
+            <div className="border-border mt-2 flex w-full max-w-[300px] justify-between border-t pt-3 text-lg font-bold">
               <span>Đã thanh toán</span>
-              <span className="text-ring">{currency.format(data.total)}đ</span>
+              <span className="text-ring">{currency.format(invoice.paidAmount)}đ</span>
             </div>
           </div>
         </div>
@@ -114,9 +130,36 @@ function InvoiceContent() {
   );
 }
 
+function LineItem({
+  icon,
+  title,
+  description,
+  value,
+}: {
+  icon?: ReactNode;
+  title: string;
+  description: string;
+  value: string;
+}) {
+  return (
+    <div className="border-border/50 grid grid-cols-[1fr_150px] items-center border-b py-4">
+      <div className="flex items-center gap-3">
+        <span className="bg-muted text-ring inline-flex h-10 w-10 items-center justify-center rounded-lg">
+          {icon ?? <span className="h-2 w-2 rounded-full bg-current" />}
+        </span>
+        <div>
+          <p className="text-foreground font-semibold">{title}</p>
+          <p className="text-muted-foreground text-xs">{description}</p>
+        </div>
+      </div>
+      <p className="text-foreground text-right font-semibold">{value}</p>
+    </div>
+  );
+}
+
 function Price({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex w-full max-w-[280px] justify-between text-sm">
+    <div className="flex w-full max-w-[300px] justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-foreground font-medium">{value}</span>
     </div>
@@ -129,11 +172,11 @@ export default function InvoicePage() {
       <main className="bg-background min-h-screen">
         <section className="mx-auto w-full max-w-[980px] px-5 py-8 sm:px-8 lg:px-10">
           <Link
-            href="/payment/success"
+            href="/account/invoices"
             className="text-ring inline-flex items-center gap-2 text-sm font-medium"
           >
             <ArrowLeft className="h-4 w-4" />
-            Quay lại xác nhận
+            Quay lại danh sách hóa đơn
           </Link>
 
           <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
@@ -142,7 +185,7 @@ export default function InvoicePage() {
                 Chi tiết hóa đơn
               </h1>
               <p className="text-muted-foreground mt-2 text-sm">
-                Hóa đơn tạm thời được tạo từ payment history.
+                Hóa đơn được tổng hợp từ booking và payment history trong hệ thống.
               </p>
             </div>
 
@@ -158,9 +201,7 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          <Suspense
-            fallback={<div className="p-10 text-center">Đang tải hóa đơn...</div>}
-          >
+          <Suspense fallback={<div className="p-10 text-center">Đang tải hóa đơn...</div>}>
             <InvoiceContent />
           </Suspense>
         </section>

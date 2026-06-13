@@ -9,4 +9,5 @@ public interface PaymentService {
     PaymentHistoryResponse createPayment(PaymentCreationRequest request);
     PaymentHistoryResponse getLatestPaymentByBooking(String roomBookingId);
     List<PaymentHistoryResponse> getMyPayments();
+    List<PaymentHistoryResponse> getAllPayments();
 }

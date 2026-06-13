@@ -9,6 +9,8 @@ import lombok.experimental.FieldDefaults;
 public class RoomBookingSnapshotResponse {
     String id;
     String bookingDetailId;
+    String customerId;
+    String roomId;
     String status;
     String detailStatus;
     float totalRoomPrice;

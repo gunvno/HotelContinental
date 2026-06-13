@@ -16,4 +16,13 @@ public interface RoomBookingsRepository extends JpaRepository<RoomBookings, Stri
             order by booking.createdTime desc
             """)
     List<RoomBookings> findAllByDeletedFalseOrderByCreatedTimeDesc();
+
+    @Query("""
+            select booking
+            from RoomBookings booking
+            where booking.customerId = :customerId
+              and (booking.deleted = false or booking.deleted is null)
+            order by booking.createdTime desc
+            """)
+    List<RoomBookings> findByCustomerIdAndDeletedFalseOrderByCreatedTimeDesc(String customerId);
 }
