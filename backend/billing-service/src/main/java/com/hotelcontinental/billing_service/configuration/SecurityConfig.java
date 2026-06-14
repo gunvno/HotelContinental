@@ -29,6 +29,12 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request -> request
                 .requestMatchers(HttpMethod.GET, PUBLIC_ENDPOINTS).permitAll()
+                .requestMatchers("/payment-requests/payos").permitAll()
+                .requestMatchers("/payment-requests/payos/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/payment-requests/payos/webhook").permitAll()
+                .requestMatchers(HttpMethod.GET, "/payment-requests/payos/webhook/").permitAll()
+                .requestMatchers(HttpMethod.POST, "/payment-requests/payos/webhook").permitAll()
+                .requestMatchers(HttpMethod.POST, "/payment-requests/payos/webhook/").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated());
 

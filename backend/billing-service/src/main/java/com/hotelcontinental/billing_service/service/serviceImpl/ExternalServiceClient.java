@@ -26,6 +26,9 @@ public class ExternalServiceClient {
     @Value("${app.services.catalog:http://localhost:8083/catalog}")
     private String catalogServiceUrl;
 
+    @Value("${app.internal-secret:dev-internal-secret}")
+    private String internalSecret;
+
     public RoomBookingSnapshotResponse getBooking(String roomBookingId) {
         ApiResponse<RoomBookingSnapshotResponse> response = restClientBuilder.baseUrl(bookingServiceUrl).build()
                 .get()
@@ -58,11 +61,21 @@ public class ExternalServiceClient {
     }
 
     public RoomBookingSnapshotResponse markBookingDeposited(String roomBookingId) {
-        ApiResponse<RoomBookingSnapshotResponse> response = restClientBuilder.baseUrl(bookingServiceUrl).build()
-                .post()
-                .uri("/room-bookings/{id}/mark-deposited", roomBookingId)
-                .header("Authorization", bearerHeader())
-                .retrieve()
+        RestClient.RequestHeadersSpec<?> requestSpec;
+        String bearerHeader = bearerHeaderOrNull();
+        if (bearerHeader != null) {
+            requestSpec = restClientBuilder.baseUrl(bookingServiceUrl).build()
+                    .post()
+                    .uri("/room-bookings/{id}/mark-deposited", roomBookingId)
+                    .header("Authorization", bearerHeader);
+        } else {
+            requestSpec = restClientBuilder.baseUrl(bookingServiceUrl).build()
+                    .post()
+                    .uri("/internal/room-bookings/{id}/mark-deposited", roomBookingId)
+                    .header("X-Internal-Secret", internalSecret);
+        }
+
+        ApiResponse<RoomBookingSnapshotResponse> response = requestSpec.retrieve()
                 .body(new ParameterizedTypeReference<>() {});
 
         if (response == null || response.getResult() == null) {
@@ -93,5 +106,13 @@ public class ExternalServiceClient {
             return "Bearer " + jwtAuthenticationToken.getToken().getTokenValue();
         }
         throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    private String bearerHeaderOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
+            return "Bearer " + jwtAuthenticationToken.getToken().getTokenValue();
+        }
+        return null;
     }
 }

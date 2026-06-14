@@ -58,6 +58,21 @@ public class PaymentRequest {
     @Column(name = "provider_transaction_id", length = 150)
     String providerTransactionId;
 
+    @Column(name = "provider", length = 50)
+    String provider;
+
+    @Column(name = "provider_order_code")
+    Long providerOrderCode;
+
+    @Column(name = "provider_payment_link_id", length = 150)
+    String providerPaymentLinkId;
+
+    @Column(name = "provider_checkout_url", length = 500)
+    String providerCheckoutUrl;
+
+    @Column(name = "provider_qr_code", columnDefinition = "TEXT")
+    String providerQrCode;
+
     @Column(name = "paid_time")
     LocalDateTime paidTime;
 

@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -30,13 +31,19 @@ public class ProfileExpandServiceImpl implements ProfileExpandService {
     @Autowired
     private UserRepository userRepository;
 
-    @PreAuthorize("hasAuthority('UPDATE_USER')")
+    @PreAuthorize("hasAnyAuthority('GET_MY_INFO', 'UPDATE_USER')")
     @Override
     public ProfileExpandResponse createProfileExpand(ProfileExpandCreationRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
         String userId = request.getUserId();
         if (userId == null) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             userId = auth.getName();
+        } else if (!userId.equals(auth.getName()) && !hasAuthority(auth, "UPDATE_USER")) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
         User user = userRepository.findById(userId)
@@ -113,5 +120,11 @@ public class ProfileExpandServiceImpl implements ProfileExpandService {
                 .phoneNumber(user.getPhoneNumber())
                 .identityNumber(request.getIdentityNumber())
                 .build();
+    }
+
+    private boolean hasAuthority(Authentication authentication, String authority) {
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority::equals);
     }
 }

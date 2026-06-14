@@ -123,6 +123,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/booking_service
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      APP_INTERNAL_SECRET: ${APP_INTERNAL_SECRET:-dev-internal-secret}
     networks:
       - hotel-network
 
@@ -144,6 +145,14 @@ services:
       APP_SERVICES_IDENTITY: http://identity-service:8080/identity
       APP_SERVICES_BOOKING: http://booking-service:8084/booking
       APP_SERVICES_CATALOG: http://catalog-service:8083/catalog
+      APP_INTERNAL_SECRET: ${APP_INTERNAL_SECRET:-dev-internal-secret}
+      PAYOS_ENABLED: ${PAYOS_ENABLED:-false}
+      PAYOS_BASE_URL: ${PAYOS_BASE_URL:-https://api-merchant.payos.vn}
+      PAYOS_CLIENT_ID: ${PAYOS_CLIENT_ID:-}
+      PAYOS_API_KEY: ${PAYOS_API_KEY:-}
+      PAYOS_CHECKSUM_KEY: ${PAYOS_CHECKSUM_KEY:-}
+      PAYOS_RETURN_URL: ${PAYOS_RETURN_URL:-http://localhost:3000/payment/success}
+      PAYOS_CANCEL_URL: ${PAYOS_CANCEL_URL:-http://localhost:3000/payment}
     networks:
       - hotel-network
 

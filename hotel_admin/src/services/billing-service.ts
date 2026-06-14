@@ -9,6 +9,11 @@ export type PaymentRequestResponse = {
   amount: number;
   transferContent: string;
   status: PaymentRequestStatus;
+  provider?: string;
+  providerOrderCode?: number;
+  providerPaymentLinkId?: string;
+  providerCheckoutUrl?: string;
+  providerQrCode?: string;
   paidTime?: string;
   expiredTime?: string;
 };

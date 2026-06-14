@@ -15,6 +15,8 @@ public enum ErrorCode {
     PAYMENT_REQUEST_NOT_FOUND(1013, "Payment request not found", HttpStatus.NOT_FOUND),
     PAYMENT_REQUEST_ALREADY_PAID(1014, "Payment request already paid", HttpStatus.BAD_REQUEST),
     INVOICE_NOT_FOUND(1015, "Invoice not found", HttpStatus.NOT_FOUND),
+    PAYOS_REQUEST_FAILED(1016, "Cannot create PayOS payment link", HttpStatus.BAD_GATEWAY),
+    INVALID_PAYOS_WEBHOOK(1017, "Invalid PayOS webhook", HttpStatus.BAD_REQUEST),
     INVALID_SERVICE_ORDER_REQUEST(1020, "Invalid service order request", HttpStatus.BAD_REQUEST),
     SERVICE_ORDER_NOT_FOUND(1021, "Service order not found", HttpStatus.NOT_FOUND),
     BOOKING_SYNC_FAILED(1022, "Cannot sync booking totals", HttpStatus.BAD_GATEWAY),

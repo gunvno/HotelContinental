@@ -17,7 +17,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
@@ -25,4 +25,3 @@ spring:
 app:
   services:
     identity: http://localhost:8080/identity
-

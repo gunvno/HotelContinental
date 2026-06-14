@@ -5,6 +5,8 @@ import com.hotelcontinental.billing_service.enums.PaymentRequestStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -15,4 +17,15 @@ public interface PaymentRequestRepository extends JpaRepository<PaymentRequest, 
     );
 
     Optional<PaymentRequest> findFirstByRoomBookingIdAndDeletedFalseOrderByCreatedTimeDesc(String roomBookingId);
+
+    List<PaymentRequest> findByDeletedFalseOrderByCreatedTimeDesc();
+
+    List<PaymentRequest> findByCreatedByAndDeletedFalseOrderByCreatedTimeDesc(String createdBy);
+
+    List<PaymentRequest> findByStatusAndExpiredTimeBeforeAndDeletedFalse(
+            PaymentRequestStatus status,
+            LocalDateTime expiredTime
+    );
+
+    Optional<PaymentRequest> findFirstByProviderOrderCodeAndDeletedFalse(Long providerOrderCode);
 }

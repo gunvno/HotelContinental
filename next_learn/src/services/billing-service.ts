@@ -32,6 +32,11 @@ export type PaymentRequestResponse = {
   transferContent: string;
   status: PaymentRequestStatus;
   providerTransactionId?: string;
+  provider?: string;
+  providerOrderCode?: number;
+  providerPaymentLinkId?: string;
+  providerCheckoutUrl?: string;
+  providerQrCode?: string;
   paidTime?: string;
   expiredTime?: string;
   createdTime?: string;
@@ -96,6 +101,13 @@ export async function getLatestPaymentRequestByBooking(roomBookingId: string) {
     .get(`billing/payment-requests/booking/${roomBookingId}`)
     .json<ApiResponse<PaymentRequestResponse>>();
   return (res.result ?? res.content) as PaymentRequestResponse;
+}
+
+export async function getMyPaymentRequests() {
+  const res = await http
+    .get("billing/payment-requests/my")
+    .json<ApiResponse<PaymentRequestResponse[]>>();
+  return (res.result ?? res.content ?? []) as PaymentRequestResponse[];
 }
 
 export async function getInvoiceByBooking(roomBookingId: string) {

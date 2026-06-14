@@ -3,8 +3,8 @@
 import {
   ArrowLeft,
   Building2,
-  Copy,
-  QrCode,
+  Minus,
+  Plus,
   ShieldCheck,
   TicketPercent,
 } from "lucide-react";
@@ -15,9 +15,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import {
   createPaymentRequest,
-  getLatestPaymentByBooking,
-  getPaymentRequest,
-  type PaymentRequestResponse,
+  getLatestPaymentRequestByBooking,
 } from "@/services/billing-service";
 import {
   createRoomBooking,
@@ -26,14 +24,15 @@ import {
 import { getMyProfile, updateMyPhoneNumber } from "@/services/profile-service";
 import {
   applyVoucher,
-  consumeVoucher,
   type VoucherApplyResponse,
 } from "@/services/promotion-service";
+import { getCatalogServices, type ServiceResponse } from "@/services/room-service";
+import { createMyServiceOrderDetail } from "@/services/service-order-service";
 import { useAuthStore } from "@/store/auth-store";
 
-const BANK_ID = "MB";
-const BANK_ACCOUNT_NO = "0386404269";
-const BANK_ACCOUNT_NAME = "TA VAN LONG";
+type SelectedServiceMap = Record<string, number>;
+
+const currencyFormatter = new Intl.NumberFormat("vi-VN");
 
 function PaymentContent() {
   const router = useRouter();
@@ -43,25 +42,26 @@ function PaymentContent() {
   const email = useAuthStore((state) => state.email);
   const firstName = useAuthStore((state) => state.firstName);
   const lastName = useAuthStore((state) => state.lastName);
+
+  const submitLockRef = useRef(false);
+  const bookingRef = useRef<RoomBookingResponse | null>(null);
+  const serviceOrdersCreatedRef = useRef(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
-  const [booking, setBooking] = useState<RoomBookingResponse | null>(null);
-  const [paymentRequest, setPaymentRequest] = useState<PaymentRequestResponse | null>(null);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
-  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherApplyResponse | null>(null);
   const [voucherMessage, setVoucherMessage] = useState<string | null>(null);
-  const submitLockRef = useRef(false);
-  const bookingRef = useRef<RoomBookingResponse | null>(null);
-  const voucherConsumedRef = useRef(false);
+  const [services, setServices] = useState<ServiceResponse[]>([]);
+  const [selectedServices, setSelectedServices] = useState<SelectedServiceMap>({});
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
     phoneNumber: "",
     email: "",
     note: "",
   });
-  const isActionBusy = isSubmitting || isApplyingVoucher;
 
   const paymentData = useMemo(() => {
     const roomId = searchParams.get("roomId") || "";
@@ -108,9 +108,28 @@ function PaymentContent() {
     };
   }, [searchParams]);
 
+  const selectedServiceItems = useMemo(
+    () =>
+      services
+        .map((service) => ({
+          service,
+          quantity: selectedServices[service.id] ?? 0,
+        }))
+        .filter((item) => item.quantity > 0),
+    [selectedServices, services],
+  );
+
+  const selectedServiceTotal = selectedServiceItems.reduce(
+    (total, item) => total + Number(item.service.price ?? 0) * item.quantity,
+    0,
+  );
   const voucherDiscount = appliedVoucher?.discountAmount ?? 0;
-  const finalTotal = Math.max(0, paymentData.baseTotal - voucherDiscount);
+  const finalTotal = Math.max(
+    0,
+    paymentData.baseTotal + selectedServiceTotal - voucherDiscount,
+  );
   const totalExtraPrice = paymentData.tax - paymentData.memberDiscount - voucherDiscount;
+  const isActionBusy = isSubmitting || isApplyingVoucher;
 
   useEffect(() => {
     const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
@@ -144,25 +163,35 @@ function PaymentContent() {
     };
   }, [token]);
 
-  const currencyFormatter = new Intl.NumberFormat("vi-VN");
-  const checkoutCode = useMemo(() => {
-    const roomSuffix = paymentData.roomId
-      ? paymentData.roomId.slice(-6).toUpperCase()
-      : "ROOM";
-    return `CHECKOUT ${roomSuffix} ${paymentData.checkIn.replaceAll("-", "")}`;
-  }, [paymentData.checkIn, paymentData.roomId]);
-  const bookingId = booking?.id ?? "TẠO KHI XÁC NHẬN";
-  const transferContent = paymentRequest?.transferContent ?? (booking?.id ? `BOOKING ${booking.id}` : checkoutCode);
-  const transferAmount = paymentRequest?.amount ?? finalTotal;
-  const qrUrl = `https://img.vietqr.io/image/${BANK_ID}-${BANK_ACCOUNT_NO}-compact2.png?amount=${transferAmount}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(BANK_ACCOUNT_NAME)}`;
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingServices(true);
+    getCatalogServices(0, 500)
+      .then((data) => {
+        if (!isMounted) return;
+        setServices(
+          data.filter(
+            (service) =>
+              !service.deleted &&
+              (!service.status || service.status === "AVAILABLE" || service.status === "ACTIVE"),
+          ),
+        );
+      })
+      .catch(() => {
+        if (isMounted) setServices([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingServices(false);
+      });
 
-  async function copyText(value: string) {
-    if (isActionBusy) return;
-    await navigator.clipboard?.writeText(value);
-  }
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   async function handleApplyVoucher() {
     if (isActionBusy) return;
+
     const code = voucherCode.trim();
     if (!code) {
       setVoucherMessage("Vui lòng nhập mã voucher.");
@@ -172,7 +201,7 @@ function PaymentContent() {
     setIsApplyingVoucher(true);
     setVoucherMessage(null);
     try {
-      const voucher = await applyVoucher(code, paymentData.baseTotal);
+      const voucher = await applyVoucher(code, paymentData.baseTotal + selectedServiceTotal);
       setAppliedVoucher(voucher);
       setVoucherCode(voucher.code);
       setVoucherMessage(
@@ -192,62 +221,33 @@ function PaymentContent() {
     setVoucherMessage(null);
   }
 
-  useEffect(() => {
-    if (!paymentRequest || paymentRequest.status !== "PENDING" || !booking) return;
-
-    let alive = true;
-    const intervalId = window.setInterval(async () => {
-      try {
-        const latestRequest = await getPaymentRequest(paymentRequest.id);
-        if (!alive) return;
-        setPaymentRequest(latestRequest);
-
-        if (latestRequest.status === "PAID") {
-          if (appliedVoucher && !voucherConsumedRef.current) {
-            voucherConsumedRef.current = true;
-            await consumeVoucher(appliedVoucher.code, booking.id);
-          }
-
-          const payment = await getLatestPaymentByBooking(booking.id);
-          router.push(
-            `/payment/success?${new URLSearchParams({
-              bookingId: booking.id,
-              paymentId: payment.id,
-              roomId: paymentData.roomId,
-              roomTitle: paymentData.roomTitle,
-              checkIn: paymentData.checkIn,
-              checkOut: paymentData.checkOut,
-              guests: String(paymentData.guests),
-              total: String(latestRequest.amount),
-            }).toString()}`,
-          );
-        }
-
-        if (latestRequest.status === "EXPIRED" || latestRequest.status === "FAILED") {
-          setBookingError("Yêu cầu thanh toán đã hết hạn hoặc thất bại. Vui lòng tạo lại mã chuyển khoản.");
-          submitLockRef.current = false;
-          setIsSubmitting(false);
-        }
-      } catch {
-        // Keep polling; transient API errors should not break the waiting screen.
+  function changeServiceQuantity(serviceId: string, delta: number) {
+    if (isActionBusy) return;
+    setSelectedServices((prev) => {
+      const nextQuantity = Math.max(0, (prev[serviceId] ?? 0) + delta);
+      const next = { ...prev };
+      if (nextQuantity === 0) {
+        delete next[serviceId];
+      } else {
+        next[serviceId] = nextQuantity;
       }
-    }, 3000);
+      return next;
+    });
+  }
 
-    return () => {
-      alive = false;
-      window.clearInterval(intervalId);
-    };
-  }, [appliedVoucher, booking, paymentData, paymentRequest, router]);
-
-  async function handleConfirmPayment() {
+  async function handleContinueToQr() {
     if (submitLockRef.current || isActionBusy) return;
     submitLockRef.current = true;
     setIsSubmitting(true);
     setBookingError(null);
-    setPaymentNotice(null);
+
     try {
       if (customerInfo.phoneNumber.trim()) {
-        await updateMyPhoneNumber(customerInfo.phoneNumber.trim());
+        try {
+          await updateMyPhoneNumber(customerInfo.phoneNumber.trim());
+        } catch {
+          // Profile update is optional here; it must not block booking/payment creation.
+        }
       }
 
       let createdBooking = bookingRef.current;
@@ -264,28 +264,54 @@ function PaymentContent() {
           ),
           roomPrice: paymentData.unitPrice,
           totalRoomPrice: paymentData.roomAmount,
-          totalServicePrice: 0,
+          totalServicePrice: selectedServiceTotal,
           totalExtraPrice,
           totalPrice: finalTotal,
         });
         bookingRef.current = createdBooking;
-        setBooking(createdBooking);
       }
 
-      if (!paymentRequest) {
-        const createdPaymentRequest = await createPaymentRequest({
+      if (!serviceOrdersCreatedRef.current && selectedServiceItems.length > 0) {
+        for (const item of selectedServiceItems) {
+          await createMyServiceOrderDetail({
+            roomBookingId: createdBooking.id,
+            serviceId: item.service.id,
+            quantity: item.quantity,
+            description: "Dịch vụ khách chọn trước khi thanh toán",
+          });
+        }
+        serviceOrdersCreatedRef.current = true;
+      }
+
+      let paymentRequest;
+      try {
+        paymentRequest = await createPaymentRequest({
           roomBookingId: createdBooking.id,
           amount: finalTotal,
         });
-        setPaymentRequest(createdPaymentRequest);
+      } catch {
+        paymentRequest = await getLatestPaymentRequestByBooking(createdBooking.id);
       }
 
-      setPaymentNotice(
-        "Đã tạo mã chuyển khoản. Hệ thống sẽ tự chuyển trang khi thanh toán được xác nhận.",
-      );
+      const params = new URLSearchParams({
+        bookingId: createdBooking.id,
+        paymentRequestId: paymentRequest.id,
+        roomId: paymentData.roomId,
+        roomTitle: paymentData.roomTitle,
+        checkIn: paymentData.checkIn,
+        checkOut: paymentData.checkOut,
+        guests: String(paymentData.guests),
+        total: String(finalTotal),
+      });
+
+      if (appliedVoucher) {
+        params.set("voucherCode", appliedVoucher.code);
+      }
+
+      router.push(`/payment/qr?${params.toString()}`);
     } catch {
       setBookingError(
-        "Không thể tạo yêu cầu thanh toán. Vui lòng kiểm tra lại dịch vụ billing/booking/promotion.",
+        "Không thể tạo booking hoặc mã thanh toán. Vui lòng kiểm tra lại booking-service và billing-service.",
       );
       submitLockRef.current = false;
       setIsSubmitting(false);
@@ -305,39 +331,20 @@ function PaymentContent() {
 
         <div className="mx-auto mt-8 max-w-3xl text-center">
           <h1 className="text-foreground font-serif text-[clamp(2.2rem,5vw,3.5rem)] leading-tight font-semibold">
-            Xác nhận thông tin & Thanh toán
+            Xác nhận thông tin đặt phòng
           </h1>
           <p className="text-muted-foreground mt-3 text-base">
-            Kiểm tra thông tin lưu trú, áp voucher nếu có, quét mã chuyển khoản và xác
-            nhận sau khi thanh toán.
+            Chọn voucher, thêm dịch vụ bổ sung nếu cần, sau đó chuyển sang bước tạo mã QR.
           </p>
         </div>
 
         <section className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_420px] lg:items-start">
           <div className="space-y-6">
             <article className="border-border/70 bg-muted/35 rounded-2xl border p-5 sm:p-6">
-              <div className="mb-5 flex items-center gap-3">
-                <span className="bg-ring text-background inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold">
-                  1
-                </span>
-                <h2 className="text-foreground font-serif text-3xl">
-                  Thông tin khách hàng
-                </h2>
-              </div>
+              <SectionTitle index={1} title="Thông tin khách hàng" />
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
-                    Họ và tên
-                  </span>
-                  <input
-                    suppressHydrationWarning
-                    value={customerInfo.fullName}
-                    readOnly
-                    className="border-border bg-background text-foreground h-11 w-full rounded-lg border px-3 text-sm outline-none"
-                  />
-                </label>
-
+                <TextInput label="Họ và tên" value={customerInfo.fullName} readOnly />
                 <label className="space-y-2">
                   <span className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
                     Số điện thoại
@@ -356,20 +363,13 @@ function PaymentContent() {
                     className="border-border bg-background text-foreground focus:border-ring h-11 w-full rounded-lg border px-3 text-sm transition outline-none disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </label>
-
-                <label className="space-y-2 sm:col-span-2">
-                  <span className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
-                    Email
-                  </span>
-                  <input
-                    suppressHydrationWarning
-                    value={customerInfo.email}
-                    readOnly
-                    placeholder="Tài khoản chưa có email"
-                    className="border-border bg-background text-foreground h-11 w-full rounded-lg border px-3 text-sm outline-none"
-                  />
-                </label>
-
+                <TextInput
+                  label="Email"
+                  value={customerInfo.email}
+                  readOnly
+                  className="sm:col-span-2"
+                  placeholder="Tài khoản chưa có email"
+                />
                 <label className="space-y-2 sm:col-span-2">
                   <span className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
                     Ghi chú đơn hàng
@@ -390,12 +390,7 @@ function PaymentContent() {
             </article>
 
             <article className="border-border/70 bg-muted/35 rounded-2xl border p-5 sm:p-6">
-              <div className="mb-5 flex items-center gap-3">
-                <span className="bg-ring text-background inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold">
-                  2
-                </span>
-                <h2 className="text-foreground font-serif text-3xl">Voucher</h2>
-              </div>
+              <SectionTitle index={2} title="Voucher" />
 
               <div className="flex flex-col gap-3 sm:flex-row">
                 <label className="relative flex-1">
@@ -439,68 +434,57 @@ function PaymentContent() {
             </article>
 
             <article className="border-border/70 bg-muted/35 rounded-2xl border p-5 sm:p-6">
-              <div className="mb-5 flex items-center gap-3">
-                <span className="bg-ring text-background inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold">
-                  3
-                </span>
-                <h2 className="text-foreground font-serif text-3xl">
-                  Chuyển khoản ngân hàng
-                </h2>
-              </div>
+              <SectionTitle index={3} title="Dịch vụ bổ sung" />
 
-              <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-                <div className="border-border bg-background rounded-2xl border p-4">
-                  <div className="text-foreground mb-3 flex items-center gap-2 text-sm font-semibold">
-                    <QrCode className="text-ring h-4 w-4" />
-                    Mã QR chuyển khoản
-                  </div>
-                  <img
-                    src={qrUrl}
-                    alt="Mã QR chuyển khoản"
-                    className="mx-auto aspect-square w-full rounded-xl bg-white object-contain"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <BankInfoRow label="Ngân hàng" value="MB Bank" />
-                  <BankInfoRow
-                    label="Số tài khoản"
-                    value={BANK_ACCOUNT_NO}
-                    copyValue={BANK_ACCOUNT_NO}
-                    onCopy={copyText}
-                    disabled={isActionBusy}
-                  />
-                  <BankInfoRow label="Chủ tài khoản" value={BANK_ACCOUNT_NAME} />
-                  <BankInfoRow
-                    label="Số tiền"
-                    value={`${currencyFormatter.format(finalTotal)}đ`}
-                    copyValue={String(finalTotal)}
-                    onCopy={copyText}
-                    disabled={isActionBusy}
-                  />
-                  <BankInfoRow
-                    label="Nội dung chuyển khoản"
-                    value={transferContent}
-                    copyValue={transferContent}
-                    onCopy={copyText}
-                    disabled={isActionBusy}
-                  />
-                  <p className="bg-ring/10 text-muted-foreground rounded-xl p-3 text-sm leading-6">
-                    Khi quét mã bằng app ngân hàng, số tiền và nội dung sẽ được tự điền.
-                    Sau khi yêu cầu thanh toán được xác nhận, hệ thống sẽ tự chuyển sang
-                    màn hình thành công.
+              <div className="grid gap-3">
+                {isLoadingServices ? (
+                  <p className="text-muted-foreground rounded-xl bg-white/70 p-4 text-sm">
+                    Đang tải dịch vụ...
                   </p>
-                  {paymentNotice ? (
-                    <p className="rounded-xl bg-emerald-50 p-3 text-sm leading-6 text-emerald-700">
-                      {paymentNotice}
-                    </p>
-                  ) : null}
-                  {bookingError ? (
-                    <p className="rounded-xl bg-red-50 p-3 text-sm leading-6 text-red-700">
-                      {bookingError}
-                    </p>
-                  ) : null}
-                </div>
+                ) : services.length === 0 ? (
+                  <p className="text-muted-foreground rounded-xl bg-white/70 p-4 text-sm">
+                    Chưa có dịch vụ bổ sung khả dụng.
+                  </p>
+                ) : (
+                  services.slice(0, 8).map((service) => {
+                    const quantity = selectedServices[service.id] ?? 0;
+                    return (
+                      <div
+                        key={service.id}
+                        className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div>
+                          <p className="text-foreground font-semibold">{service.name}</p>
+                          <p className="text-muted-foreground mt-1 text-sm">
+                            {service.description || "Dịch vụ cộng thêm theo nhu cầu của khách."}
+                          </p>
+                          <p className="text-ring mt-2 text-sm font-semibold">
+                            {formatMoney(service.price)}
+                          </p>
+                        </div>
+                        <div className="flex h-10 w-[132px] shrink-0 items-center justify-between rounded-full border border-[#ead8c4] bg-[#fffaf3] px-2">
+                          <button
+                            type="button"
+                            onClick={() => changeServiceQuantity(service.id, -1)}
+                            disabled={isActionBusy || quantity === 0}
+                            className="text-ring inline-flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-35"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="text-sm font-semibold">{quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => changeServiceQuantity(service.id, 1)}
+                            disabled={isActionBusy}
+                            className="bg-ring text-background inline-flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-50"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </article>
           </div>
@@ -515,9 +499,7 @@ function PaymentContent() {
                 </div>
                 <div>
                   <p className="text-ring font-semibold">{paymentData.roomTitle}</p>
-                  <p className="text-muted-foreground text-xs">
-                    ID: {paymentData.roomId}
-                  </p>
+                  <p className="text-muted-foreground text-xs">ID: {paymentData.roomId}</p>
                   <p className="text-muted-foreground text-xs">
                     {paymentData.guests} người lớn
                   </p>
@@ -526,22 +508,15 @@ function PaymentContent() {
 
               <div className="border-border bg-background mt-4 rounded-xl border p-3">
                 <div className="border-border grid grid-cols-2 gap-3 border-b pb-2">
-                  <div>
-                    <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase">
-                      Ngày nhận phòng
-                    </p>
-                    <p className="text-foreground mt-1 text-sm">{paymentData.checkIn}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase">
-                      {paymentData.stayType === "hour" ? "Giờ bắt đầu" : "Ngày trả phòng"}
-                    </p>
-                    <p className="text-foreground mt-1 text-sm">
-                      {paymentData.stayType === "hour"
+                  <InfoBlock label="Ngày nhận phòng" value={paymentData.checkIn} />
+                  <InfoBlock
+                    label={paymentData.stayType === "hour" ? "Giờ bắt đầu" : "Ngày trả phòng"}
+                    value={
+                      paymentData.stayType === "hour"
                         ? paymentData.checkInTime
-                        : paymentData.checkOut}
-                    </p>
-                  </div>
+                        : paymentData.checkOut
+                    }
+                  />
                 </div>
                 <p className="text-muted-foreground pt-2 text-sm">
                   Tổng thời gian: {paymentData.stayDuration} {paymentData.stayUnit}
@@ -551,36 +526,57 @@ function PaymentContent() {
 
             <div className="mt-5 space-y-2 text-sm">
               <SummaryRow
-                label={`Giá phòng (${paymentData.stayDuration} ${paymentData.stayUnit} x ${currencyFormatter.format(paymentData.unitPrice)}đ)`}
-                value={`${currencyFormatter.format(paymentData.roomAmount)}đ`}
+                label={`Giá phòng (${paymentData.stayDuration} ${paymentData.stayUnit} x ${formatMoney(paymentData.unitPrice)})`}
+                value={formatMoney(paymentData.roomAmount)}
               />
-              <SummaryRow
-                label="VAT và phụ phí (10%)"
-                value={`${currencyFormatter.format(paymentData.tax)}đ`}
-              />
+              <SummaryRow label="VAT và phụ phí (10%)" value={formatMoney(paymentData.tax)} />
               <SummaryRow
                 label="Ưu đãi thành viên (5%)"
-                value={`- ${currencyFormatter.format(paymentData.memberDiscount)}đ`}
+                value={`- ${formatMoney(paymentData.memberDiscount)}`}
                 highlight
               />
+              {selectedServiceTotal > 0 ? (
+                <SummaryRow
+                  label="Dịch vụ bổ sung"
+                  value={formatMoney(selectedServiceTotal)}
+                />
+              ) : null}
               {appliedVoucher ? (
                 <SummaryRow
                   label={`Voucher ${appliedVoucher.code}`}
-                  value={`- ${currencyFormatter.format(voucherDiscount)}đ`}
+                  value={`- ${formatMoney(voucherDiscount)}`}
                   highlight
                 />
               ) : null}
             </div>
 
+            {selectedServiceItems.length > 0 ? (
+              <div className="border-border mt-5 border-t pt-4">
+                <p className="text-muted-foreground mb-2 text-[11px] tracking-[0.12em] uppercase">
+                  Dịch vụ đã chọn
+                </p>
+                <div className="space-y-2">
+                  {selectedServiceItems.map(({ service, quantity }) => (
+                    <div
+                      key={service.id}
+                      className="text-muted-foreground flex justify-between gap-3 text-xs"
+                    >
+                      <span>
+                        {service.name} x {quantity}
+                      </span>
+                      <span>{formatMoney(Number(service.price ?? 0) * quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="border-border mt-5 border-t pt-4">
-              <p className="text-muted-foreground mb-2 text-[11px] tracking-[0.12em] uppercase">
-                Mã đặt phòng: {bookingId}
-              </p>
               <div className="flex items-end justify-between">
                 <span className="text-foreground text-lg">Tổng cộng</span>
                 <div className="text-right">
                   <p className="text-ring text-[2rem] leading-none font-semibold">
-                    {currencyFormatter.format(finalTotal)}đ
+                    {formatMoney(finalTotal)}
                   </p>
                   <p className="text-muted-foreground mt-1 text-[10px] tracking-[0.12em] uppercase">
                     Đã bao gồm VAT & phí dịch vụ
@@ -588,19 +584,21 @@ function PaymentContent() {
                 </div>
               </div>
 
+              {bookingError ? (
+                <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm leading-6 text-red-700">
+                  {bookingError}
+                </p>
+              ) : null}
+
               <button
                 suppressHydrationWarning
                 type="button"
-                onClick={handleConfirmPayment}
-                disabled={isActionBusy}
+                onClick={handleContinueToQr}
+                disabled={isActionBusy || !paymentData.roomId || finalTotal <= 0}
                 className="bg-ring text-background mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold tracking-[0.16em] uppercase shadow-[0_16px_30px_-18px_rgba(196,122,52,0.75)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <ShieldCheck className="h-4 w-4" />
-                {paymentRequest?.status === "PENDING"
-                  ? "Đang chờ xác nhận"
-                  : isSubmitting
-                    ? "Đang tạo mã..."
-                    : "Tạo mã chuyển khoản"}
+                {isSubmitting ? "Đang tạo mã..." : "Thanh toán"}
               </button>
 
               <p className="text-muted-foreground mt-3 text-center text-[10px] leading-5">
@@ -628,38 +626,53 @@ function PaymentContent() {
   );
 }
 
-function BankInfoRow({
+function SectionTitle({ index, title }: { index: number; title: string }) {
+  return (
+    <div className="mb-5 flex items-center gap-3">
+      <span className="bg-ring text-background inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold">
+        {index}
+      </span>
+      <h2 className="text-foreground font-serif text-3xl">{title}</h2>
+    </div>
+  );
+}
+
+function TextInput({
   label,
   value,
-  copyValue,
-  onCopy,
-  disabled = false,
+  readOnly,
+  placeholder,
+  className = "",
 }: {
   label: string;
   value: string;
-  copyValue?: string;
-  onCopy?: (value: string) => void;
-  disabled?: boolean;
+  readOnly?: boolean;
+  placeholder?: string;
+  className?: string;
 }) {
   return (
-    <div className="border-border bg-background rounded-xl border px-4 py-3">
+    <label className={`space-y-2 ${className}`}>
+      <span className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
+        {label}
+      </span>
+      <input
+        suppressHydrationWarning
+        value={value}
+        readOnly={readOnly}
+        placeholder={placeholder}
+        className="border-border bg-background text-foreground h-11 w-full rounded-lg border px-3 text-sm outline-none"
+      />
+    </label>
+  );
+}
+
+function InfoBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
       <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.14em] uppercase">
         {label}
       </p>
-      <div className="mt-1 flex items-center justify-between gap-3">
-        <p className="text-foreground text-sm font-semibold break-all">{value}</p>
-        {copyValue && onCopy ? (
-          <button
-            suppressHydrationWarning
-            type="button"
-            disabled={disabled}
-            onClick={() => onCopy(copyValue)}
-            className="border-border text-muted-foreground hover:text-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Copy className="h-4 w-4" />
-          </button>
-        ) : null}
-      </div>
+      <p className="text-foreground mt-1 text-sm">{value}</p>
     </div>
   );
 }
@@ -675,12 +688,16 @@ function SummaryRow({
 }) {
   return (
     <div
-      className={`flex items-center justify-between ${highlight ? "text-ring font-semibold" : "text-muted-foreground"}`}
+      className={`flex items-center justify-between gap-4 ${highlight ? "text-ring font-semibold" : "text-muted-foreground"}`}
     >
       <span>{label}</span>
       <span>{value}</span>
     </div>
   );
+}
+
+function formatMoney(value?: number) {
+  return `${currencyFormatter.format(Number(value ?? 0))}đ`;
 }
 
 function buildCheckin(checkIn: string, checkInTime: string) {

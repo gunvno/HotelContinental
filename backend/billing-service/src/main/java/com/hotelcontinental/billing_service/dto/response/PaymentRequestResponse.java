@@ -23,6 +23,11 @@ public class PaymentRequestResponse {
     String transferContent;
     PaymentRequestStatus status;
     String providerTransactionId;
+    String provider;
+    Long providerOrderCode;
+    String providerPaymentLinkId;
+    String providerCheckoutUrl;
+    String providerQrCode;
     LocalDateTime paidTime;
     LocalDateTime expiredTime;
     LocalDateTime createdTime;

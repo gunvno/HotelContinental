@@ -2,6 +2,7 @@ import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import Script from "next/script";
 
 import { FloatingAiAssistant } from "@/components/chat/floating-ai-assistant";
 import { FloatingChat } from "@/components/chat/floating-chat";
@@ -52,8 +53,30 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} bg-background text-foreground antialiased`}
       >
+        <Script
+          id="remove-extension-hydration-attrs"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (() => {
+                const clean = () => {
+                  document.querySelectorAll('[fdprocessedid]').forEach((element) => {
+                    element.removeAttribute('fdprocessedid');
+                  });
+                };
+                clean();
+                new MutationObserver(clean).observe(document.documentElement, {
+                  subtree: true,
+                  attributes: true,
+                  attributeFilter: ['fdprocessedid']
+                });
+              })();
+            `,
+          }}
+        />
         <AppProviders>
           <div className="flex min-h-screen flex-col">
             <Header />

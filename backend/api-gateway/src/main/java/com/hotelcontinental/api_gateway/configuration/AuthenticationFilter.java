@@ -50,6 +50,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             PublicEndpoint.get("/booking/health"),
             PublicEndpoint.get("/booking/availability/busy-room-ids"),
 
+            PublicEndpoint.any("/billing/payment-requests/payos.*"),
+
             PublicEndpoint.get("/room/media/download/.*"),
             PublicEndpoint.get("/room/room/customer"),
             PublicEndpoint.get("/room/room/customer/.*"),
@@ -69,6 +71,10 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        if (isPayosWebhook(exchange.getRequest())) {
+            return chain.filter(exchange);
+        }
+
         if (isPublicEndpoint(exchange.getRequest())) {
             return chain.filter(exchange);
         }
@@ -103,6 +109,11 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         return Arrays.stream(publicEndpoints)
                 .anyMatch(endpoint -> endpoint.matches(method, path, apiPrefix));
+    }
+
+    private boolean isPayosWebhook(ServerHttpRequest request) {
+        String path = request.getURI().getPath();
+        return path.contains("/billing/payment-requests/payos");
     }
 
     Mono<Void> unauthenticated(ServerHttpResponse response) {

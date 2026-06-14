@@ -78,7 +78,9 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
         detail.setDeleted(false);
 
         detail = serviceOrderDetailsRepository.save(detail);
-        syncBookingTotals(request.getRoomBookingId().trim(), booking);
+        if (!currentCustomerOnly || "CHECKED_IN".equals(booking.getStatus())) {
+            syncBookingTotals(request.getRoomBookingId().trim(), booking);
+        }
 
         return map(detail, request.getRoomBookingId().trim(), catalogService);
     }
@@ -175,7 +177,10 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
     private void validateCustomerBookingCanOrderService(RoomBookingSnapshotResponse booking) {
         validateCustomerBookingAccess(booking);
 
-        if (!"CHECKED_IN".equals(booking.getStatus()) || !"CHECKED_IN".equals(booking.getDetailStatus())) {
+        boolean bookingCanOrder = List.of("PENDING", "DEPOSITED", "CHECKED_IN").contains(booking.getStatus());
+        boolean detailCanOrder = List.of("BOOKED", "CHECKED_IN").contains(booking.getDetailStatus());
+
+        if (!bookingCanOrder || !detailCanOrder) {
             throw new AppException(ErrorCode.BOOKING_NOT_AVAILABLE_FOR_SERVICE_ORDER);
         }
     }

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { CreditCard, Lock, ReceiptText, Settings, UserRound, Utensils } from "lucide-react";
+import { Lock, ReceiptText, Settings, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -103,20 +103,6 @@ export default function AccountPage() {
                 >
                   <ReceiptText className="h-[18px] w-[18px]" />
                   Lịch sử hóa đơn
-                </Link>
-                <Link
-                  href="/account/services"
-                  className="flex items-center gap-4 text-[#8c8277] transition-colors hover:text-[#1f1a17]"
-                >
-                  <Utensils className="h-[18px] w-[18px]" />
-                  Gọi thêm dịch vụ
-                </Link>
-                <Link
-                  href="/account/payments"
-                  className="flex items-center gap-4 text-[#8c8277] transition-colors hover:text-[#1f1a17]"
-                >
-                  <CreditCard className="h-[18px] w-[18px]" />
-                  Thanh toán
                 </Link>
                 <button
                   type="button"

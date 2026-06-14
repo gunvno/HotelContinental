@@ -2,11 +2,15 @@ package com.hotelcontinental.billing_service.service.serviceImpl;
 
 import com.hotelcontinental.billing_service.dto.request.PaymentCreationRequest;
 import com.hotelcontinental.billing_service.dto.response.PaymentHistoryResponse;
+import com.hotelcontinental.billing_service.dto.response.RoomBookingSnapshotResponse;
 import com.hotelcontinental.billing_service.entity.PaymentHistory;
+import com.hotelcontinental.billing_service.entity.PaymentRequest;
 import com.hotelcontinental.billing_service.enums.PaymentMethod;
+import com.hotelcontinental.billing_service.enums.PaymentRequestStatus;
 import com.hotelcontinental.billing_service.exception.AppException;
 import com.hotelcontinental.billing_service.exception.ErrorCode;
 import com.hotelcontinental.billing_service.repository.PaymentHistoryRepository;
+import com.hotelcontinental.billing_service.repository.PaymentRequestRepository;
 import com.hotelcontinental.billing_service.service.interfaces.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,12 +21,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
     private final PaymentHistoryRepository paymentHistoryRepository;
+    private final PaymentRequestRepository paymentRequestRepository;
+    private final ExternalServiceClient externalServiceClient;
 
     @Transactional
     @Override
@@ -59,9 +69,32 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public List<PaymentHistoryResponse> getMyPayments() {
-        return paymentHistoryRepository.findByCreatedByAndDeletedFalseOrderByCreatedTimeDesc(getCurrentActor())
+        String currentActor = getCurrentActor();
+        List<PaymentHistoryResponse> result = new ArrayList<>();
+        Set<String> bookingIdsWithHistory = new HashSet<>();
+
+        List<PaymentHistory> historyPayments = paymentHistoryRepository.findByDeletedFalseOrderByCreatedTimeDesc()
                 .stream()
+                .filter(payment -> isPaymentOfCustomer(payment, currentActor))
+                .toList();
+
+        historyPayments.forEach(payment -> {
+            bookingIdsWithHistory.add(payment.getRoomBookingId());
+            result.add(map(payment));
+        });
+
+        paymentRequestRepository.findByDeletedFalseOrderByCreatedTimeDesc()
+                .stream()
+                .filter(request -> !bookingIdsWithHistory.contains(request.getRoomBookingId()))
+                .filter(request -> isRequestPaidOrBookingPaid(request, currentActor))
                 .map(this::map)
+                .forEach(result::add);
+
+        return result.stream()
+                .sorted(Comparator.comparing(
+                        PaymentHistoryResponse::getCreatedTime,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                ))
                 .toList();
     }
 
@@ -88,7 +121,7 @@ public class PaymentServiceImpl implements PaymentService {
     private String getCurrentActor() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+            return "payos-webhook";
         }
         return authentication.getName();
     }
@@ -103,5 +136,49 @@ public class PaymentServiceImpl implements PaymentService {
                 .note(payment.getNote())
                 .createdTime(payment.getCreatedTime())
                 .build();
+    }
+
+    private PaymentHistoryResponse map(PaymentRequest paymentRequest) {
+        LocalDateTime paidTime = paymentRequest.getPaidTime() != null
+                ? paymentRequest.getPaidTime()
+                : paymentRequest.getModifiedTime();
+        LocalDate paymentTime = paidTime != null
+                ? paidTime.toLocalDate()
+                : LocalDate.now();
+
+        return PaymentHistoryResponse.builder()
+                .id(paymentRequest.getProviderTransactionId() != null
+                        ? paymentRequest.getProviderTransactionId()
+                        : paymentRequest.getId())
+                .roomBookingId(paymentRequest.getRoomBookingId())
+                .paymentMethod(paymentRequest.getPaymentMethod())
+                .amount(paymentRequest.getAmount())
+                .paymentTime(paymentTime)
+                .note("PayOS payment request")
+                .createdTime(paidTime != null ? paidTime : paymentRequest.getCreatedTime())
+                .build();
+    }
+
+    private boolean isPaymentOfCustomer(PaymentHistory payment, String customerId) {
+        try {
+            return customerId.equals(externalServiceClient.getBooking(payment.getRoomBookingId()).getCustomerId());
+        } catch (Exception ignored) {
+            return customerId.equals(payment.getCreatedBy());
+        }
+    }
+
+    private boolean isRequestPaidOrBookingPaid(PaymentRequest request, String customerId) {
+        try {
+            RoomBookingSnapshotResponse booking = externalServiceClient.getBooking(request.getRoomBookingId());
+            if (!customerId.equals(booking.getCustomerId())) {
+                return false;
+            }
+
+            return request.getStatus() == PaymentRequestStatus.PAID
+                    || List.of("DEPOSITED", "CHECKED_IN", "DONE").contains(booking.getStatus());
+        } catch (Exception ignored) {
+            return customerId.equals(request.getCreatedBy())
+                    && request.getStatus() == PaymentRequestStatus.PAID;
+        }
     }
 }

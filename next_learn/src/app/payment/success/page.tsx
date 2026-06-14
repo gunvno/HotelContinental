@@ -1,10 +1,10 @@
 "use client";
 
 import {
-  ArrowLeft,
   BedDouble,
   CalendarDays,
   Check,
+  Home,
   ReceiptText,
   Users,
 } from "lucide-react";
@@ -14,9 +14,10 @@ import { Suspense, useMemo } from "react";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 
+const currencyFormatter = new Intl.NumberFormat("vi-VN");
+
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
-  const currencyFormatter = new Intl.NumberFormat("vi-VN");
 
   const data = useMemo(
     () => ({
@@ -46,15 +47,7 @@ function PaymentSuccessContent() {
   return (
     <main className="bg-background min-h-screen">
       <section className="mx-auto w-full max-w-[980px] px-5 py-10 sm:px-8 lg:px-10">
-        <Link
-          href="/room/listroom"
-          className="text-ring inline-flex items-center gap-2 text-sm font-medium"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Về danh sách phòng
-        </Link>
-
-        <div className="border-border bg-muted/30 mt-10 rounded-3xl border p-6 sm:p-8">
+        <div className="border-border bg-muted/30 mt-4 rounded-3xl border p-6 sm:p-8">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white">
             <Check className="h-7 w-7" />
           </div>
@@ -63,8 +56,8 @@ function PaymentSuccessContent() {
               Thanh toán đã được ghi nhận
             </h1>
             <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-base leading-7">
-              Booking đã chuyển sang trạng thái đã đặt cọc. Hóa đơn tạm thời được tạo từ
-              giao dịch chuyển khoản này.
+              Booking đã chuyển sang trạng thái đã thanh toán. Bạn có thể xem hóa đơn
+              hoặc quay về trang chủ để tiếp tục sử dụng dịch vụ.
             </p>
           </div>
 
@@ -100,13 +93,22 @@ function PaymentSuccessContent() {
                 {currencyFormatter.format(data.total)}đ
               </p>
             </div>
-            <Link
-              href={invoiceHref}
-              className="bg-ring text-background inline-flex h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold tracking-[0.14em] uppercase"
-            >
-              <ReceiptText className="h-4 w-4" />
-              Xem hóa đơn
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/"
+                className="border-ring text-ring inline-flex h-11 items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold tracking-[0.14em] uppercase"
+              >
+                <Home className="h-4 w-4" />
+                Về trang chủ
+              </Link>
+              <Link
+                href={invoiceHref}
+                className="bg-ring text-background inline-flex h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold tracking-[0.14em] uppercase"
+              >
+                <ReceiptText className="h-4 w-4" />
+                Xem hóa đơn
+              </Link>
+            </div>
           </div>
         </div>
       </section>

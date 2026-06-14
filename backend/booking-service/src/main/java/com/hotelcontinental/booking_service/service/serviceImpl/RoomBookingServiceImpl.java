@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             RoomBookingDetailStatus.BOOKED,
             RoomBookingDetailStatus.CHECKED_IN
     );
+    private static final int PENDING_PAYMENT_EXPIRATION_HOURS = 24;
 
     @Transactional
     @Override
@@ -68,8 +70,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        float initialServicePrice = 0;
-        float initialTotalPrice = request.getTotalRoomPrice() + request.getTotalExtraPrice();
+        float initialServicePrice = Math.max(0, request.getTotalServicePrice());
+        float initialTotalPrice = request.getTotalRoomPrice() + initialServicePrice + request.getTotalExtraPrice();
         RoomBookings booking = new RoomBookings();
         booking.setCustomerId(customerId);
         booking.setBookingType(request.getBookingType());
@@ -243,6 +245,37 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         return map(booking, detail);
     }
 
+    @Scheduled(
+            initialDelayString = "${app.booking-expiration-initial-delay-ms:60000}",
+            fixedDelayString = "${app.booking-expiration-delay-ms:600000}"
+    )
+    @Transactional
+    public void cancelExpiredPendingBookings() {
+        LocalDateTime expiredBefore = LocalDateTime.now().minusHours(PENDING_PAYMENT_EXPIRATION_HOURS);
+        List<RoomBookings> expiredBookings = roomBookingsRepository.findExpiredPendingBookings(
+                RoomBookingStatus.PENDING,
+                expiredBefore
+        );
+
+        LocalDateTime now = LocalDateTime.now();
+        for (RoomBookings booking : expiredBookings) {
+            booking.setStatus(RoomBookingStatus.CANCEL);
+            booking.setModifiedTime(now);
+            booking.setModifiedBy("system-expired-payment");
+            roomBookingsRepository.save(booking);
+
+            roomBookingDetailsRepository.findByRoomBookingsId(booking.getId()).stream()
+                    .filter(detail -> !Boolean.TRUE.equals(detail.getDeleted()))
+                    .filter(detail -> detail.getStatus() == RoomBookingDetailStatus.BOOKED)
+                    .forEach(detail -> {
+                        detail.setStatus(RoomBookingDetailStatus.CANCELED);
+                        detail.setModifiedTime(now);
+                        detail.setModifiedBy("system-expired-payment");
+                        roomBookingDetailsRepository.save(detail);
+                    });
+        }
+    }
+
     private RoomBookings getBooking(String id) {
         return roomBookingsRepository.findById(id)
                 .filter(booking -> !Boolean.TRUE.equals(booking.getDeleted()))
@@ -302,7 +335,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         if (!request.getCheckin().isBefore(request.getCheckout())) {
             throw new AppException(ErrorCode.INVALID_DATE_RANGE);
         }
-        float initialTotalPrice = request.getTotalRoomPrice() + request.getTotalExtraPrice();
+        float initialTotalPrice = request.getTotalRoomPrice()
+                + Math.max(0, request.getTotalServicePrice())
+                + request.getTotalExtraPrice();
         if (initialTotalPrice <= 0 || request.getTotalRoomPrice() <= 0 || request.getRoomPrice() <= 0) {
             throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
         }

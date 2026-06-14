@@ -17,13 +17,23 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
 
 app:
+  internal-secret: ${APP_INTERNAL_SECRET:dev-internal-secret}
   services:
     identity: http://localhost:8080/identity
     booking: http://localhost:8084/booking
     catalog: http://localhost:8083/catalog
+
+payos:
+  enabled: true
+  base-url: https://api-merchant.payos.vn
+  client-id: 8273b63d-0627-4c33-b168-a9bdb185004a
+  api-key: 73ecb98c-ec75-45a3-9b90-4c5720a8e857
+  checksum-key: 5232fc2b9965470c7c04db6d524882ca0b5530707096aaff1dd93114f41e3af3
+  return-url: http://localhost:3000/payment/success
+  cancel-url: http://localhost:3000/payment
