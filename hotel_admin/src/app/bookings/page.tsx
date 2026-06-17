@@ -12,6 +12,7 @@ import {
   Search,
   UserRound,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePermission } from "@/hooks/use-permission";
 import {
+  approveRoomBookingCancellation,
   checkInRoomBooking,
   checkOutRoomBooking,
   getRoomBookings,
@@ -30,21 +32,30 @@ import {
 } from "@/services/billing-service";
 import { getAllRooms } from "@/services/room-service";
 
-type DisplayStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED";
+type DisplayStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "CANCEL_REQUESTED"
+  | "CHECKED_IN"
+  | "CHECKED_OUT"
+  | "CANCELLED";
 
 const statusLabel: Record<DisplayStatus, string> = {
   PENDING: "Chờ xác nhận",
   CONFIRMED: "Đã xác nhận",
+  CANCEL_REQUESTED: "Yêu cầu hủy",
   CHECKED_IN: "Đang ở",
   CHECKED_OUT: "Đã trả phòng",
   CANCELLED: "Đã hủy",
 };
 
 export default function BookingsPage() {
+  const router = useRouter();
   const permission = usePermission();
   const canViewBookings = permission.has("BOOKING_VIEW");
   const canCheckIn = permission.has("BOOKING_CHECKIN");
   const canCheckOut = permission.has("BOOKING_CHECKOUT");
+  const canCancelBooking = permission.has("BOOKING_CANCEL");
   const canConfirmPayment = permission.has("PAYMENT_CONFIRM");
 
   const [bookings, setBookings] = useState<RoomBookingResponse[]>([]);
@@ -167,6 +178,25 @@ export default function BookingsPage() {
     }
   }
 
+  async function handleApproveCancellation(booking: RoomBookingResponse) {
+    if (isActionBusy) return;
+    setActionId(booking.id);
+    setMessage(null);
+    try {
+      const updated = await approveRoomBookingCancellation(booking.id);
+      setBookings((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setMessage(`Đã duyệt hủy booking ${shortCode(updated.id)}. Vui lòng xử lý hoàn tiền thủ công nếu có.`);
+    } catch {
+      setMessage(
+        "Không thể duyệt hủy booking này. Kiểm tra trạng thái booking và quyền BOOKING_CANCEL.",
+      );
+    } finally {
+      setActionId(null);
+    }
+  }
+
   if (!canViewBookings) {
     return (
       <PermissionDenied message="Bạn không có quyền BOOKING_VIEW để xem danh sách đặt phòng." />
@@ -267,6 +297,7 @@ export default function BookingsPage() {
                 <option value="ALL">Tất cả trạng thái</option>
                 <option value="PENDING">Chờ xác nhận</option>
                 <option value="CONFIRMED">Đã xác nhận</option>
+                <option value="CANCEL_REQUESTED">Yêu cầu hủy</option>
                 <option value="CHECKED_IN">Đang ở</option>
                 <option value="CHECKED_OUT">Đã trả phòng</option>
                 <option value="CANCELLED">Đã hủy</option>
@@ -345,11 +376,22 @@ export default function BookingsPage() {
                             type="button"
                             size="sm"
                             disabled={!canCheckIn || isActionBusy}
-                            onClick={() => void handleCheckIn(booking)}
+                            onClick={() => router.push(`/bookings/${booking.id}/checkin`)}
                             className="gap-2"
                           >
                             <CheckCircle2 className="h-4 w-4" />
                             Check-in
+                          </Button>
+                        ) : displayStatus === "CANCEL_REQUESTED" ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!canCancelBooking || isActionBusy}
+                            onClick={() => void handleApproveCancellation(booking)}
+                            className="gap-2 bg-[#8a5724] hover:bg-[#70451c]"
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                            Duyệt hủy
                           </Button>
                         ) : displayStatus === "CHECKED_IN" ? (
                           <Button
@@ -477,12 +519,16 @@ const statusButtons = [
   { value: "ALL" as const, label: "Tất cả", desc: "Xem toàn bộ booking" },
   { value: "PENDING" as const, label: "Chờ xác nhận", desc: "Chưa ghi nhận cọc" },
   { value: "CONFIRMED" as const, label: "Đã xác nhận", desc: "Sẵn sàng check-in" },
+  { value: "CANCEL_REQUESTED" as const, label: "Yêu cầu hủy", desc: "Chờ duyệt hủy" },
   { value: "CHECKED_IN" as const, label: "Đang ở", desc: "Khách đang lưu trú" },
   { value: "CHECKED_OUT" as const, label: "Đã trả phòng", desc: "Hoàn tất" },
   { value: "CANCELLED" as const, label: "Đã hủy", desc: "Booking bị hủy" },
 ];
 
 function getDisplayStatus(booking: RoomBookingResponse): DisplayStatus {
+  if (booking.status === "CANCEL_REQUESTED") {
+    return "CANCEL_REQUESTED";
+  }
   if (
     booking.status === "CANCEL" ||
     booking.detailStatus === "CANCELED" ||
@@ -508,6 +554,8 @@ function badgeClass(status: DisplayStatus) {
       return "bg-amber-100 text-amber-700";
     case "CONFIRMED":
       return "bg-sky-100 text-sky-700";
+    case "CANCEL_REQUESTED":
+      return "bg-orange-100 text-orange-700";
     case "CHECKED_IN":
       return "bg-green-100 text-green-700";
     case "CHECKED_OUT":

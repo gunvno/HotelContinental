@@ -21,7 +21,7 @@ public class UserLookupServiceImpl implements UserLookupService {
 
     @Override
     @Transactional(readOnly = true)
-    @PreAuthorize("hasAnyAuthority('CHAT_STAFF_VIEW', 'GET_ALL_USER', 'PERMISSION_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('CHAT_STAFF_VIEW', 'GET_ALL_USER', 'PERMISSION_MANAGE', 'BOOKING_VIEW', 'BOOKING_CHECKIN')")
     public UserSummaryResponse getUserSummary(String userId) {
         User user = userRepository.findById(userId)
                 .filter(item -> !Boolean.TRUE.equals(item.getDeleted()))

@@ -126,3 +126,17 @@ function createHttpClient(): KyInstance {
 }
 
 export const http = createHttpClient();
+
+export const publicHttp = ky.create({
+  prefixUrl: clientEnv.NEXT_PUBLIC_API_BASE_URL,
+  headers: defaultHeaders,
+  hooks: {
+    beforeRequest: [
+      async (request) => {
+        if (process.env.NODE_ENV === "development") {
+          console.info(`[http] ${request.method} ${request.url}`);
+        }
+      },
+    ],
+  },
+});

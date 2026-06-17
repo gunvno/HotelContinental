@@ -43,6 +43,8 @@ function statusLabel(status?: RoomBookingResponse["status"]) {
       return "Đang lưu trú";
     case "DEPOSITED":
       return "Đã thanh toán";
+    case "CANCEL_REQUESTED":
+      return "Yêu cầu hủy";
     case "DONE":
       return "Đã trả phòng";
     case "CANCEL":
@@ -90,7 +92,9 @@ export default function AccountServicesPage() {
         getMyRoomBookings(),
         getCatalogServices(0, 500),
       ]);
-      const active = bookingData.filter((booking) => booking.status !== "CANCEL");
+      const active = bookingData.filter(
+        (booking) => booking.status !== "CANCEL" && booking.status !== "CANCEL_REQUESTED",
+      );
       const nextBooking =
         active.find((booking) => booking.id === targetBookingId) ??
         active.find((booking) => booking.status === "CHECKED_IN") ??

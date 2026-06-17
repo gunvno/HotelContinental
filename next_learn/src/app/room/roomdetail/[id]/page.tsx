@@ -10,6 +10,7 @@ import {
   MapPin,
   Ruler,
   Shirt,
+  Star,
   Tv,
   Users,
   Wifi,
@@ -20,6 +21,10 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { getRoomDetail, type RoomDetailData } from "@/services/room-service";
+import {
+  getRoomFeedbacks,
+  type FeedbackResponse,
+} from "@/services/feedback-service";
 import { useAuthStore } from "@/store/auth-store";
 
 function getFeatureIcon(iconType: string) {
@@ -62,6 +67,8 @@ export default function RoomDetailPage() {
   const roomId = params?.id as string;
   const token = useAuthStore((state) => state.token);
   const [roomData, setRoomData] = useState<RoomDetailData | null>(null);
+  const [reviews, setReviews] = useState<FeedbackResponse[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const checkIn = searchParams.get("checkIn") || "2026-06-15";
@@ -75,17 +82,23 @@ export default function RoomDetailPage() {
     async function loadRoomDetail() {
       try {
         setIsLoading(true);
-        const data = await getRoomDetail(roomId);
+        setReviewsLoading(true);
+        const [data, roomReviews] = await Promise.all([
+          getRoomDetail(roomId),
+          getRoomFeedbacks(roomId).catch(() => []),
+        ]);
         if (!data) {
           setError("Không tìm thấy thông tin phòng");
           return;
         }
         setRoomData(data);
+        setReviews(roomReviews);
       } catch (err) {
         setError("Lỗi khi tải thông tin phòng");
         console.error(err);
       } finally {
         setIsLoading(false);
+        setReviewsLoading(false);
       }
     }
     if (roomId) loadRoomDetail();
@@ -159,6 +172,20 @@ export default function RoomDetailPage() {
     }).format(date);
   }
 
+  function formatReviewDate(value?: string) {
+    if (!value) return "Vừa đánh giá";
+    return new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(new Date(value));
+  }
+
+  function getReviewAuthor(review: FeedbackResponse) {
+    if (review.anonymous) return "Khách đã lưu trú";
+    return review.customerName?.trim() || "Khách đã lưu trú";
+  }
+
   if (error || !roomData) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fdf9f4] pt-32">
@@ -192,6 +219,10 @@ export default function RoomDetailPage() {
   const taxFee = Math.round(roomSubtotal * 0.1);
   const totalPrice = roomSubtotal + taxFee;
   const stayLabel = stayType === "hour" ? `${stayHours} giờ` : `${nightCount} đêm`;
+  const averageRating =
+    reviews.length > 0
+      ? reviews.reduce((total, item) => total + item.rating, 0) / reviews.length
+      : 0;
   const bookingHref = buildBookingHref({
     roomId: roomData.id,
     roomTitle: title,
@@ -206,17 +237,17 @@ export default function RoomDetailPage() {
   });
 
   return (
-    <main className="mx-auto min-h-screen max-w-screen-2xl bg-[#fdf9f4] px-6 pt-32 pb-24 font-sans text-[#1c1c19] selection:bg-[#865316]/20 md:px-12">
+    <main className="mx-auto min-h-screen max-w-screen-2xl bg-[#fdf9f4] px-4 pt-24 pb-28 font-sans text-[#1c1c19] selection:bg-[#865316]/20 sm:px-6 md:px-12 md:pt-32">
       {/* Hero Section */}
-      <div className="mb-20 grid grid-cols-1 items-end gap-8 lg:grid-cols-12">
+      <div className="mb-10 grid grid-cols-1 items-end gap-6 sm:mb-14 lg:mb-20 lg:grid-cols-12 lg:gap-8">
         <div className="lg:col-span-7">
           <span className="mb-4 inline-block rounded-full bg-[#80f6ec]/30 px-4 py-1 text-[10px] font-bold tracking-widest text-[#00716b] uppercase sm:text-xs">
             {label}
           </span>
-          <h1 className="mb-6 font-serif text-5xl leading-tight font-bold text-[#1c1c19] md:text-6xl lg:text-7xl">
+          <h1 className="mb-4 font-serif text-4xl leading-tight font-bold text-[#1c1c19] sm:text-5xl md:mb-6 md:text-6xl lg:text-7xl">
             {title}
           </h1>
-          <p className="max-w-xl text-lg leading-relaxed font-light text-[#514439] sm:text-xl">
+          <p className="max-w-xl text-base leading-relaxed font-light text-[#514439] sm:text-lg md:text-xl">
             {description}
           </p>
         </div>
@@ -225,7 +256,7 @@ export default function RoomDetailPage() {
             <MapPin className="text-3xl" />
             <span className="text-lg">{location}</span>
           </div>
-          <div className="font-serif text-3xl font-bold text-[#1c1c19] sm:text-4xl">
+          <div className="font-serif text-2xl font-bold text-[#1c1c19] sm:text-3xl md:text-4xl">
             {pricePerNight.toLocaleString("vi-VN")} VNĐ{" "}
             <span className="font-sans text-base font-normal text-[#514439]">/ đêm</span>
           </div>
@@ -233,8 +264,8 @@ export default function RoomDetailPage() {
       </div>
 
       {/* Gallery Bento Grid */}
-      <section className="mb-24">
-        <div className="grid h-[400px] grid-cols-1 grid-rows-2 gap-4 sm:h-[500px] md:h-[600px] md:grid-cols-4">
+      <section className="mb-12 sm:mb-16 lg:mb-24">
+        <div className="grid h-[280px] grid-cols-1 gap-4 sm:h-[420px] sm:grid-rows-2 md:h-[600px] md:grid-cols-4">
           <div className="group relative overflow-hidden rounded-xl md:col-span-2 md:row-span-2">
             <img
               src={galleryImages.main}
@@ -268,10 +299,10 @@ export default function RoomDetailPage() {
       </section>
 
       {/* Details & Booking Sticky Bar */}
-      <div className="grid grid-cols-1 items-start gap-16 lg:grid-cols-12">
-        <div className="space-y-16 lg:col-span-8">
+      <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-12 lg:gap-16">
+        <div className="space-y-10 sm:space-y-14 lg:col-span-8 lg:space-y-16">
           {/* Key Specifications */}
-          <div className="grid grid-cols-2 gap-8 border-y border-[#d6c3b4]/20 py-8">
+          <div className="grid grid-cols-1 gap-5 border-y border-[#d6c3b4]/20 py-6 sm:grid-cols-2 sm:gap-8 sm:py-8">
             {featureSpecs.map((item, idx) => (
               <div key={idx} className="flex flex-col gap-2">
                 <span className="text-[10px] font-bold tracking-widest text-[#514439] uppercase sm:text-xs">
@@ -279,7 +310,7 @@ export default function RoomDetailPage() {
                 </span>
                 <div className="flex items-center gap-2">
                   {getFeatureIcon(item.iconType)}
-                  <span className="text-xl font-medium">{item.value}</span>
+                  <span className="text-lg font-medium sm:text-xl">{item.value}</span>
                 </div>
               </div>
             ))}
@@ -287,7 +318,7 @@ export default function RoomDetailPage() {
 
           {/* Description Section */}
           <section>
-            <h3 className="mb-6 font-serif text-3xl font-bold italic">
+            <h3 className="mb-4 font-serif text-2xl font-bold italic sm:mb-6 sm:text-3xl">
               Tuyệt tác không gian nghỉ dưỡng
             </h3>
             <div className="prose prose-lg max-w-none leading-relaxed font-light text-[#514439]">
@@ -337,11 +368,78 @@ export default function RoomDetailPage() {
               </div>
             </section>
           ) : null}
+
+          <section>
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="mb-2 text-[11px] font-bold tracking-[0.22em] text-[#865316] uppercase">
+                  Đánh giá
+                </p>
+                <h3 className="font-serif text-2xl font-bold">
+                  Đánh giá từ khách lưu trú
+                </h3>
+              </div>
+              {reviews.length > 0 ? (
+                <div className="flex items-center gap-2 rounded-full bg-[#f7f3ee] px-4 py-2">
+                  <Star className="h-4 w-4 fill-[#c87a2d] text-[#c87a2d]" />
+                  <span className="font-bold text-[#1c1c19]">
+                    {averageRating.toFixed(1)}
+                  </span>
+                  <span className="text-sm text-[#514439]">
+                    / 5 từ {reviews.length} đánh giá
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
+            {reviewsLoading ? (
+              <div className="rounded-xl bg-[#f7f3ee] p-6 text-sm text-[#514439]">
+                Đang tải đánh giá...
+              </div>
+            ) : reviews.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {reviews.map((review) => (
+                  <article
+                    key={review.id}
+                    className="w-full rounded-xl border border-[#d6c3b4]/30 bg-white p-5 shadow-sm"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-[#1c1c19]">
+                          {getReviewAuthor(review)}
+                        </p>
+                        <p className="text-xs text-[#7a6a5b]">
+                          {formatReviewDate(review.createdTime)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <Star
+                            key={index}
+                            className={`h-4 w-4 ${
+                              index < review.rating
+                                ? "fill-[#c87a2d] text-[#c87a2d]"
+                                : "text-[#d6c3b4]"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm leading-6 text-[#514439]">{review.comment}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl bg-[#f7f3ee] p-6 text-sm text-[#514439]">
+                Phòng này chưa có đánh giá từ khách lưu trú.
+              </div>
+            )}
+          </section>
         </div>
 
         {/* Booking Card (Sticky) */}
-        <aside className="sticky top-32 lg:col-span-4">
-          <div className="rounded-2xl border border-[#d6c3b4]/10 bg-[#ffffff] p-6 shadow-[0_20px_40px_rgba(28,28,25,0.06)] lg:p-8">
+        <aside className="lg:sticky lg:top-32 lg:col-span-4">
+          <div className="rounded-2xl border border-[#d6c3b4]/10 bg-[#ffffff] p-5 shadow-[0_20px_40px_rgba(28,28,25,0.06)] sm:p-6 lg:p-8">
             <div className="mb-7">
               <p className="mb-2 text-[11px] font-bold tracking-[0.22em] text-[#865316] uppercase">
                 Đặt phòng
@@ -354,7 +452,7 @@ export default function RoomDetailPage() {
             </div>
 
             <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2">
                 <div className="rounded-xl bg-[#f7f3ee] p-4">
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-[11px] font-bold tracking-widest text-[#514439] uppercase">
@@ -422,7 +520,7 @@ export default function RoomDetailPage() {
 
               <Link
                 href={bookingHref}
-                className="block w-full rounded-full bg-gradient-to-r from-[#865316] to-[#c68948] py-5 text-center text-lg font-bold text-white shadow-xl shadow-[#865316]/20 transition-all hover:scale-[1.02] active:scale-95"
+                className="block w-full rounded-full bg-gradient-to-r from-[#865316] to-[#c68948] py-4 text-center text-base font-bold text-white shadow-xl shadow-[#865316]/20 transition-all hover:scale-[1.02] active:scale-95 sm:py-5 sm:text-lg"
               >
                 Đặt phòng ngay
               </Link>
@@ -435,8 +533,8 @@ export default function RoomDetailPage() {
       </div>
 
       {/* Floating Booking Bar (Mobile Only) */}
-      <div className="fixed right-0 bottom-0 left-0 z-40 border-t border-[#d6c3b4]/20 bg-white/90 p-4 backdrop-blur-xl lg:hidden">
-        <div className="flex items-center justify-between">
+      <div className="fixed right-0 bottom-0 left-0 z-40 border-t border-[#d6c3b4]/20 bg-white/90 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-xs text-[#514439]">Bắt đầu từ</div>
             <div className="font-bold text-[#865316]">
@@ -445,7 +543,7 @@ export default function RoomDetailPage() {
           </div>
           <Link
             href={bookingHref}
-            className="rounded-full bg-[#865316] px-6 py-3 text-sm font-bold text-white shadow-lg sm:px-8 sm:text-base"
+            className="shrink-0 rounded-full bg-[#865316] px-5 py-3 text-sm font-bold text-white shadow-lg sm:px-8 sm:text-base"
           >
             Đặt ngay
           </Link>

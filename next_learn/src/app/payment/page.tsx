@@ -320,7 +320,7 @@ function PaymentContent() {
 
   return (
     <main className="bg-background min-h-screen">
-      <section className="mx-auto w-full max-w-[1240px] px-5 py-10 sm:px-8 lg:px-10">
+      <section className="mx-auto w-full max-w-[1240px] px-4 py-8 sm:px-6 sm:py-10 lg:px-10">
         <Link
           href="/room/listroom"
           className="text-ring inline-flex items-center gap-2 text-xs font-semibold tracking-[0.2em] uppercase"
@@ -330,7 +330,7 @@ function PaymentContent() {
         </Link>
 
         <div className="mx-auto mt-8 max-w-3xl text-center">
-          <h1 className="text-foreground font-serif text-[clamp(2.2rem,5vw,3.5rem)] leading-tight font-semibold">
+          <h1 className="text-foreground font-serif text-[clamp(2rem,9vw,3.5rem)] leading-tight font-semibold">
             Xác nhận thông tin đặt phòng
           </h1>
           <p className="text-muted-foreground mt-3 text-base">
@@ -338,9 +338,9 @@ function PaymentContent() {
           </p>
         </div>
 
-        <section className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_420px] lg:items-start">
+        <section className="mt-8 grid gap-5 lg:mt-10 lg:grid-cols-[minmax(0,1.1fr)_420px] lg:items-start lg:gap-6">
           <div className="space-y-6">
-            <article className="border-border/70 bg-muted/35 rounded-2xl border p-5 sm:p-6">
+            <article className="border-border/70 bg-muted/35 rounded-2xl border p-4 sm:p-6">
               <SectionTitle index={1} title="Thông tin khách hàng" />
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -389,7 +389,7 @@ function PaymentContent() {
               </div>
             </article>
 
-            <article className="border-border/70 bg-muted/35 rounded-2xl border p-5 sm:p-6">
+            <article className="border-border/70 bg-muted/35 rounded-2xl border p-4 sm:p-6">
               <SectionTitle index={2} title="Voucher" />
 
               <div className="flex flex-col gap-3 sm:flex-row">
@@ -409,7 +409,7 @@ function PaymentContent() {
                     type="button"
                     onClick={handleRemoveVoucher}
                     disabled={isActionBusy}
-                    className="border-border text-foreground h-11 rounded-full border px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                    className="border-border text-foreground h-11 rounded-full border px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
                     Bỏ mã
                   </button>
@@ -418,7 +418,7 @@ function PaymentContent() {
                     type="button"
                     onClick={handleApplyVoucher}
                     disabled={isActionBusy}
-                    className="bg-ring text-background h-11 rounded-full px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                    className="bg-ring text-background h-11 rounded-full px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
                     {isApplyingVoucher ? "Đang kiểm tra..." : "Áp dụng"}
                   </button>
@@ -433,7 +433,7 @@ function PaymentContent() {
               ) : null}
             </article>
 
-            <article className="border-border/70 bg-muted/35 rounded-2xl border p-5 sm:p-6">
+            <article className="border-border/70 bg-muted/35 rounded-2xl border p-4 sm:p-6">
               <SectionTitle index={3} title="Dịch vụ bổ sung" />
 
               <div className="grid gap-3">
@@ -462,7 +462,7 @@ function PaymentContent() {
                             {formatMoney(service.price)}
                           </p>
                         </div>
-                        <div className="flex h-10 w-[132px] shrink-0 items-center justify-between rounded-full border border-[#ead8c4] bg-[#fffaf3] px-2">
+                        <div className="flex h-10 w-full shrink-0 items-center justify-between rounded-full border border-[#ead8c4] bg-[#fffaf3] px-2 sm:w-[132px]">
                           <button
                             type="button"
                             onClick={() => changeServiceQuantity(service.id, -1)}
@@ -489,7 +489,7 @@ function PaymentContent() {
             </article>
           </div>
 
-          <aside className="border-border/70 bg-muted/35 rounded-2xl border p-5 sm:p-6 lg:sticky lg:top-24">
+          <aside className="border-border/70 bg-muted/35 rounded-2xl border p-4 sm:p-6 lg:sticky lg:top-24">
             <h3 className="text-foreground font-serif text-3xl">Tóm tắt đơn hàng</h3>
 
             <div className="border-border mt-4 border-t pt-4">
@@ -575,7 +575,7 @@ function PaymentContent() {
               <div className="flex items-end justify-between">
                 <span className="text-foreground text-lg">Tổng cộng</span>
                 <div className="text-right">
-                  <p className="text-ring text-[2rem] leading-none font-semibold">
+                  <p className="text-ring text-3xl leading-none font-semibold sm:text-[2rem]">
                     {formatMoney(finalTotal)}
                   </p>
                   <p className="text-muted-foreground mt-1 text-[10px] tracking-[0.12em] uppercase">

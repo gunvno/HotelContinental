@@ -28,11 +28,20 @@ public class Feedbacks {
     @Column(name = "room_booking_detail_id", nullable = false)
     String roomBookingDetailId;
 
+    @Column(name = "room_id")
+    String roomId;
+
     @Column(name = "comment", nullable = false)
     String comment;
 
     @Column(name = "rating", nullable = false)
     int rating;
+
+    @Column(name = "customer_name", length = 150)
+    String customerName;
+
+    @Column(name = "anonymous")
+    Boolean anonymous = false;
 
     @Column(name = "created_time")
     LocalDateTime createdTime;

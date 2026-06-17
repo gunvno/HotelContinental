@@ -31,7 +31,7 @@ public class RoomBookings {
     @Column(name = "booking_type", nullable = false)
     BookingType bookingType;
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 30)
     RoomBookingStatus status;
     @Column(name = "total_price", nullable = false)
     float totalPrice;

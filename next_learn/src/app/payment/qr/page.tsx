@@ -133,7 +133,7 @@ function PaymentQrContent() {
 
   return (
     <main className="bg-background min-h-screen">
-      <section className="mx-auto w-full max-w-[1180px] px-5 py-10 sm:px-8 lg:px-10">
+      <section className="mx-auto w-full max-w-[1180px] px-4 py-8 sm:px-6 sm:py-10 lg:px-10">
         <Link
           href="/payment"
           className="text-ring inline-flex items-center gap-2 text-xs font-semibold tracking-[0.2em] uppercase"
@@ -143,7 +143,7 @@ function PaymentQrContent() {
         </Link>
 
         <div className="mx-auto mt-8 max-w-3xl text-center">
-          <h1 className="text-foreground font-serif text-[clamp(2.2rem,5vw,3.5rem)] leading-tight font-semibold">
+          <h1 className="text-foreground font-serif text-[clamp(2rem,9vw,3.5rem)] leading-tight font-semibold">
             Quét mã QR để thanh toán
           </h1>
           <p className="text-muted-foreground mt-3 text-base">
@@ -152,8 +152,8 @@ function PaymentQrContent() {
           </p>
         </div>
 
-        <section className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
-          <article className="border-border/70 bg-muted/35 rounded-2xl border p-5 sm:p-6">
+        <section className="mt-8 grid gap-5 lg:mt-10 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-6">
+          <article className="border-border/70 bg-muted/35 rounded-2xl border p-4 sm:p-6">
             <div className="mb-5 flex items-center gap-3">
               <span className="bg-ring text-background inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold">
                 <QrCode className="h-4 w-4" />
@@ -222,7 +222,7 @@ function PaymentQrContent() {
             )}
           </article>
 
-          <aside className="border-border/70 bg-muted/35 rounded-2xl border p-5 sm:p-6 lg:sticky lg:top-24">
+          <aside className="border-border/70 bg-muted/35 rounded-2xl border p-4 sm:p-6 lg:sticky lg:top-24">
             <h3 className="text-foreground font-serif text-3xl">Tóm tắt</h3>
             <div className="border-border mt-4 border-t pt-4">
               <div className="flex items-center gap-3">
@@ -259,7 +259,7 @@ function PaymentQrContent() {
 
               <div className="mt-5 flex items-end justify-between">
                 <span className="text-foreground text-lg">Tổng cộng</span>
-                <p className="text-ring text-[2rem] leading-none font-semibold">
+                <p className="text-ring text-3xl leading-none font-semibold sm:text-[2rem]">
                   {formatMoney(transferAmount)}
                 </p>
               </div>

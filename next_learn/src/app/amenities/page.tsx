@@ -11,6 +11,7 @@ import {
   Sparkles,
   Wifi,
 } from "lucide-react";
+import Link from "next/link";
 
 const amenityItems = [
   {
@@ -56,12 +57,14 @@ const amenityItems = [
 ];
 
 export default function AmenitiesPage() {
+  function openSupportChat() {
+    window.dispatchEvent(new Event("open-support-chat"));
+  }
+
   return (
     <div className="bg-background min-h-screen pb-24">
-      {/* ─── Hero Header ─── */}
       <section className="pt-20">
         <div className="px-6 pt-12 pb-16 sm:px-8 md:pt-16 md:pb-20 lg:px-12 xl:px-16 2xl:px-20">
-          {/* Decorative label */}
           <div className="mb-8 flex items-center gap-4">
             <span className="text-ring text-[11px] font-bold tracking-[0.25em] uppercase">
               Phòng & Suite
@@ -83,21 +86,17 @@ export default function AmenitiesPage() {
         </div>
       </section>
 
-      {/* ─── Bento Grid ─── */}
       <section>
         <div className="mb-24 px-6 sm:px-8 lg:px-12 xl:px-16 2xl:px-20">
           <div className="grid h-auto gap-5 md:grid-cols-2 lg:h-[820px] lg:grid-cols-3 lg:grid-rows-2">
-            {/* Card 1 — Spa & Wellness (large, col-span-2) */}
             <div className="group relative min-h-[340px] overflow-hidden rounded-2xl md:col-span-2 lg:min-h-0">
               <img
                 src="https://images.unsplash.com/photo-1544161515-4ab2ce6cd8e1?q=80&w=1200&auto=format&fit=crop"
                 alt="Spa & Wellness"
                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
-              {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
 
-              {/* Content */}
               <div className="relative flex h-full items-end p-8 md:p-10">
                 <div className="flex w-full flex-col gap-6 md:flex-row md:items-end md:justify-between">
                   <div className="max-w-md text-white">
@@ -113,7 +112,6 @@ export default function AmenitiesPage() {
                     </p>
                   </div>
 
-                  {/* Price badge */}
                   <div className="shrink-0 rounded-2xl border border-white/10 bg-black/40 p-5 text-left backdrop-blur-xl md:w-[185px] md:text-center">
                     <p className="text-[10px] font-bold tracking-[0.2em] text-amber-400 uppercase">
                       Từ
@@ -124,7 +122,11 @@ export default function AmenitiesPage() {
                         đ
                       </span>
                     </p>
-                    <button className="bg-ring mt-4 w-full cursor-pointer rounded-full py-2.5 text-[12px] font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0">
+                    <button
+                      type="button"
+                      onClick={openSupportChat}
+                      className="bg-ring mt-4 w-full cursor-pointer rounded-full py-2.5 text-[12px] font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+                    >
                       Thêm vào kỳ nghỉ
                     </button>
                   </div>
@@ -132,9 +134,7 @@ export default function AmenitiesPage() {
               </div>
             </div>
 
-            {/* Card 2 — Fine Dining (tall, row-span-2) */}
             <div className="bg-muted border-border relative flex h-[520px] flex-col overflow-hidden rounded-2xl border shadow-sm md:row-span-2 lg:h-full">
-              {/* Image */}
               <div className="relative h-56 w-full shrink-0 overflow-hidden lg:h-[340px]">
                 <img
                   src="https://images.unsplash.com/photo-1544025162-88229b4ddb36?q=80&w=600&auto=format&fit=crop"
@@ -142,18 +142,17 @@ export default function AmenitiesPage() {
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                 />
               </div>
-              {/* Text */}
               <div className="flex flex-1 flex-col justify-between p-7 lg:p-8">
                 <div>
                   <span className="text-ring mb-3 inline-block text-[10px] font-bold tracking-[0.2em] uppercase">
                     Ẩm thực
                   </span>
                   <h3 className="text-foreground font-serif text-[26px] leading-snug font-bold lg:text-[28px]">
-                    Ẩm thực Fine‑dining
+                    Ẩm thực Fine-dining
                   </h3>
                   <p className="text-muted-foreground mt-3 text-[13px] leading-relaxed">
-                    Thưởng thức thực đơn nếm thử (tasting menu) được chế biến bởi các đầu
-                    bếp danh tiếng thế giới.
+                    Thưởng thức thực đơn nếm thử được chế biến bởi các đầu bếp danh
+                    tiếng thế giới.
                   </p>
                 </div>
 
@@ -169,16 +168,19 @@ export default function AmenitiesPage() {
                       </span>
                     </p>
                   </div>
-                  <button className="bg-ring flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-white shadow-md transition-all hover:scale-110 hover:shadow-lg active:scale-100">
+                  <button
+                    type="button"
+                    onClick={openSupportChat}
+                    className="bg-ring flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-white shadow-md transition-all hover:scale-110 hover:shadow-lg active:scale-100"
+                    aria-label="Liên hệ tư vấn dịch vụ ẩm thực"
+                  >
                     <span className="text-xl leading-none font-light">+</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Card 3 — Hồ bơi vô cực (horizontal) */}
             <div className="bg-background border-border flex h-auto flex-col overflow-hidden rounded-2xl border shadow-sm sm:h-[280px] sm:flex-row lg:h-auto">
-              {/* Image left */}
               <div className="relative h-52 w-full shrink-0 overflow-hidden sm:h-full sm:w-[45%]">
                 <img
                   src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=400&auto=format&fit=crop"
@@ -186,7 +188,6 @@ export default function AmenitiesPage() {
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                 />
               </div>
-              {/* Text right */}
               <div className="flex flex-col justify-center p-7 sm:w-[55%]">
                 <p className="mb-2 flex items-center gap-2 text-[10px] font-bold tracking-[0.2em] text-sky-600 uppercase dark:text-sky-400">
                   <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-current text-[9px]">
@@ -208,15 +209,17 @@ export default function AmenitiesPage() {
                     / ngày
                   </span>
                 </p>
-                <button className="border-ring text-ring hover:bg-ring/10 mt-4 w-full cursor-pointer rounded-full border bg-transparent py-2.5 text-[12px] font-bold transition-colors">
+                <button
+                  type="button"
+                  onClick={openSupportChat}
+                  className="border-ring text-ring hover:bg-ring/10 mt-4 w-full cursor-pointer rounded-full border bg-transparent py-2.5 text-[12px] font-bold transition-colors"
+                >
                   Đặt chỗ ngay
                 </button>
               </div>
             </div>
 
-            {/* Card 4 — Đưa đón sân bay (horizontal reversed) */}
             <div className="bg-muted border-border flex h-auto flex-col-reverse overflow-hidden rounded-2xl border shadow-sm sm:h-[280px] sm:flex-row lg:h-auto">
-              {/* Text left */}
               <div className="flex flex-col justify-center p-7 sm:w-[55%]">
                 <p className="mb-2 flex items-center gap-2 text-[10px] font-bold tracking-[0.2em] text-emerald-700 uppercase dark:text-emerald-400">
                   <span className="text-sm">🚕</span>
@@ -236,11 +239,14 @@ export default function AmenitiesPage() {
                     / lượt
                   </span>
                 </p>
-                <button className="border-ring text-ring hover:bg-ring/10 mt-4 w-full cursor-pointer rounded-full border bg-transparent py-2.5 text-[12px] font-bold transition-colors">
+                <button
+                  type="button"
+                  onClick={openSupportChat}
+                  className="border-ring text-ring hover:bg-ring/10 mt-4 w-full cursor-pointer rounded-full border bg-transparent py-2.5 text-[12px] font-bold transition-colors"
+                >
                   Thêm dịch vụ
                 </button>
               </div>
-              {/* Image right */}
               <div className="relative h-52 w-full shrink-0 overflow-hidden sm:h-full sm:w-[45%]">
                 <img
                   src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=400&auto=format&fit=crop"
@@ -253,10 +259,8 @@ export default function AmenitiesPage() {
         </div>
       </section>
 
-      {/* ─── Amenities Grid ─── */}
       <section>
         <div className="mb-24 px-6 sm:px-8 lg:px-12 xl:px-16 2xl:px-20">
-          {/* Section heading */}
           <div className="mb-4 flex items-center gap-4">
             <span className="bg-ring/40 h-px w-10" />
             <span className="text-ring text-[11px] font-bold tracking-[0.25em] uppercase">
@@ -272,7 +276,6 @@ export default function AmenitiesPage() {
             hoàn hảo nhất.
           </p>
 
-          {/* Grid */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {amenityItems.map((item) => (
               <div
@@ -294,11 +297,9 @@ export default function AmenitiesPage() {
         </div>
       </section>
 
-      {/* ─── CTA Banner ─── */}
       <section>
         <div className="px-6 sm:px-8 lg:px-12 xl:px-16 2xl:px-20">
           <div className="from-ring/90 to-ring relative overflow-hidden rounded-2xl bg-gradient-to-r px-8 py-14 text-center md:px-16 md:py-20">
-            {/* Decorative circles */}
             <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
             <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
 
@@ -312,11 +313,18 @@ export default function AmenitiesPage() {
                 nhất.
               </p>
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <button className="text-ring flex cursor-pointer items-center gap-2 rounded-full bg-white px-8 py-3.5 text-[13px] font-bold shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0">
+                <Link
+                  href="/room/listroom"
+                  className="text-ring flex cursor-pointer items-center gap-2 rounded-full bg-white px-8 py-3.5 text-[13px] font-bold shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+                >
                   Đặt phòng ngay
                   <ArrowRight className="h-4 w-4" />
-                </button>
-                <button className="cursor-pointer rounded-full border-2 border-white/40 bg-transparent px-8 py-3.5 text-[13px] font-bold text-white transition-colors hover:border-white hover:bg-white/10">
+                </Link>
+                <button
+                  type="button"
+                  onClick={openSupportChat}
+                  className="cursor-pointer rounded-full border-2 border-white/40 bg-transparent px-8 py-3.5 text-[13px] font-bold text-white transition-colors hover:border-white hover:bg-white/10"
+                >
                   Liên hệ tư vấn
                 </button>
               </div>

@@ -49,6 +49,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             PublicEndpoint.get("/catalog/health"),
             PublicEndpoint.get("/booking/health"),
             PublicEndpoint.get("/booking/availability/busy-room-ids"),
+            PublicEndpoint.get("/feedback/health"),
+            PublicEndpoint.get("/feedback/feedbacks/room/.*"),
 
             PublicEndpoint.any("/billing/payment-requests/payos.*"),
 

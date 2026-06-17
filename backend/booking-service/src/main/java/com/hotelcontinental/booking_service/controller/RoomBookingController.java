@@ -1,7 +1,9 @@
 package com.hotelcontinental.booking_service.controller;
 
 import com.hotelcontinental.booking_service.dto.ApiResponse;
+import com.hotelcontinental.booking_service.dto.request.ResidenceRegistrationRequest;
 import com.hotelcontinental.booking_service.dto.request.RoomBookingCreationRequest;
+import com.hotelcontinental.booking_service.dto.request.RoomBookingDateChangeRequest;
 import com.hotelcontinental.booking_service.dto.request.RoomBookingTotalsUpdateRequest;
 import com.hotelcontinental.booking_service.dto.response.RoomBookingResponse;
 import com.hotelcontinental.booking_service.service.interfaces.RoomBookingService;
@@ -63,6 +65,16 @@ public class RoomBookingController {
                 .build();
     }
 
+    @PostMapping("/{id}/residence-registrations")
+    public ApiResponse<RoomBookingResponse> registerResidence(
+            @PathVariable String id,
+            @RequestBody ResidenceRegistrationRequest request
+    ) {
+        return ApiResponse.<RoomBookingResponse>builder()
+                .result(roomBookingService.registerResidence(id, request))
+                .build();
+    }
+
     @PostMapping("/{id}/check-out")
     public ApiResponse<RoomBookingResponse> checkOut(@PathVariable String id) {
         return ApiResponse.<RoomBookingResponse>builder()
@@ -77,6 +89,30 @@ public class RoomBookingController {
     ) {
         return ApiResponse.<RoomBookingResponse>builder()
                 .result(roomBookingService.updateTotals(id, request))
+                .build();
+    }
+
+    @PostMapping("/{id}/change-dates")
+    public ApiResponse<RoomBookingResponse> changeDates(
+            @PathVariable String id,
+            @RequestBody RoomBookingDateChangeRequest request
+    ) {
+        return ApiResponse.<RoomBookingResponse>builder()
+                .result(roomBookingService.changeDates(id, request))
+                .build();
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ApiResponse<RoomBookingResponse> cancelBooking(@PathVariable String id) {
+        return ApiResponse.<RoomBookingResponse>builder()
+                .result(roomBookingService.cancelBooking(id))
+                .build();
+    }
+
+    @PostMapping("/{id}/approve-cancel")
+    public ApiResponse<RoomBookingResponse> approveCancellation(@PathVariable String id) {
+        return ApiResponse.<RoomBookingResponse>builder()
+                .result(roomBookingService.approveCancellation(id))
                 .build();
     }
 }

@@ -81,6 +81,7 @@ function bookingStatusLabel(status: RoomBookingResponse["status"]) {
   const labels: Record<RoomBookingResponse["status"], string> = {
     PENDING: "Chờ xác nhận",
     DEPOSITED: "Đã thanh toán",
+    CANCEL_REQUESTED: "Yêu cầu hủy",
     CHECKED_IN: "Đang lưu trú",
     CANCEL: "Đã hủy",
     DONE: "Hoàn tất",

@@ -47,13 +47,13 @@ export default function InvoicesPage() {
   return (
     <ProtectedRoute>
       <section className="min-h-screen bg-white">
-        <Container className="py-12 md:py-20 lg:py-24">
-          <div className="flex flex-col items-start gap-16 md:flex-row">
+        <Container className="py-8 sm:py-12 md:py-20 lg:py-24">
+          <div className="flex flex-col items-start gap-8 md:flex-row md:gap-12 lg:gap-16">
             <AccountSidebar />
 
             <div className="w-full flex-1 space-y-8">
-              <div className="mb-4 border-b border-[#f0ece5] pt-8 pb-6">
-                <h1 className="font-serif text-[42px] font-bold text-[#1f1a17]">
+              <div className="mb-4 border-b border-[#f0ece5] pt-2 pb-6 md:pt-8">
+                <h1 className="font-serif text-3xl font-bold text-[#1f1a17] sm:text-4xl md:text-[42px]">
                   Lịch sử hóa đơn
                 </h1>
                 <p className="mt-3 text-[14px] leading-relaxed text-[#8c8277]">
@@ -61,7 +61,7 @@ export default function InvoicesPage() {
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-[#f0ece5] bg-white p-6 shadow-sm md:p-8">
+              <div className="rounded-3xl border border-[#f0ece5] bg-white p-4 shadow-sm sm:p-6 md:p-8">
                 {error ? (
                   <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>
                 ) : isLoading ? (
@@ -73,8 +73,15 @@ export default function InvoicesPage() {
                     Bạn chưa có hóa đơn nào.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[860px] text-left">
+                  <>
+                    <div className="space-y-3 md:hidden">
+                      {paymentRequests.map((request) => (
+                        <PaymentRequestCard key={request.id} request={request} />
+                      ))}
+                    </div>
+
+                    <div className="hidden overflow-x-auto md:block">
+                      <table className="w-full min-w-[860px] text-left">
                       <thead>
                         <tr className="border-b border-[#f0ece5]">
                           <TableHead>Mã thanh toán</TableHead>
@@ -118,8 +125,9 @@ export default function InvoicesPage() {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
-                  </div>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -132,9 +140,9 @@ export default function InvoicesPage() {
 
 function AccountSidebar() {
   return (
-    <aside className="flex w-full shrink-0 flex-col gap-8 md:sticky md:top-32 md:w-[240px] lg:w-[280px]">
+    <aside className="flex w-full shrink-0 flex-col gap-5 md:sticky md:top-32 md:w-[240px] md:gap-8 lg:w-[280px]">
       <div>
-        <h2 className="font-serif text-[28px] font-bold text-[#1f1a17]">
+        <h2 className="font-serif text-2xl font-bold text-[#1f1a17] md:text-[28px]">
           Cài đặt tài khoản
         </h2>
         <p className="mt-2 text-sm text-[#8c8277]">
@@ -142,7 +150,7 @@ function AccountSidebar() {
         </p>
       </div>
 
-      <nav className="flex flex-col gap-5 text-[15px]">
+      <nav className="grid grid-cols-1 gap-3 text-[15px] sm:grid-cols-3 md:flex md:flex-col md:gap-5">
         <AccountLink href="/account" icon={<UserRound className="h-[18px] w-[18px]" />}>
           Hồ sơ cá nhân
         </AccountLink>
@@ -231,6 +239,58 @@ function StatusBadge({ status }: { status: PaymentRequestStatus }) {
     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${config.className}`}>
       {config.label}
     </span>
+  );
+}
+
+function PaymentRequestCard({ request }: { request: PaymentRequestResponse }) {
+  return (
+    <article className="rounded-2xl border border-[#f0ece5] bg-[#fffaf5] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-bold tracking-widest text-[#8c8277] uppercase">
+            Mã thanh toán
+          </p>
+          <p className="mt-1 truncate text-sm font-semibold text-[#1f1a17]">
+            {shortCode(request.id)}
+          </p>
+          <p className="mt-1 break-all text-xs text-[#9d8f82]">{request.id}</p>
+        </div>
+        <StatusBadge status={request.status} />
+      </div>
+
+      <div className="mt-4 grid gap-3 text-sm">
+        <InfoLine label="Mã booking" value={request.roomBookingId} />
+        <InfoLine label="Ngày tạo" value={formatDate(request.paidTime ?? request.createdTime)} />
+        <InfoLine label="Tổng tiền" value={formatMoney(request.amount)} strong />
+      </div>
+
+      <div className="mt-4 border-t border-[#f0ece5] pt-3 text-right">
+        <InvoiceAction request={request} />
+      </div>
+    </article>
+  );
+}
+
+function InfoLine({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <span className="text-[#8c8277]">{label}</span>
+      <span
+        className={`min-w-0 break-all text-right ${
+          strong ? "font-bold text-[#b97a38]" : "font-medium text-[#1f1a17]"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
   );
 }
 

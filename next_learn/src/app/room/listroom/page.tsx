@@ -739,7 +739,7 @@ function DatePickerField({
       </button>
 
       {open ? (
-        <div className="absolute top-full left-0 z-40 mt-3 w-[310px] rounded-3xl border border-[#ead8c4] bg-white p-4 shadow-[0_28px_70px_-28px_rgba(64,38,12,0.55)] dark:border-white/10 dark:bg-[#141923]">
+        <div className="absolute top-full left-0 z-40 mt-3 w-[min(310px,calc(100vw-2rem))] rounded-3xl border border-[#ead8c4] bg-white p-4 shadow-[0_28px_70px_-28px_rgba(64,38,12,0.55)] dark:border-white/10 dark:bg-[#141923]">
           <div className="mb-4 flex items-center justify-between">
             <button
               type="button"
@@ -905,9 +905,9 @@ export default function RoomListPage() {
   };
 
   return (
-    <section className="min-h-screen bg-[#fdfaf5] pt-20 pb-20 dark:bg-[#0b0f17]">
-      <div className="mx-auto w-full max-w-none px-6 sm:px-8 lg:px-12 xl:px-16 2xl:px-20">
-        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-[1fr_420px]">
+    <section className="min-h-screen bg-[#fdfaf5] pt-16 pb-16 sm:pt-20 sm:pb-20 dark:bg-[#0b0f17]">
+      <div className="mx-auto w-full max-w-none px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20">
+        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_420px] lg:gap-12">
           {/* ═══ LEFT COLUMN ═══ */}
           <div className="space-y-10">
             {/* Hero Header */}
@@ -919,7 +919,7 @@ export default function RoomListPage() {
                 <span className="h-px flex-1 bg-[#d6c3b0] dark:bg-white/15" />
                 <span className="text-xl text-[#c47a34] dark:text-[#f6c86f]">✦</span>
               </div>
-              <h1 className="max-w-2xl font-serif text-5xl leading-[1.08] font-bold text-[#1c1c19] md:text-6xl lg:text-[3.5rem] dark:text-[#f8f1e7]">
+              <h1 className="max-w-2xl font-serif text-4xl leading-[1.08] font-bold text-[#1c1c19] sm:text-5xl md:text-6xl lg:text-[3.5rem] dark:text-[#f8f1e7]">
                 Chọn không gian
                 <br />
                 nghỉ dưỡng của bạn

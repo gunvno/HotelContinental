@@ -44,7 +44,7 @@ public class RoomBookingDetails {
     @Column(name = "deposit")
     float deposit;
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
+    @Column(name = "status", length = 30)
     RoomBookingDetailStatus status;
 
 

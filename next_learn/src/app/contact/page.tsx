@@ -1,3 +1,5 @@
+"use client";
+
 import {
   CalendarCheck,
   ChevronDown,
@@ -11,6 +13,10 @@ import {
 } from "lucide-react";
 
 export default function ContactPage() {
+  function openSupportChat() {
+    window.dispatchEvent(new Event("open-support-chat"));
+  }
+
   return (
     <main className="bg-background text-foreground min-h-screen font-sans">
       {/* ─── Hero Section ─── */}
@@ -259,12 +265,19 @@ export default function ContactPage() {
               </p>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row">
-              <button className="text-ring cursor-pointer rounded-full bg-white px-8 py-4 text-lg font-bold shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+              <button
+                type="button"
+                onClick={openSupportChat}
+                className="text-ring cursor-pointer rounded-full bg-white px-8 py-4 text-lg font-bold shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+              >
                 Gửi tin nhắn ngay
               </button>
-              <button className="cursor-pointer rounded-full border border-white/25 bg-white/15 px-8 py-4 text-lg font-bold text-white backdrop-blur-md transition-all duration-300 hover:bg-white/25">
+              <a
+                href="tel:+842812345678"
+                className="cursor-pointer rounded-full border border-white/25 bg-white/15 px-8 py-4 text-lg font-bold text-white backdrop-blur-md transition-all duration-300 hover:bg-white/25"
+              >
                 Gọi trực tiếp
-              </button>
+              </a>
             </div>
           </div>
         </div>

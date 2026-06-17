@@ -76,10 +76,10 @@ export default function AccountPage() {
   return (
     <ProtectedRoute>
       <section className="min-h-screen bg-white">
-        <Container className="py-12 md:py-20 lg:py-24">
-          <div className="flex flex-col items-start gap-16 md:flex-row">
+        <Container className="py-8 sm:py-12 md:py-20 lg:py-24">
+          <div className="flex flex-col items-start gap-8 md:flex-row md:gap-12 lg:gap-16">
             {/* Left Sidebar */}
-            <aside className="flex w-full shrink-0 flex-col gap-8 md:sticky md:top-32 md:w-[240px] md:gap-10 lg:w-[280px]">
+            <aside className="flex w-full shrink-0 flex-col gap-6 md:sticky md:top-32 md:w-[240px] md:gap-10 lg:w-[280px]">
               <div>
                 <h2 className="font-serif text-[28px] font-bold text-[#1f1a17]">
                   Cài đặt tài khoản
@@ -89,7 +89,7 @@ export default function AccountPage() {
                 </p>
               </div>
 
-              <nav className="flex flex-col gap-5 text-[15px]">
+              <nav className="grid grid-cols-1 gap-3 text-[15px] sm:grid-cols-3 md:flex md:flex-col md:gap-5">
                 <Link
                   href="/account"
                   className="flex items-center gap-4 font-semibold text-[#00b0a6] transition-colors"
@@ -127,7 +127,7 @@ export default function AccountPage() {
             </aside>
 
             {/* Right Content */}
-            <div className="w-full flex-1 space-y-16">
+            <div className="w-full flex-1 space-y-10 sm:space-y-16">
               {/* Profile Header */}
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
                 <div className="relative h-[110px] w-[110px] shrink-0">
@@ -146,7 +146,7 @@ export default function AccountPage() {
                 </div>
 
                 <div className="flex flex-col justify-center">
-                  <h1 className="font-serif text-[32px] font-bold text-[#1f1a17]">
+                  <h1 className="font-serif text-3xl font-bold text-[#1f1a17] sm:text-[32px]">
                     {displayName}
                   </h1>
                   <p className="mt-1 text-[13px] text-[#8c8277]">
@@ -175,7 +175,7 @@ export default function AccountPage() {
                   Thông tin cá nhân
                 </h3>
 
-                <div className="grid gap-8 md:grid-cols-2">
+                <div className="grid gap-5 sm:gap-8 md:grid-cols-2">
                   <div className="space-y-2">
                     <label className="text-[11px] font-semibold tracking-wide text-[#8c8277] uppercase">
                       Họ
@@ -210,7 +210,7 @@ export default function AccountPage() {
                 </div>
 
                 {profile && (
-                  <div className="grid gap-8 md:grid-cols-2">
+                  <div className="grid gap-5 sm:gap-8 md:grid-cols-2">
                     <div className="space-y-2">
                       <label className="text-[11px] font-semibold tracking-wide text-[#8c8277] uppercase">
                         Số điện thoại
@@ -255,7 +255,7 @@ export default function AccountPage() {
                     />
                   </div>
 
-                  <div className="grid gap-8 md:grid-cols-2">
+                  <div className="grid gap-5 sm:gap-8 md:grid-cols-2">
                     <div className="space-y-2">
                       <label className="text-[11px] font-semibold tracking-wide text-[#8c8277] uppercase">
                         Mật khẩu mới
@@ -280,10 +280,10 @@ export default function AccountPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-8">
+              <div className="flex justify-stretch pt-8 sm:justify-end">
                 <button
                   type="button"
-                  className="rounded-full bg-[#eca853] px-10 py-3.5 text-[15px] font-bold text-white shadow-[0_4px_14px_rgba(236,168,83,0.3)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(236,168,83,0.4)]"
+                  className="w-full rounded-full bg-[#eca853] px-10 py-3.5 text-[15px] font-bold text-white shadow-[0_4px_14px_rgba(236,168,83,0.3)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(236,168,83,0.4)] sm:w-auto"
                 >
                   Lưu thay đổi
                 </button>

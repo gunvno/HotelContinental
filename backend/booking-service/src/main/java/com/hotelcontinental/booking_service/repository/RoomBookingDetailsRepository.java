@@ -50,4 +50,22 @@ public interface RoomBookingDetailsRepository extends JpaRepository<RoomBookingD
             @Param("endTime") LocalDateTime endTime,
             @Param("blockingStatuses") Collection<RoomBookingDetailStatus> blockingStatuses
     );
+
+    @Query("""
+            select count(detail) > 0
+            from RoomBookingDetails detail
+            where (detail.deleted = false or detail.deleted is null)
+              and detail.id <> :excludedDetailId
+              and detail.roomId = :roomId
+              and detail.status in :blockingStatuses
+              and detail.checkin < :endTime
+              and detail.checkout > :startTime
+            """)
+    boolean existsOverlappingRoomBookingExcludingDetail(
+            @Param("excludedDetailId") String excludedDetailId,
+            @Param("roomId") String roomId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("blockingStatuses") Collection<RoomBookingDetailStatus> blockingStatuses
+    );
 }

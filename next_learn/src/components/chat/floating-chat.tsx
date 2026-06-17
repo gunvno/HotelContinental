@@ -28,6 +28,15 @@ export function FloatingChat() {
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    function openSupportChat() {
+      handleOpen();
+    }
+
+    window.addEventListener("open-support-chat", openSupportChat);
+    return () => window.removeEventListener("open-support-chat", openSupportChat);
+  }, [token]);
+
+  useEffect(() => {
     if (!open || !token) return;
 
     let alive = true;

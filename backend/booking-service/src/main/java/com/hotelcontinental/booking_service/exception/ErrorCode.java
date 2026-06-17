@@ -21,6 +21,9 @@ public enum ErrorCode {
     INVALID_BOOKING_REQUEST(1014, "Invalid booking request", HttpStatus.BAD_REQUEST),
     BOOKING_NOT_FOUND(1015, "Booking not found", HttpStatus.NOT_FOUND),
     INVALID_BOOKING_STATUS(1016, "Invalid booking status for this action", HttpStatus.BAD_REQUEST),
+    INVALID_RESIDENCE_REGISTRATION(1017, "Residence registration information is invalid", HttpStatus.BAD_REQUEST),
+    BOOKING_CHANGE_PERIOD_EXPIRED(1018, "Booking date can only be changed at least 48 hours before check-in", HttpStatus.BAD_REQUEST),
+    BOOKING_CANCEL_PERIOD_EXPIRED(1019, "Booking can only be cancelled for free at least 72 hours before check-in", HttpStatus.BAD_REQUEST),
 
     ;
 

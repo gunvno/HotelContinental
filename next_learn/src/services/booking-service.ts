@@ -20,7 +20,13 @@ export type RoomBookingResponse = {
   customerId: string;
   roomId: string;
   bookingType: "ONLINE" | "OFFLINE";
-  status: "PENDING" | "DEPOSITED" | "CHECKED_IN" | "CANCEL" | "DONE";
+  status:
+    | "PENDING"
+    | "DEPOSITED"
+    | "CANCEL_REQUESTED"
+    | "CHECKED_IN"
+    | "CANCEL"
+    | "DONE";
   detailStatus: "BOOKED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELED" | "NO_SHOW";
   checkin: string;
   checkout: string;
@@ -39,6 +45,11 @@ export type UpdateRoomBookingTotalsPayload = {
   totalServicePrice: number;
   totalExtraPrice: number;
   totalPrice: number;
+};
+
+export type ChangeRoomBookingDatesPayload = {
+  checkin: string;
+  checkout: string;
 };
 
 export async function createRoomBooking(payload: CreateRoomBookingPayload) {
@@ -77,6 +88,23 @@ export async function updateRoomBookingTotals(
 ) {
   const res = await http
     .post(`booking/room-bookings/${id}/totals`, { json: payload })
+    .json<ApiResponse<RoomBookingResponse>>();
+  return (res.result ?? res.content) as RoomBookingResponse;
+}
+
+export async function changeRoomBookingDates(
+  id: string,
+  payload: ChangeRoomBookingDatesPayload,
+) {
+  const res = await http
+    .post(`booking/room-bookings/${id}/change-dates`, { json: payload })
+    .json<ApiResponse<RoomBookingResponse>>();
+  return (res.result ?? res.content) as RoomBookingResponse;
+}
+
+export async function cancelRoomBooking(id: string) {
+  const res = await http
+    .post(`booking/room-bookings/${id}/cancel`)
     .json<ApiResponse<RoomBookingResponse>>();
   return (res.result ?? res.content) as RoomBookingResponse;
 }

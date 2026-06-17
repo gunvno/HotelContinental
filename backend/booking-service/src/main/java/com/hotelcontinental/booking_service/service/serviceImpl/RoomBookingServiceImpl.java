@@ -1,14 +1,18 @@
 package com.hotelcontinental.booking_service.service.serviceImpl;
 
+import com.hotelcontinental.booking_service.dto.request.ResidenceRegistrationRequest;
 import com.hotelcontinental.booking_service.dto.request.RoomBookingCreationRequest;
+import com.hotelcontinental.booking_service.dto.request.RoomBookingDateChangeRequest;
 import com.hotelcontinental.booking_service.dto.request.RoomBookingTotalsUpdateRequest;
 import com.hotelcontinental.booking_service.dto.response.RoomBookingResponse;
+import com.hotelcontinental.booking_service.entity.ResidenceRegistration;
 import com.hotelcontinental.booking_service.entity.RoomBookingDetails;
 import com.hotelcontinental.booking_service.entity.RoomBookings;
 import com.hotelcontinental.booking_service.enums.RoomBookingDetailStatus;
 import com.hotelcontinental.booking_service.enums.RoomBookingStatus;
 import com.hotelcontinental.booking_service.exception.AppException;
 import com.hotelcontinental.booking_service.exception.ErrorCode;
+import com.hotelcontinental.booking_service.repository.ResidenceRegistrationRepository;
 import com.hotelcontinental.booking_service.repository.RoomBookingDetailsRepository;
 import com.hotelcontinental.booking_service.repository.RoomBookingsRepository;
 import com.hotelcontinental.booking_service.service.interfaces.RoomBookingService;
@@ -20,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,12 +34,15 @@ import java.util.List;
 public class RoomBookingServiceImpl implements RoomBookingService {
     private final RoomBookingsRepository roomBookingsRepository;
     private final RoomBookingDetailsRepository roomBookingDetailsRepository;
+    private final ResidenceRegistrationRepository residenceRegistrationRepository;
 
     private static final List<RoomBookingDetailStatus> BLOCKING_STATUSES = List.of(
             RoomBookingDetailStatus.BOOKED,
             RoomBookingDetailStatus.CHECKED_IN
     );
     private static final int PENDING_PAYMENT_EXPIRATION_HOURS = 24;
+    private static final int CHANGE_DATE_MIN_HOURS_BEFORE_CHECKIN = 48;
+    private static final int FREE_CANCEL_MIN_HOURS_BEFORE_CHECKIN = 72;
 
     @Transactional
     @Override
@@ -160,11 +168,52 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @Transactional
     @Override
     @PreAuthorize("hasAuthority('BOOKING_CHECKIN')")
+    public RoomBookingResponse registerResidence(String id, ResidenceRegistrationRequest request) {
+        RoomBookings booking = getBooking(id);
+        RoomBookingDetails detail = getRequiredPrimaryDetail(id);
+
+        if (booking.getStatus() != RoomBookingStatus.DEPOSITED
+                || detail.getStatus() != RoomBookingDetailStatus.BOOKED) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS);
+        }
+        if (request == null || request.getGuests() == null || request.getGuests().isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_RESIDENCE_REGISTRATION);
+        }
+
+        List<ResidenceRegistration> registrations = request.getGuests().stream()
+                .map(guest -> {
+                    if (guest == null
+                            || !StringUtils.hasText(guest.getFullName())
+                            || !StringUtils.hasText(guest.getIdentityNumber())
+                            || !StringUtils.hasText(guest.getGender())
+                            || !StringUtils.hasText(guest.getDateOfBirth())) {
+                        throw new AppException(ErrorCode.INVALID_RESIDENCE_REGISTRATION);
+                    }
+
+                    ResidenceRegistration registration = new ResidenceRegistration();
+                    registration.setRoomBookingDetails(detail);
+                    registration.setFullName(guest.getFullName().trim());
+                    registration.setIdentityNumber(guest.getIdentityNumber().trim());
+                    registration.setGender(guest.getGender().trim());
+                    registration.setDateOfBirth(guest.getDateOfBirth().trim());
+                    return registration;
+                })
+                .toList();
+
+        residenceRegistrationRepository.deleteByRoomBookingDetailsId(detail.getId());
+        residenceRegistrationRepository.saveAll(registrations);
+        return map(booking, detail);
+    }
+
+    @Transactional
+    @Override
+    @PreAuthorize("hasAuthority('BOOKING_CHECKIN')")
     public RoomBookingResponse checkIn(String id) {
         RoomBookings booking = getBooking(id);
         RoomBookingDetails detail = getRequiredPrimaryDetail(id);
 
         if (booking.getStatus() == RoomBookingStatus.CANCEL
+                || booking.getStatus() == RoomBookingStatus.CANCEL_REQUESTED
                 || booking.getStatus() == RoomBookingStatus.DONE
                 || booking.getStatus() == RoomBookingStatus.CHECKED_IN
                 || detail.getStatus() != RoomBookingDetailStatus.BOOKED) {
@@ -242,6 +291,123 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         booking = roomBookingsRepository.save(booking);
 
         RoomBookingDetails detail = getPrimaryDetail(id);
+        return map(booking, detail);
+    }
+
+    @Transactional
+    @Override
+    @PreAuthorize("hasAuthority('BOOKING_UPDATE')")
+    public RoomBookingResponse changeDates(String id, RoomBookingDateChangeRequest request) {
+        validateDateChangeRequest(request);
+
+        RoomBookings booking = getBooking(id);
+        validateBookingAccess(booking);
+        RoomBookingDetails detail = getRequiredPrimaryDetail(id);
+
+        if ((booking.getStatus() != RoomBookingStatus.PENDING && booking.getStatus() != RoomBookingStatus.DEPOSITED)
+                || detail.getStatus() != RoomBookingDetailStatus.BOOKED) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS);
+        }
+        if (detail.getCheckin().isBefore(LocalDateTime.now().plusHours(CHANGE_DATE_MIN_HOURS_BEFORE_CHECKIN))) {
+            throw new AppException(ErrorCode.BOOKING_CHANGE_PERIOD_EXPIRED);
+        }
+
+        boolean roomBusy = roomBookingDetailsRepository.existsOverlappingRoomBookingExcludingDetail(
+                detail.getId(),
+                detail.getRoomId(),
+                request.getCheckin(),
+                request.getCheckout(),
+                BLOCKING_STATUSES
+        );
+        if (roomBusy) {
+            throw new AppException(ErrorCode.ROOM_ALREADY_BOOKED);
+        }
+
+        String actor = getCurrentActor();
+        LocalDateTime now = LocalDateTime.now();
+
+        detail.setCheckin(request.getCheckin());
+        detail.setCheckout(request.getCheckout());
+        detail.setModifiedTime(now);
+        detail.setModifiedBy(actor);
+        detail = roomBookingDetailsRepository.save(detail);
+
+        booking.setModifiedTime(now);
+        booking.setModifiedBy(actor);
+        booking = roomBookingsRepository.save(booking);
+
+        return map(booking, detail);
+    }
+
+    @Transactional
+    @Override
+    @PreAuthorize("hasAuthority('BOOKING_CANCEL')")
+    public RoomBookingResponse cancelBooking(String id) {
+        RoomBookings booking = getBooking(id);
+        validateBookingAccess(booking);
+        RoomBookingDetails detail = getRequiredPrimaryDetail(id);
+
+        if ((booking.getStatus() != RoomBookingStatus.PENDING && booking.getStatus() != RoomBookingStatus.DEPOSITED)
+                || detail.getStatus() != RoomBookingDetailStatus.BOOKED) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS);
+        }
+        if (detail.getCheckin().isBefore(LocalDateTime.now().plusHours(FREE_CANCEL_MIN_HOURS_BEFORE_CHECKIN))) {
+            throw new AppException(ErrorCode.BOOKING_CANCEL_PERIOD_EXPIRED);
+        }
+
+        String actor = getCurrentActor();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (booking.getStatus() == RoomBookingStatus.DEPOSITED) {
+            booking.setStatus(RoomBookingStatus.CANCEL_REQUESTED);
+            booking.setModifiedTime(now);
+            booking.setModifiedBy(actor);
+            booking = roomBookingsRepository.save(booking);
+            return map(booking, detail);
+        }
+
+        booking.setStatus(RoomBookingStatus.CANCEL);
+        booking.setModifiedTime(now);
+        booking.setModifiedBy(actor);
+        booking = roomBookingsRepository.save(booking);
+
+        detail.setStatus(RoomBookingDetailStatus.CANCELED);
+        detail.setModifiedTime(now);
+        detail.setModifiedBy(actor);
+        detail = roomBookingDetailsRepository.save(detail);
+
+        return map(booking, detail);
+    }
+
+    @Transactional
+    @Override
+    @PreAuthorize("hasAuthority('BOOKING_CANCEL')")
+    public RoomBookingResponse approveCancellation(String id) {
+        if (!canAccessAdminPortal()) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        RoomBookings booking = getBooking(id);
+        RoomBookingDetails detail = getRequiredPrimaryDetail(id);
+
+        if (booking.getStatus() != RoomBookingStatus.CANCEL_REQUESTED
+                || detail.getStatus() != RoomBookingDetailStatus.BOOKED) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_STATUS);
+        }
+
+        String actor = getCurrentActor();
+        LocalDateTime now = LocalDateTime.now();
+
+        booking.setStatus(RoomBookingStatus.CANCEL);
+        booking.setModifiedTime(now);
+        booking.setModifiedBy(actor);
+        booking = roomBookingsRepository.save(booking);
+
+        detail.setStatus(RoomBookingDetailStatus.CANCELED);
+        detail.setModifiedTime(now);
+        detail.setModifiedBy(actor);
+        detail = roomBookingDetailsRepository.save(detail);
+
         return map(booking, detail);
     }
 
@@ -339,6 +505,18 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 + Math.max(0, request.getTotalServicePrice())
                 + request.getTotalExtraPrice();
         if (initialTotalPrice <= 0 || request.getTotalRoomPrice() <= 0 || request.getRoomPrice() <= 0) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
+        }
+    }
+
+    private void validateDateChangeRequest(RoomBookingDateChangeRequest request) {
+        if (request == null || request.getCheckin() == null || request.getCheckout() == null) {
+            throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
+        }
+        if (!request.getCheckin().isBefore(request.getCheckout())) {
+            throw new AppException(ErrorCode.INVALID_DATE_RANGE);
+        }
+        if (!request.getCheckin().isAfter(LocalDateTime.now())) {
             throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
         }
     }

@@ -4,6 +4,7 @@ import type { ApiResponse } from "@/types/api-types";
 export type RoomBookingStatus =
   | "PENDING"
   | "DEPOSITED"
+  | "CANCEL_REQUESTED"
   | "CHECKED_IN"
   | "CANCEL"
   | "DONE";
@@ -34,11 +35,25 @@ export type RoomBookingResponse = {
   deposit: number;
 };
 
+export type ResidenceGuestPayload = {
+  fullName: string;
+  identityNumber: string;
+  gender: string;
+  dateOfBirth: string;
+};
+
 export async function getRoomBookings() {
   const res = await http
     .get("booking/room-bookings")
     .json<ApiResponse<RoomBookingResponse[]>>();
   return (res.result ?? res.content ?? []) as RoomBookingResponse[];
+}
+
+export async function getRoomBooking(id: string) {
+  const res = await http
+    .get(`booking/room-bookings/${id}`)
+    .json<ApiResponse<RoomBookingResponse>>();
+  return (res.result ?? res.content) as RoomBookingResponse;
 }
 
 export async function checkInRoomBooking(id: string) {
@@ -48,9 +63,28 @@ export async function checkInRoomBooking(id: string) {
   return (res.result ?? res.content) as RoomBookingResponse;
 }
 
+export async function registerResidence(
+  id: string,
+  guests: ResidenceGuestPayload[],
+) {
+  const res = await http
+    .post(`booking/room-bookings/${id}/residence-registrations`, {
+      json: { guests },
+    })
+    .json<ApiResponse<RoomBookingResponse>>();
+  return (res.result ?? res.content) as RoomBookingResponse;
+}
+
 export async function checkOutRoomBooking(id: string) {
   const res = await http
     .post(`booking/room-bookings/${id}/check-out`)
+    .json<ApiResponse<RoomBookingResponse>>();
+  return (res.result ?? res.content) as RoomBookingResponse;
+}
+
+export async function approveRoomBookingCancellation(id: string) {
+  const res = await http
+    .post(`booking/room-bookings/${id}/approve-cancel`)
     .json<ApiResponse<RoomBookingResponse>>();
   return (res.result ?? res.content) as RoomBookingResponse;
 }
