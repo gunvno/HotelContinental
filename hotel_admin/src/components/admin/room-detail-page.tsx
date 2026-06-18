@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { usePermission } from "@/hooks/use-permission";
 import {
@@ -376,18 +377,18 @@ export function RoomDetailPageContent() {
       <section className="grid gap-5 rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm lg:grid-cols-2">
         <FormField label="Loại phòng">
           {isEditing ? (
-            <select
+            <Select
               value={form.roomTypeId}
-              onChange={(event) => setValue("roomTypeId", event.target.value)}
-              className="h-11 w-full rounded-xl border border-[#eadfcd] bg-white px-4 text-sm font-semibold text-gray-950 outline-none focus:border-[#c47a34]"
-            >
-              <option value="">Chọn loại phòng</option>
-              {roomTypes.map((roomType) => (
-                <option key={roomType.id} value={roomType.id}>
-                  {roomType.name}
-                </option>
-              ))}
-            </select>
+              onValueChange={(value) => setValue("roomTypeId", value)}
+              placeholder="Chọn loại phòng"
+              options={[
+                { value: "", label: "Chọn loại phòng" },
+                ...roomTypes.map((roomType) => ({
+                  value: roomType.id,
+                  label: roomType.name,
+                })),
+              ]}
+            />
           ) : (
             <ReadOnlyValue>{selectedRoomType?.name || "Chưa gán"}</ReadOnlyValue>
           )}
@@ -395,21 +396,21 @@ export function RoomDetailPageContent() {
 
         <FormField label="Vị trí tòa/tầng">
           {isEditing ? (
-            <select
+            <Select
               value={form.floorId}
-              onChange={(event) => setValue("floorId", event.target.value)}
-              className="h-11 w-full rounded-xl border border-[#eadfcd] bg-white px-4 text-sm font-semibold text-gray-950 outline-none focus:border-[#c47a34]"
-            >
-              <option value="">Chọn tầng</option>
-              {floors.map((floor) => {
-                const building = buildings.find((item) => item.id === floor.buildingId);
-                return (
-                  <option key={floor.id} value={floor.id}>
-                    {building?.name || "Tòa nhà"} - Tầng {floor.floorNumber}
-                  </option>
-                );
-              })}
-            </select>
+              onValueChange={(value) => setValue("floorId", value)}
+              placeholder="Chọn tầng"
+              options={[
+                { value: "", label: "Chọn tầng" },
+                ...floors.map((floor) => {
+                  const building = buildings.find((item) => item.id === floor.buildingId);
+                  return {
+                    value: floor.id,
+                    label: `${building?.name || "Tòa nhà"} - Tầng ${floor.floorNumber}`,
+                  };
+                }),
+              ]}
+            />
           ) : (
             <ReadOnlyValue>
               {selectedBuilding?.name || "Chưa gán tòa nhà"} ·{" "}
@@ -432,19 +433,16 @@ export function RoomDetailPageContent() {
 
         <FormField label="Trạng thái">
           {isEditing ? (
-            <select
+            <Select
               value={form.status}
-              onChange={(event) =>
-                setValue("status", event.target.value as RoomFormState["status"])
+              onValueChange={(value) =>
+                setValue("status", value as RoomFormState["status"])
               }
-              className="h-11 w-full rounded-xl border border-[#eadfcd] bg-white px-4 text-sm font-semibold text-gray-950 outline-none focus:border-[#c47a34]"
-            >
-              {statusOptions.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
+              options={statusOptions.map((status) => ({
+                value: status.value,
+                label: status.label,
+              }))}
+            />
           ) : (
             <span
               className={`inline-flex rounded-full px-3 py-1 text-sm font-black ${statusClassName[form.status]}`}

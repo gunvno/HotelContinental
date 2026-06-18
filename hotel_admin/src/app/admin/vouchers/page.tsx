@@ -4,6 +4,8 @@ import { Plus, RefreshCcw, TicketPercent } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
+import { DateTimePicker } from "@/components/ui/date-picker";
+import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
 import {
   createVoucher,
@@ -162,19 +164,19 @@ export default function AdminVouchersPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Kiểu giảm">
-                  <select
+                  <Select
                     value={form.discountType}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setForm((prev) => ({
                         ...prev,
-                        discountType: event.target.value as DiscountType,
+                        discountType: value as DiscountType,
                       }))
                     }
-                    className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm outline-none focus:border-[#9b5c24]"
-                  >
-                    <option value="FIXED">Giảm tiền</option>
-                    <option value="PERCENT">Giảm phần trăm</option>
-                  </select>
+                    options={[
+                      { value: "FIXED", label: "Giảm tiền" },
+                      { value: "PERCENT", label: "Giảm phần trăm" },
+                    ]}
+                  />
                 </Field>
                 <Field label={form.discountType === "PERCENT" ? "Phần trăm" : "Số tiền"}>
                   <input
@@ -196,25 +198,17 @@ export default function AdminVouchersPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Bắt đầu">
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={form.startDate}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, startDate: event.target.value }))
-                    }
+                    onChange={(startDate) => setForm((prev) => ({ ...prev, startDate }))}
                     required
-                    className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm outline-none focus:border-[#9b5c24]"
                   />
                 </Field>
                 <Field label="Kết thúc">
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={form.endDate}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, endDate: event.target.value }))
-                    }
+                    onChange={(endDate) => setForm((prev) => ({ ...prev, endDate }))}
                     required
-                    className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm outline-none focus:border-[#9b5c24]"
                   />
                 </Field>
               </div>

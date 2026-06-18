@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
 import {
   checkInRoomBooking,
@@ -93,7 +94,9 @@ export default function BookingCheckInPage() {
         );
       }
     } catch {
-      setMessage("Không thể tải booking. Kiểm tra booking-service và quyền BOOKING_VIEW.");
+      setMessage(
+        "Không thể tải booking. Kiểm tra booking-service và quyền BOOKING_VIEW.",
+      );
     } finally {
       setLoading(false);
     }
@@ -134,7 +137,9 @@ export default function BookingCheckInPage() {
   async function confirmCheckIn() {
     if (!booking || submitting) return;
     if (!validateGuests()) {
-      setMessage("Vui lòng nhập đủ họ tên, CCCD/CMND, giới tính và ngày sinh của khách lưu trú.");
+      setMessage(
+        "Vui lòng nhập đủ họ tên, CCCD/CMND, giới tính và ngày sinh của khách lưu trú.",
+      );
       return;
     }
 
@@ -194,7 +199,8 @@ export default function BookingCheckInPage() {
           Check-in booking
         </h2>
         <p className="mt-2 max-w-3xl text-sm text-[#7c6f63]">
-          Nhập thông tin đăng ký lưu trú trước khi chuyển booking sang trạng thái khách đang ở.
+          Nhập thông tin đăng ký lưu trú trước khi chuyển booking sang trạng thái khách
+          đang ở.
         </p>
       </section>
 
@@ -260,11 +266,10 @@ export default function BookingCheckInPage() {
           <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-[#17213a]">
-                  Đăng ký lưu trú
-                </h3>
+                <h3 className="text-xl font-semibold text-[#17213a]">Đăng ký lưu trú</h3>
                 <p className="mt-2 text-sm text-[#7c6f63]">
-                  Mỗi khách lưu trú cần có thông tin giấy tờ để lưu vào bảng residence_registration.
+                  Mỗi khách lưu trú cần có thông tin giấy tờ để lưu vào bảng
+                  residence_registration.
                 </p>
               </div>
               <Button
@@ -333,17 +338,16 @@ export default function BookingCheckInPage() {
                       <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
                         Giới tính
                       </span>
-                      <select
+                      <Select
                         value={guest.gender}
-                        onChange={(event) =>
-                          updateGuest(index, { gender: event.target.value })
-                        }
-                        className="mt-2 h-11 w-full rounded-md border border-[#decdb9] bg-white px-3 text-sm text-[#17213a]"
-                      >
-                        <option value="MALE">Nam</option>
-                        <option value="FEMALE">Nữ</option>
-                        <option value="OTHER">Khác</option>
-                      </select>
+                        onValueChange={(gender) => updateGuest(index, { gender })}
+                        className="mt-2"
+                        options={[
+                          { value: "MALE", label: "Nam" },
+                          { value: "FEMALE", label: "Nữ" },
+                          { value: "OTHER", label: "Khác" },
+                        ]}
+                      />
                     </label>
                     <label className="block">
                       <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
@@ -366,7 +370,9 @@ export default function BookingCheckInPage() {
             <div className="mt-5 space-y-3 rounded-2xl bg-[#fbf6ed] p-4 text-sm text-[#5f5144]">
               <div className="flex justify-between gap-4">
                 <span>Tổng tiền</span>
-                <strong className="text-[#17213a]">{formatMoney(booking.totalPrice)}</strong>
+                <strong className="text-[#17213a]">
+                  {formatMoney(booking.totalPrice)}
+                </strong>
               </div>
               <div className="flex justify-between gap-4">
                 <span>Tiền phòng</span>
@@ -380,7 +386,8 @@ export default function BookingCheckInPage() {
 
             {!readyToCheckIn ? (
               <div className="mt-5 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
-                Booking này chưa sẵn sàng check-in. Cần trạng thái đã xác nhận thanh toán và phòng còn được giữ.
+                Booking này chưa sẵn sàng check-in. Cần trạng thái đã xác nhận thanh toán
+                và phòng còn được giữ.
               </div>
             ) : null}
 
@@ -439,8 +446,8 @@ function InfoCard({
           <p className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
             {label}
           </p>
-          <p className="mt-1 break-words font-semibold text-[#17213a]">{value}</p>
-          {sub ? <p className="mt-1 break-all text-xs text-[#9f8a77]">{sub}</p> : null}
+          <p className="mt-1 font-semibold break-words text-[#17213a]">{value}</p>
+          {sub ? <p className="mt-1 text-xs break-all text-[#9f8a77]">{sub}</p> : null}
         </div>
       </div>
     </div>
@@ -497,61 +504,57 @@ function DateOfBirthPicker({
 }) {
   const [year = "", month = "", day = ""] = value ? value.split("-") : [];
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 91 }, (_, index) => String(currentYear - 10 - index));
-  const days = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, "0"));
-  const months = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+  const years = Array.from({ length: 91 }, (_, index) =>
+    String(currentYear - 10 - index),
+  );
+  const days = Array.from({ length: 31 }, (_, index) =>
+    String(index + 1).padStart(2, "0"),
+  );
+  const months = Array.from({ length: 12 }, (_, index) =>
+    String(index + 1).padStart(2, "0"),
+  );
 
   function updateDate(part: "day" | "month" | "year", nextValue: string) {
     const nextDay = part === "day" ? nextValue : day;
     const nextMonth = part === "month" ? nextValue : month;
     const nextYear = part === "year" ? nextValue : year;
-    onChange(nextDay && nextMonth && nextYear ? `${nextYear}-${nextMonth}-${nextDay}` : "");
+    onChange(
+      nextDay && nextMonth && nextYear ? `${nextYear}-${nextMonth}-${nextDay}` : "",
+    );
   }
 
   return (
     <div className="mt-2 grid grid-cols-[1fr_1fr_1.2fr] gap-2">
-      <select
-        aria-label="Ngày sinh"
+      <Select
         value={day}
-        onChange={(event) => updateDate("day", event.target.value)}
+        onValueChange={(value) => updateDate("day", value)}
         disabled={disabled}
-        className="h-11 rounded-md border border-[#decdb9] bg-white px-3 text-sm font-medium text-[#17213a] outline-none transition focus:border-[#c47b30] disabled:cursor-not-allowed disabled:bg-[#f2eadf]"
-      >
-        <option value="">Ngày</option>
-        {days.map((item) => (
-          <option key={item} value={item}>
-            {item}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="Tháng sinh"
+        placeholder="Ngày"
+        options={[
+          { value: "", label: "Ngày" },
+          ...days.map((item) => ({ value: item, label: item })),
+        ]}
+      />
+      <Select
         value={month}
-        onChange={(event) => updateDate("month", event.target.value)}
+        onValueChange={(value) => updateDate("month", value)}
         disabled={disabled}
-        className="h-11 rounded-md border border-[#decdb9] bg-white px-3 text-sm font-medium text-[#17213a] outline-none transition focus:border-[#c47b30] disabled:cursor-not-allowed disabled:bg-[#f2eadf]"
-      >
-        <option value="">Tháng</option>
-        {months.map((item) => (
-          <option key={item} value={item}>
-            {item}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="Năm sinh"
+        placeholder="Tháng"
+        options={[
+          { value: "", label: "Tháng" },
+          ...months.map((item) => ({ value: item, label: item })),
+        ]}
+      />
+      <Select
         value={year}
-        onChange={(event) => updateDate("year", event.target.value)}
+        onValueChange={(value) => updateDate("year", value)}
         disabled={disabled}
-        className="h-11 rounded-md border border-[#decdb9] bg-white px-3 text-sm font-medium text-[#17213a] outline-none transition focus:border-[#c47b30] disabled:cursor-not-allowed disabled:bg-[#f2eadf]"
-      >
-        <option value="">Năm</option>
-        {years.map((item) => (
-          <option key={item} value={item}>
-            {item}
-          </option>
-        ))}
-      </select>
+        placeholder="Năm"
+        options={[
+          { value: "", label: "Năm" },
+          ...years.map((item) => ({ value: item, label: item })),
+        ]}
+      />
     </div>
   );
 }

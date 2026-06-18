@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   type AmenityResponse,
   type AmenityRoomResponse,
@@ -576,30 +577,26 @@ function EditableField({
 
   if (field.type === "select") {
     return (
-      <select
+      <Select
         value={String(value ?? "")}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-2 h-11 w-full rounded-xl border border-[#eadfcd] bg-white px-4 text-sm text-gray-950 outline-none focus:border-[#c47a34]"
-      >
-        {field.options?.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        onValueChange={onChange}
+        className="mt-2"
+        options={field.options ?? []}
+      />
     );
   }
 
   if (field.type === "boolean") {
     return (
-      <select
+      <Select
         value={value ? "true" : "false"}
-        onChange={(event) => onChange(event.target.value === "true")}
-        className="mt-2 h-11 w-full rounded-xl border border-[#eadfcd] bg-white px-4 text-sm text-gray-950 outline-none focus:border-[#c47a34]"
-      >
-        <option value="false">Hoạt động</option>
-        <option value="true">Đã xóa</option>
-      </select>
+        onValueChange={(nextValue) => onChange(nextValue === "true")}
+        className="mt-2"
+        options={[
+          { value: "false", label: "Hoạt động" },
+          { value: "true", label: "Đã xóa" },
+        ]}
+      />
     );
   }
 

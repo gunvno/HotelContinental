@@ -14,6 +14,8 @@ import { useEffect, useMemo, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QuickFilter, type QuickFilterOption } from "@/components/ui/quick-filter";
+import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
 import { getRoomBookings, type RoomBookingResponse } from "@/services/booking-service";
 import { getCatalogServices, type ServiceResponse } from "@/services/room-service";
@@ -28,22 +30,16 @@ import {
   type ServiceOrderSource,
 } from "@/services/service-order-service";
 
-const serviceOrderStatusOptions: Array<{
-  value: ServiceOrderDetailStatus | "ALL";
-  label: string;
-}> = [
-  { value: "ALL", label: "Tất cả trạng thái" },
-  { value: "WAITING", label: "Đang chờ" },
-  { value: "SERVED", label: "Đã phục vụ" },
+const serviceOrderStatusOptions: QuickFilterOption<ServiceOrderDetailStatus | "ALL">[] = [
+  { value: "ALL", label: "Tất cả", desc: "Toàn bộ dịch vụ" },
+  { value: "WAITING", label: "Đang chờ", desc: "Cần phục vụ" },
+  { value: "SERVED", label: "Đã phục vụ", desc: "Đã hoàn tất" },
 ];
 
-const serviceOrderSourceOptions: Array<{
-  value: ServiceOrderSource | "ALL";
-  label: string;
-}> = [
-  { value: "ALL", label: "Tất cả nguồn" },
-  { value: "INCLUDED", label: "Kèm phòng" },
-  { value: "EXTRA", label: "Gọi thêm" },
+const serviceOrderSourceOptions: QuickFilterOption<ServiceOrderSource | "ALL">[] = [
+  { value: "ALL", label: "Tất cả", desc: "Mọi nguồn dịch vụ" },
+  { value: "INCLUDED", label: "Kèm phòng", desc: "Có trong loại phòng" },
+  { value: "EXTRA", label: "Gọi thêm", desc: "Tính thêm vào bill" },
 ];
 
 export default function ServiceOrdersPage() {
@@ -63,7 +59,9 @@ export default function ServiceOrdersPage() {
   const [quantity, setQuantity] = useState(1);
   const [description, setDescription] = useState("");
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ServiceOrderDetailStatus | "ALL">("ALL");
+  const [statusFilter, setStatusFilter] = useState<ServiceOrderDetailStatus | "ALL">(
+    "ALL",
+  );
   const [sourceFilter, setSourceFilter] = useState<ServiceOrderSource | "ALL">("ALL");
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -223,8 +221,8 @@ export default function ServiceOrdersPage() {
               Dịch vụ phòng
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-[#7c6f63]">
-              Theo dõi dịch vụ kèm phòng và dịch vụ khách gọi thêm. Chỉ dịch vụ gọi
-              thêm mới cộng vào tổng bill.
+              Theo dõi dịch vụ kèm phòng và dịch vụ khách gọi thêm. Chỉ dịch vụ gọi thêm
+              mới cộng vào tổng bill.
             </p>
           </div>
           <Button
@@ -270,40 +268,43 @@ export default function ServiceOrdersPage() {
               <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
                 Booking
               </span>
-              <select
+              <Select
                 value={selectedBookingId}
-                onChange={(event) => void handleBookingChange(event.target.value)}
-                className="mt-2 h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm"
-              >
-                <option value="">-- Chọn booking --</option>
-                {bookings.map((booking) => (
-                  <option key={booking.id} value={booking.id}>
-                    {shortCode(booking.id)} - {booking.status} -{" "}
-                    {booking.detailStatus ?? "N/A"} - Phòng {booking.roomId}
-                  </option>
-                ))}
-              </select>
+                onValueChange={(value) => void handleBookingChange(value)}
+                className="mt-2"
+                placeholder="Chọn booking"
+                options={[
+                  { value: "", label: "-- Chọn booking --" },
+                  ...bookings.map((booking) => ({
+                    value: booking.id,
+                    label: `${shortCode(booking.id)} - ${booking.status} - ${
+                      booking.detailStatus ?? "N/A"
+                    } - Phòng ${booking.roomId}`,
+                  })),
+                ]}
+              />
             </label>
 
             <label className="block">
               <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
                 Dịch vụ
               </span>
-              <select
+              <Select
                 value={serviceId}
-                onChange={(event) => setServiceId(event.target.value)}
+                onValueChange={setServiceId}
                 disabled={services.length === 0}
-                className="mt-2 h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm"
-              >
-                <option value="">-- Chọn dịch vụ --</option>
-                {services
-                  .filter((service) => !service.deleted)
-                  .map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name} - {formatMoney(service.price ?? 0)}
-                    </option>
-                  ))}
-              </select>
+                className="mt-2"
+                placeholder="Chọn dịch vụ"
+                options={[
+                  { value: "", label: "-- Chọn dịch vụ --" },
+                  ...services
+                    .filter((service) => !service.deleted)
+                    .map((service) => ({
+                      value: service.id,
+                      label: `${service.name} - ${formatMoney(service.price ?? 0)}`,
+                    })),
+                ]}
+              />
             </label>
 
             <label className="block">
@@ -385,33 +386,26 @@ export default function ServiceOrdersPage() {
                   className="pl-9"
                 />
               </div>
-              <select
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as ServiceOrderDetailStatus | "ALL")
-                }
-                className="h-10 rounded-md border border-[#decdb9] bg-white px-3 text-sm font-semibold text-[#17213a] outline-none transition focus:border-[#c8792a] md:w-44"
-              >
-                {serviceOrderStatusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={sourceFilter}
-                onChange={(event) =>
-                  setSourceFilter(event.target.value as ServiceOrderSource | "ALL")
-                }
-                className="h-10 rounded-md border border-[#decdb9] bg-white px-3 text-sm font-semibold text-[#17213a] outline-none transition focus:border-[#c8792a] md:w-40"
-              >
-                {serviceOrderSourceOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
             </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-2">
+            <QuickFilter
+              title="Lọc trạng thái"
+              value={statusFilter}
+              options={serviceOrderStatusOptions}
+              onChange={setStatusFilter}
+              columnsClassName="sm:grid-cols-3"
+              className="bg-white/70 shadow-none"
+            />
+            <QuickFilter
+              title="Lọc nguồn dịch vụ"
+              value={sourceFilter}
+              options={serviceOrderSourceOptions}
+              onChange={setSourceFilter}
+              columnsClassName="sm:grid-cols-3"
+              className="bg-white/70 shadow-none"
+            />
           </div>
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-[#decdb9]">
@@ -457,7 +451,10 @@ export default function ServiceOrdersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="font-semibold text-[#17213a]">
-                            {item.roomName || item.roomId || selectedBooking?.roomId || "N/A"}
+                            {item.roomName ||
+                              item.roomId ||
+                              selectedBooking?.roomId ||
+                              "N/A"}
                           </div>
                           <div className="text-xs text-[#8a7967]">
                             {shortCode(item.roomBookingId || selectedBookingId)}

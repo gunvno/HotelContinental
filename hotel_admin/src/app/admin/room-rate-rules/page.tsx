@@ -4,6 +4,8 @@ import { CalendarDays, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
 import {
   createRoomRateRule,
@@ -179,8 +181,8 @@ export default function AdminRoomRateRulesPage() {
               Hệ số giá phòng theo ngày
             </h2>
             <p className="mt-1 text-sm text-[#7c6f63]">
-              Tạo rule như cuối tuần x1.1 hoặc ngày lễ x1.5. Rule có ưu tiên cao
-              hơn sẽ được áp dụng trước.
+              Tạo rule như cuối tuần x1.1 hoặc ngày lễ x1.5. Rule có ưu tiên cao hơn sẽ
+              được áp dụng trước.
             </p>
           </div>
           <button
@@ -229,79 +231,70 @@ export default function AdminRoomRateRulesPage() {
               </Field>
 
               <Field label="Loại phòng">
-                <select
+                <Select
                   value={form.roomTypeId || ""}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, roomTypeId: event.target.value }))
+                  onValueChange={(value) =>
+                    setForm((prev) => ({ ...prev, roomTypeId: value }))
                   }
-                  className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm outline-none focus:border-[#9b5c24]"
-                >
-                  <option value="">Tất cả loại phòng</option>
-                  {roomTypes.map((roomType) => (
-                    <option key={roomType.id} value={roomType.id}>
-                      {roomType.name}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: "", label: "Táº¥t cáº£ loáº¡i phÃ²ng" },
+                    ...roomTypes.map((roomType) => ({
+                      value: roomType.id,
+                      label: roomType.name,
+                    })),
+                  ]}
+                />
               </Field>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Loại rule">
-                  <select
+                  <Select
                     value={form.ruleType}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setForm((prev) => ({
                         ...prev,
-                        ruleType: event.target.value as RoomRateRuleType,
+                        ruleType: value as RoomRateRuleType,
                       }))
                     }
-                    className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm outline-none focus:border-[#9b5c24]"
-                  >
-                    <option value="WEEKEND">Cuối tuần</option>
-                    <option value="HOLIDAY">Ngày lễ</option>
-                    <option value="SEASON">Mùa cao điểm</option>
-                    <option value="MANUAL">Tùy chỉnh</option>
-                  </select>
+                    options={[
+                      { value: "WEEKEND", label: "Cuối tuần" },
+                      { value: "HOLIDAY", label: "Ngày lễ" },
+                      { value: "SEASON", label: "Mùa cao điểm" },
+                      { value: "MANUAL", label: "Tùy chỉnh" },
+                    ]}
+                  />
                 </Field>
 
                 <Field label="Trạng thái">
-                  <select
+                  <Select
                     value={form.active ? "true" : "false"}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setForm((prev) => ({
                         ...prev,
-                        active: event.target.value === "true",
+                        active: value === "true",
                       }))
                     }
-                    className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm outline-none focus:border-[#9b5c24]"
-                  >
-                    <option value="true">Đang áp dụng</option>
-                    <option value="false">Tạm tắt</option>
-                  </select>
+                    options={[
+                      { value: "true", label: "Đang áp dụng" },
+                      { value: "false", label: "Tạm tắt" },
+                    ]}
+                  />
                 </Field>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Ngày bắt đầu">
-                  <input
-                    type="date"
+                  <DatePicker
                     value={form.startDate}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, startDate: event.target.value }))
-                    }
+                    onChange={(startDate) => setForm((prev) => ({ ...prev, startDate }))}
                     required
-                    className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm outline-none focus:border-[#9b5c24]"
                   />
                 </Field>
                 <Field label="Ngày kết thúc">
-                  <input
-                    type="date"
+                  <DatePicker
                     value={form.endDate}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, endDate: event.target.value }))
-                    }
+                    onChange={(endDate) => setForm((prev) => ({ ...prev, endDate }))}
                     required
-                    className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm outline-none focus:border-[#9b5c24]"
                   />
                 </Field>
               </div>
@@ -433,10 +426,7 @@ export default function AdminRoomRateRulesPage() {
                   </tr>
                 ) : (
                   rules.map((rule) => (
-                    <tr
-                      key={rule.id}
-                      className="border-b border-[#eee3d5] last:border-0"
-                    >
+                    <tr key={rule.id} className="border-b border-[#eee3d5] last:border-0">
                       <td className="py-4">
                         <button
                           type="button"

@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { usePermission } from "@/hooks/use-permission";
 import {
@@ -281,54 +282,54 @@ export default function CreateRoomPage() {
           <>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Tòa nhà *">
-                <select
+                <Select
                   value={form.buildingId}
-                  onChange={(event) => onChange("buildingId", event.target.value)}
-                  className="h-10 w-full rounded-md border border-[#decdb9] bg-[#fffaf2] px-3 text-sm text-[#211a14] outline-none focus-visible:ring-2 focus-visible:ring-[#9b5c24]"
-                >
-                  {buildings.length === 0 ? (
-                    <option value="">Chưa có tòa nhà</option>
-                  ) : null}
-                  {buildings.map((building) => (
-                    <option key={building.id} value={building.id}>
-                      {building.name}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={(value) => onChange("buildingId", value)}
+                  placeholder="Chọn tòa nhà"
+                  disabled={buildings.length === 0}
+                  options={
+                    buildings.length === 0
+                      ? [{ value: "", label: "Chưa có tòa nhà" }]
+                      : buildings.map((building) => ({
+                          value: building.id,
+                          label: building.name,
+                        }))
+                  }
+                />
               </Field>
 
               <Field label="Tầng *">
-                <select
+                <Select
                   value={form.floorId}
-                  onChange={(event) => onChange("floorId", event.target.value)}
-                  className="h-10 w-full rounded-md border border-[#decdb9] bg-[#fffaf2] px-3 text-sm text-[#211a14] outline-none focus-visible:ring-2 focus-visible:ring-[#9b5c24]"
-                >
-                  {selectedBuildingFloors.length === 0 ? (
-                    <option value="">Chưa có tầng</option>
-                  ) : null}
-                  {selectedBuildingFloors.map((floor) => (
-                    <option key={floor.id} value={floor.id}>
-                      Tầng {floor.floorNumber}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={(value) => onChange("floorId", value)}
+                  placeholder="Chọn tầng"
+                  disabled={selectedBuildingFloors.length === 0}
+                  options={
+                    selectedBuildingFloors.length === 0
+                      ? [{ value: "", label: "Chưa có tầng" }]
+                      : selectedBuildingFloors.map((floor) => ({
+                          value: floor.id,
+                          label: `Tầng ${floor.floorNumber}`,
+                        }))
+                  }
+                />
               </Field>
 
               <Field label="Loại phòng *">
-                <select
+                <Select
                   value={form.roomTypeId}
-                  onChange={(event) => onChange("roomTypeId", event.target.value)}
-                  className="h-10 w-full rounded-md border border-[#decdb9] bg-[#fffaf2] px-3 text-sm text-[#211a14] outline-none focus-visible:ring-2 focus-visible:ring-[#9b5c24]"
-                >
-                  {roomTypes.length === 0 ? (
-                    <option value="">Chưa có loại phòng</option>
-                  ) : null}
-                  {roomTypes.map((roomType) => (
-                    <option key={roomType.id} value={roomType.id}>
-                      {roomType.name} - tối đa {roomType.maximumOccupancy} khách
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={(value) => onChange("roomTypeId", value)}
+                  placeholder="Chọn loại phòng"
+                  disabled={roomTypes.length === 0}
+                  options={
+                    roomTypes.length === 0
+                      ? [{ value: "", label: "Chưa có loại phòng" }]
+                      : roomTypes.map((roomType) => ({
+                          value: roomType.id,
+                          label: `${roomType.name} - tối đa ${roomType.maximumOccupancy} khách`,
+                        }))
+                  }
+                />
               </Field>
 
               <Field label="Tên phòng *">

@@ -14,11 +14,9 @@ import {
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
+import { DatePicker } from "@/components/ui/date-picker";
 import { usePermission } from "@/hooks/use-permission";
-import {
-  getRoomBookings,
-  type RoomBookingResponse,
-} from "@/services/booking-service";
+import { getRoomBookings, type RoomBookingResponse } from "@/services/booking-service";
 import {
   getRevenueSummary,
   type RevenueSummaryResponse,
@@ -162,9 +160,7 @@ export default function DashboardPage() {
       );
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Không thể tải dữ liệu dashboard.",
+        error instanceof Error ? error.message : "Không thể tải dữ liệu dashboard.",
       );
     } finally {
       setIsLoading(false);
@@ -178,7 +174,10 @@ export default function DashboardPage() {
   const today = toDateInputValue(new Date());
   const pendingBookings = bookings.filter((booking) => booking.status === "PENDING");
   const activeBookings = bookings.filter(
-    (booking) => booking.status === "PENDING" || booking.status === "DEPOSITED" || booking.status === "CHECKED_IN",
+    (booking) =>
+      booking.status === "PENDING" ||
+      booking.status === "DEPOSITED" ||
+      booking.status === "CHECKED_IN",
   );
   const occupiedRoomIds = new Set(activeBookings.map((booking) => booking.roomId));
   const availableRooms = Math.max(roomTotal - occupiedRoomIds.size, 0);
@@ -190,9 +189,7 @@ export default function DashboardPage() {
       (isSameDay(booking.checkoutReality, today) || isSameDay(booking.checkout, today)),
   ).length;
   const urgentTaskCount =
-    pendingBookings.length +
-    (summary?.checkedInBookingCount ?? 0) +
-    checkoutTodayCount;
+    pendingBookings.length + (summary?.checkedInBookingCount ?? 0) + checkoutTodayCount;
 
   const dailyRevenue = summary?.dailyRevenue ?? [];
   const maxDailyRevenue = Math.max(...dailyRevenue.map((item) => item.amount), 1);
@@ -260,7 +257,9 @@ export default function DashboardPage() {
   ];
 
   if (!canViewRevenue) {
-    return <PermissionDenied message="Bạn không có quyền REVENUE_VIEW để xem dashboard doanh thu." />;
+    return (
+      <PermissionDenied message="Bạn không có quyền REVENUE_VIEW để xem dashboard doanh thu." />
+    );
   }
 
   return (
@@ -276,8 +275,8 @@ export default function DashboardPage() {
               Điều hành khách sạn trong một màn hình.
             </h2>
             <p className="mt-5 max-w-2xl text-sm leading-6 text-[#eadbc4]">
-              Dashboard ưu tiên nghiệp vụ vận hành: doanh thu, booking cần xử lý,
-              phòng đang giữ chỗ, khách đang lưu trú và checkout trong ngày.
+              Dashboard ưu tiên nghiệp vụ vận hành: doanh thu, booking cần xử lý, phòng
+              đang giữ chỗ, khách đang lưu trú và checkout trong ngày.
             </p>
           </div>
           <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.08] p-5 backdrop-blur">
@@ -312,24 +311,8 @@ export default function DashboardPage() {
 
       <section className="rounded-[1.5rem] border border-[#decdb9] bg-white/72 p-4 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05]">
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
-          <label className="space-y-2 text-xs font-bold tracking-[0.18em] text-[#75695d] uppercase dark:text-[#b7a99a]">
-            Từ ngày
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(event) => setFromDate(event.target.value)}
-              className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm normal-case tracking-normal text-[#111827] outline-none focus:border-[#9b5c24] dark:border-[#3a2e24] dark:bg-[#17130f] dark:text-white"
-            />
-          </label>
-          <label className="space-y-2 text-xs font-bold tracking-[0.18em] text-[#75695d] uppercase dark:text-[#b7a99a]">
-            Đến ngày
-            <input
-              type="date"
-              value={toDate}
-              onChange={(event) => setToDate(event.target.value)}
-              className="h-11 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm normal-case tracking-normal text-[#111827] outline-none focus:border-[#9b5c24] dark:border-[#3a2e24] dark:bg-[#17130f] dark:text-white"
-            />
-          </label>
+          <DatePicker label="Từ ngày" value={fromDate} onChange={setFromDate} />
+          <DatePicker label="Đến ngày" value={toDate} onChange={setToDate} />
           <button
             type="button"
             onClick={() => void loadDashboard()}
@@ -394,11 +377,16 @@ export default function DashboardPage() {
           <div className="mt-8 flex h-72 items-end gap-3 rounded-[1.5rem] border border-[#eadfcd] bg-[#fbf7ef] p-5 dark:border-[#3a2e24] dark:bg-[#17130f]">
             {dailyRevenue.length > 0 ? (
               dailyRevenue.map((item) => (
-                <div key={item.date} className="flex min-w-0 flex-1 flex-col items-center gap-3">
+                <div
+                  key={item.date}
+                  className="flex min-w-0 flex-1 flex-col items-center gap-3"
+                >
                   <div
                     title={`${item.date}: ${formatCurrency(item.amount)}`}
                     className="w-full rounded-t-2xl bg-gradient-to-t from-[#9b5c24] to-[#e8c990] shadow-[0_18px_35px_-28px_rgba(155,92,36,0.9)]"
-                    style={{ height: `${Math.max((item.amount / maxDailyRevenue) * 100, 4)}%` }}
+                    style={{
+                      height: `${Math.max((item.amount / maxDailyRevenue) * 100, 4)}%`,
+                    }}
                   />
                   <span className="truncate text-xs font-bold text-[#75695d] dark:text-[#b7a99a]">
                     {item.date.slice(5)}
@@ -435,14 +423,16 @@ export default function DashboardPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-bold">
-                        {roomNames[booking.roomId] ?? `Phòng ${booking.roomId.slice(0, 8)}`}
+                        {roomNames[booking.roomId] ??
+                          `Phòng ${booking.roomId.slice(0, 8)}`}
                       </p>
                       <p className="text-sm text-[#75695d] dark:text-[#b7a99a]">
                         {bookingStatusLabel(booking.status)}
                       </p>
                     </div>
                     <span className="text-xs font-bold text-[#9b5c24] dark:text-[#d7a25f]">
-                      {getTimePart(booking.checkinReality ?? booking.checkin) || getDatePart(booking.checkin)}
+                      {getTimePart(booking.checkinReality ?? booking.checkin) ||
+                        getDatePart(booking.checkin)}
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-black">

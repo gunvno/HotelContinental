@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Pagination } from "@/components/ui/pagination";
+import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
 import {
   type AmenityResponse,
@@ -488,16 +489,17 @@ export function RoomTypesSection() {
                   <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Trạng Thái Xóa
                   </Label>
-                  <select
+                  <Select
                     value={formData.deleted ? "deleted" : "active"}
-                    onChange={(e) =>
-                      setFormData({ ...formData, deleted: e.target.value === "deleted" })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, deleted: value === "deleted" })
                     }
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="deleted">Đã xóa</option>
-                  </select>
+                    className="mt-1"
+                    options={[
+                      { value: "active", label: "Hoạt động" },
+                      { value: "deleted", label: "Đã xóa" },
+                    ]}
+                  />
                 </div>
               )}
             </div>
@@ -809,16 +811,17 @@ export function AmenitiesSection() {
                   <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Trạng Thái Xóa
                   </Label>
-                  <select
+                  <Select
                     value={formData.deleted ? "deleted" : "active"}
-                    onChange={(e) =>
-                      setFormData({ ...formData, deleted: e.target.value === "deleted" })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, deleted: value === "deleted" })
                     }
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="deleted">Đã xóa</option>
-                  </select>
+                    className="mt-1"
+                    options={[
+                      { value: "active", label: "Hoạt động" },
+                      { value: "deleted", label: "Đã xóa" },
+                    ]}
+                  />
                 </div>
               )}
             </div>
@@ -1038,20 +1041,18 @@ export function AmenityRoomsSection() {
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Chọn Loại Phòng
             </Label>
-            <select
+            <Select
               value={selectedRoomTypeId}
-              onChange={(e) => {
+              onValueChange={(value) => {
                 setPage(0);
-                setSelectedRoomTypeId(e.target.value);
+                setSelectedRoomTypeId(value);
               }}
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-            >
-              {activeRoomTypes.map((rt) => (
-                <option key={rt.id} value={rt.id}>
-                  {rt.name}
-                </option>
-              ))}
-            </select>
+              className="mt-1"
+              options={activeRoomTypes.map((rt) => ({
+                value: rt.id,
+                label: rt.name,
+              }))}
+            />
           </div>
 
           <div className="mb-4 flex items-center justify-between">
@@ -1183,20 +1184,21 @@ export function AmenityRoomsSection() {
                   <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Chọn Loại Phòng
                   </Label>
-                  <select
+                  <Select
                     value={formData.roomTypeId || selectedRoomTypeId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, roomTypeId: e.target.value })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, roomTypeId: value })
                     }
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  >
-                    <option value="">-- Chọn Loại Phòng --</option>
-                    {activeRoomTypes.map((rt) => (
-                      <option key={rt.id} value={rt.id}>
-                        {rt.name}
-                      </option>
-                    ))}
-                  </select>
+                    className="mt-1"
+                    placeholder="Chọn loại phòng"
+                    options={[
+                      { value: "", label: "-- Chọn Loại Phòng --" },
+                      ...activeRoomTypes.map((rt) => ({
+                        value: rt.id,
+                        label: rt.name,
+                      })),
+                    ]}
+                  />
                 </div>
               )}
 
@@ -1205,20 +1207,21 @@ export function AmenityRoomsSection() {
                   <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Chọn Cơ Sở Vật Chất
                   </Label>
-                  <select
+                  <Select
                     value={formData.amenityId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, amenityId: e.target.value })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, amenityId: value })
                     }
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  >
-                    <option value="">-- Chọn Cơ Sở Vật Chất --</option>
-                    {activeAmenities.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </select>
+                    className="mt-1"
+                    placeholder="Chọn cơ sở vật chất"
+                    options={[
+                      { value: "", label: "-- Chọn Cơ Sở Vật Chất --" },
+                      ...activeAmenities.map((a) => ({
+                        value: a.id,
+                        label: a.name,
+                      })),
+                    ]}
+                  />
                 </div>
               )}
 
@@ -1265,16 +1268,17 @@ export function AmenityRoomsSection() {
                   <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Trạng Thái Xóa
                   </Label>
-                  <select
+                  <Select
                     value={formData.deleted ? "deleted" : "active"}
-                    onChange={(e) =>
-                      setFormData({ ...formData, deleted: e.target.value === "deleted" })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, deleted: value === "deleted" })
                     }
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="deleted">Đã xóa</option>
-                  </select>
+                    className="mt-1"
+                    options={[
+                      { value: "active", label: "Hoạt động" },
+                      { value: "deleted", label: "Đã xóa" },
+                    ]}
+                  />
                 </div>
               )}
             </div>
@@ -1538,21 +1542,21 @@ export function RoomTypeServicesSection() {
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Lọc theo loại phòng
             </Label>
-            <select
+            <Select
               value={selectedRoomTypeId}
-              onChange={(event) => {
+              onValueChange={(value) => {
                 setPage(0);
-                setSelectedRoomTypeId(event.target.value);
+                setSelectedRoomTypeId(value);
               }}
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-            >
-              <option value={ALL_ROOM_TYPES_VALUE}>Tất cả loại phòng</option>
-              {activeRoomTypes.map((roomType) => (
-                <option key={roomType.id} value={roomType.id}>
-                  {roomType.name}
-                </option>
-              ))}
-            </select>
+              className="mt-1"
+              options={[
+                { value: ALL_ROOM_TYPES_VALUE, label: "Tất cả loại phòng" },
+                ...activeRoomTypes.map((roomType) => ({
+                  value: roomType.id,
+                  label: roomType.name,
+                })),
+              ]}
+            />
           </div>
 
           <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
@@ -1669,25 +1673,25 @@ export function RoomTypeServicesSection() {
                   <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Loại phòng
                   </Label>
-                  <select
+                  <Select
                     value={
                       formData.roomTypeId ||
                       (selectedRoomTypeId !== ALL_ROOM_TYPES_VALUE
                         ? selectedRoomTypeId
                         : "")
                     }
-                    onChange={(event) =>
-                      setFormData({ ...formData, roomTypeId: event.target.value })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, roomTypeId: value })
                     }
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  >
-                    <option value="">-- Chọn loại phòng --</option>
-                    {activeRoomTypes.map((roomType) => (
-                      <option key={roomType.id} value={roomType.id}>
-                        {roomType.name}
-                      </option>
-                    ))}
-                  </select>
+                    className="mt-1"
+                    options={[
+                      { value: "", label: "-- Chọn loại phòng --" },
+                      ...activeRoomTypes.map((roomType) => ({
+                        value: roomType.id,
+                        label: roomType.name,
+                      })),
+                    ]}
+                  />
                 </div>
               )}
 
@@ -1713,30 +1717,33 @@ export function RoomTypeServicesSection() {
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Dịch vụ
                 </Label>
-                <select
+                <Select
                   value={formData.serviceId}
                   disabled={services.length === 0}
-                  onChange={(event) =>
-                    setFormData({ ...formData, serviceId: event.target.value })
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, serviceId: value })
                   }
-                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:disabled:bg-gray-800"
-                >
-                  <option value="">
-                    {services.length === 0
-                      ? "-- Chưa tải được danh sách dịch vụ --"
-                      : "-- Chọn dịch vụ --"}
-                  </option>
-                  {services
-                    .filter((service) => !service.deleted)
-                    .map((service) => (
-                      <option key={service.id} value={service.id}>
-                        {service.name}{" "}
-                        {service.price
-                          ? `- ${Number(service.price).toLocaleString("vi-VN")}đ`
-                          : ""}
-                      </option>
-                    ))}
-                </select>
+                  className="mt-1"
+                  options={[
+                    {
+                      value: "",
+                      label:
+                        services.length === 0
+                          ? "-- Chưa tải được danh sách dịch vụ --"
+                          : "-- Chọn dịch vụ --",
+                    },
+                    ...services
+                      .filter((service) => !service.deleted)
+                      .map((service) => ({
+                        value: service.id,
+                        label: `${service.name}${
+                          service.price
+                            ? ` - ${Number(service.price).toLocaleString("vi-VN")}đ`
+                            : ""
+                        }`,
+                      })),
+                  ]}
+                />
                 {services.length === 0 && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-300">
                     Không tải được danh sách dịch vụ. Kiểm tra catalog-service và
@@ -1773,19 +1780,20 @@ export function RoomTypeServicesSection() {
                   <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Trạng thái xóa
                   </Label>
-                  <select
+                  <Select
                     value={formData.deleted ? "deleted" : "active"}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setFormData({
                         ...formData,
-                        deleted: event.target.value === "deleted",
+                        deleted: value === "deleted",
                       })
                     }
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="deleted">Đã xóa</option>
-                  </select>
+                    className="mt-1"
+                    options={[
+                      { value: "active", label: "Hoạt động" },
+                      { value: "deleted", label: "Đã xóa" },
+                    ]}
+                  />
                 </div>
               )}
             </div>

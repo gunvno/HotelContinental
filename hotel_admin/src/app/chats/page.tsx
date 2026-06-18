@@ -42,7 +42,6 @@ export default function ChatsPage() {
   const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<"ALL" | ChatConversationResponse["status"]>("ALL");
   const [draft, setDraft] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -149,10 +148,9 @@ export default function ChatsPage() {
         !normalizedQuery ||
         customerText.includes(normalizedQuery) ||
         messageText.includes(normalizedQuery);
-      const matchesStatus = status === "ALL" || conversation.status === status;
-      return matchesQuery && matchesStatus;
+      return matchesQuery;
     });
-  }, [conversations, query, status]);
+  }, [conversations, query]);
 
   async function handleRefresh() {
     if (isBusy) return;
@@ -254,19 +252,6 @@ export default function ChatsPage() {
                 className="pl-9"
               />
             </div>
-            <select
-              value={status}
-              onChange={(event) =>
-                setStatus(
-                  event.target.value as "ALL" | ChatConversationResponse["status"],
-                )
-              }
-              className="h-10 w-full rounded-md border border-[#decdb9] bg-white px-3 text-sm font-medium text-[#17213a] dark:border-[#3a2e24] dark:bg-[#211a14] dark:text-[#f8f1e7]"
-            >
-              <option value="ALL">Tất cả hội thoại</option>
-              <option value="OPEN">Đang mở</option>
-              <option value="CLOSED">Đã đóng</option>
-            </select>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2">

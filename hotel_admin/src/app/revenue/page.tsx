@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { usePermission } from "@/hooks/use-permission";
 import {
   getRevenueSummary,
@@ -96,34 +96,14 @@ export default function RevenuePage() {
               Doanh thu
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-[#7c6f63]">
-              Tổng hợp tiền đã thu từ payment history, đối chiếu với booking để tách
-              tiền phòng, dịch vụ phát sinh và phụ phí.
+              Tổng hợp tiền đã thu từ payment history, đối chiếu với booking để tách tiền
+              phòng, dịch vụ phát sinh và phụ phí.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
-            <label className="block">
-              <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                Từ ngày
-              </span>
-              <Input
-                type="date"
-                value={fromDate}
-                onChange={(event) => setFromDate(event.target.value)}
-                className="mt-2"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                Đến ngày
-              </span>
-              <Input
-                type="date"
-                value={toDate}
-                onChange={(event) => setToDate(event.target.value)}
-                className="mt-2"
-              />
-            </label>
+            <DatePicker label="Từ ngày" value={fromDate} onChange={setFromDate} />
+            <DatePicker label="Đến ngày" value={toDate} onChange={setToDate} />
             <Button
               type="button"
               onClick={() => void loadRevenue()}
@@ -269,7 +249,9 @@ function MetricCard({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-[#75695d]">{title}</p>
-          <p className="mt-3 text-3xl font-black tracking-tight text-[#17213a]">{value}</p>
+          <p className="mt-3 text-3xl font-black tracking-tight text-[#17213a]">
+            {value}
+          </p>
         </div>
         <span className="rounded-2xl bg-[#9b5c24] p-3 text-white">{icon}</span>
       </div>

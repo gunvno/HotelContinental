@@ -6,7 +6,6 @@ import {
   CalendarDays,
   CheckCircle2,
   CreditCard,
-  Filter,
   LogOut,
   RefreshCcw,
   Search,
@@ -18,18 +17,18 @@ import { useEffect, useMemo, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QuickFilter, type QuickFilterOption } from "@/components/ui/quick-filter";
 import { usePermission } from "@/hooks/use-permission";
-import {
-  approveRoomBookingCancellation,
-  checkInRoomBooking,
-  checkOutRoomBooking,
-  getRoomBookings,
-  type RoomBookingResponse,
-} from "@/services/booking-service";
 import {
   getLatestPaymentRequestByBooking,
   mockPaymentRequestPaid,
 } from "@/services/billing-service";
+import {
+  approveRoomBookingCancellation,
+  checkOutRoomBooking,
+  getRoomBookings,
+  type RoomBookingResponse,
+} from "@/services/booking-service";
 import { getAllRooms } from "@/services/room-service";
 
 type DisplayStatus =
@@ -121,25 +120,6 @@ export default function BookingsPage() {
     0,
   );
 
-  async function handleCheckIn(booking: RoomBookingResponse) {
-    if (isActionBusy) return;
-    setActionId(booking.id);
-    setMessage(null);
-    try {
-      const updated = await checkInRoomBooking(booking.id);
-      setBookings((items) =>
-        items.map((item) => (item.id === updated.id ? updated : item)),
-      );
-      setMessage(`Đã check-in booking ${shortCode(updated.id)}.`);
-    } catch {
-      setMessage(
-        "Không thể check-in booking này. Kiểm tra trạng thái booking và quyền BOOKING_CHECKIN.",
-      );
-    } finally {
-      setActionId(null);
-    }
-  }
-
   async function handleCheckOut(booking: RoomBookingResponse) {
     if (isActionBusy) return;
     setActionId(booking.id);
@@ -187,7 +167,9 @@ export default function BookingsPage() {
       setBookings((items) =>
         items.map((item) => (item.id === updated.id ? updated : item)),
       );
-      setMessage(`Đã duyệt hủy booking ${shortCode(updated.id)}. Vui lòng xử lý hoàn tiền thủ công nếu có.`);
+      setMessage(
+        `Đã duyệt hủy booking ${shortCode(updated.id)}. Vui lòng xử lý hoàn tiền thủ công nếu có.`,
+      );
     } catch {
       setMessage(
         "Không thể duyệt hủy booking này. Kiểm tra trạng thái booking và quyền BOOKING_CANCEL.",
@@ -266,7 +248,9 @@ export default function BookingsPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+      <QuickFilter value={status} options={statusButtons} onChange={setStatus} />
+
+      <div>
         <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -287,21 +271,6 @@ export default function BookingsPage() {
                   className="pl-9"
                 />
               </div>
-              <select
-                value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value as DisplayStatus | "ALL")
-                }
-                className="rounded-md border border-[#decdb9] bg-white px-3 py-2 text-sm text-[#17213a]"
-              >
-                <option value="ALL">Tất cả trạng thái</option>
-                <option value="PENDING">Chờ xác nhận</option>
-                <option value="CONFIRMED">Đã xác nhận</option>
-                <option value="CANCEL_REQUESTED">Yêu cầu hủy</option>
-                <option value="CHECKED_IN">Đang ở</option>
-                <option value="CHECKED_OUT">Đã trả phòng</option>
-                <option value="CANCELLED">Đã hủy</option>
-              </select>
             </div>
           </div>
 
@@ -324,7 +293,8 @@ export default function BookingsPage() {
                   return (
                     <tr
                       key={booking.id}
-                      className="border-b border-[#eee3d5] last:border-b-0"
+                      onClick={() => router.push(`/bookings/${booking.id}`)}
+                      className="cursor-pointer border-b border-[#eee3d5] transition-colors last:border-b-0 hover:bg-[#fff6e8]"
                     >
                       <td className="py-4 pr-4 font-medium text-[#17213a]">
                         {shortCode(booking.id)}
@@ -365,7 +335,10 @@ export default function BookingsPage() {
                             type="button"
                             size="sm"
                             disabled={!canConfirmPayment || isActionBusy}
-                            onClick={() => void handleMockConfirmPayment(booking)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleMockConfirmPayment(booking);
+                            }}
                             className="gap-2"
                           >
                             <CreditCard className="h-4 w-4" />
@@ -376,7 +349,10 @@ export default function BookingsPage() {
                             type="button"
                             size="sm"
                             disabled={!canCheckIn || isActionBusy}
-                            onClick={() => router.push(`/bookings/${booking.id}/checkin`)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              router.push(`/bookings/${booking.id}/checkin`);
+                            }}
                             className="gap-2"
                           >
                             <CheckCircle2 className="h-4 w-4" />
@@ -387,7 +363,10 @@ export default function BookingsPage() {
                             type="button"
                             size="sm"
                             disabled={!canCancelBooking || isActionBusy}
-                            onClick={() => void handleApproveCancellation(booking)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleApproveCancellation(booking);
+                            }}
                             className="gap-2 bg-[#8a5724] hover:bg-[#70451c]"
                           >
                             <CheckCircle2 className="h-4 w-4" />
@@ -398,7 +377,10 @@ export default function BookingsPage() {
                             type="button"
                             size="sm"
                             disabled={!canCheckOut || isActionBusy}
-                            onClick={() => void handleCheckOut(booking)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleCheckOut(booking);
+                            }}
                             className="gap-2 bg-[#5f5144] hover:bg-[#4c4036]"
                           >
                             <LogOut className="h-4 w-4" />
@@ -423,68 +405,6 @@ export default function BookingsPage() {
             {loading ? (
               <div className="py-10 text-center text-[#7c6f63]">Đang tải booking...</div>
             ) : null}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[#17213a]">
-              <Filter className="h-4 w-4" /> Bộ lọc nhanh
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              {statusButtons.map((item) => (
-                <button
-                  key={item.value}
-                  onClick={() => setStatus(item.value)}
-                  className={`rounded-xl border px-3 py-2 text-left transition-colors ${
-                    status === item.value
-                      ? "border-[#9b5c24] bg-[#fff6df] text-[#8a5724]"
-                      : "border-[#decdb9] bg-[#fbf6ed] text-[#5f5144] hover:bg-[#f4eadc]"
-                  }`}
-                >
-                  <div className="font-semibold">{item.label}</div>
-                  <div className="text-xs opacity-70">{item.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-[#17213a]">Booking đang chú ý</h3>
-            <div className="mt-4 space-y-4">
-              {bookings.slice(0, 4).map((booking) => {
-                const displayStatus = getDisplayStatus(booking);
-                return (
-                  <div
-                    key={booking.id}
-                    className="rounded-xl border border-[#eee3d5] p-4"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="font-semibold text-[#17213a]">
-                          {shortCode(booking.id)}
-                        </div>
-                        <div className="text-sm text-[#7c6f63]">
-                          {roomNames[booking.roomId] ?? booking.roomId}
-                        </div>
-                      </div>
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(displayStatus)}`}
-                      >
-                        {statusLabel[displayStatus]}
-                      </span>
-                    </div>
-                    <div className="mt-3 flex justify-between text-sm text-[#7c6f63]">
-                      <span>{formatDateTime(booking.checkin)}</span>
-                      <span>{formatMoney(booking.totalPrice)}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {!loading && bookings.length === 0 ? (
-                <p className="text-sm text-[#7c6f63]">Chưa có booking nào.</p>
-              ) : null}
-            </div>
           </div>
         </div>
       </div>
@@ -515,14 +435,16 @@ function MetricCard({
   );
 }
 
-const statusButtons = [
-  { value: "ALL" as const, label: "Tất cả", desc: "Xem toàn bộ booking" },
-  { value: "PENDING" as const, label: "Chờ xác nhận", desc: "Chưa ghi nhận cọc" },
-  { value: "CONFIRMED" as const, label: "Đã xác nhận", desc: "Sẵn sàng check-in" },
-  { value: "CANCEL_REQUESTED" as const, label: "Yêu cầu hủy", desc: "Chờ duyệt hủy" },
-  { value: "CHECKED_IN" as const, label: "Đang ở", desc: "Khách đang lưu trú" },
-  { value: "CHECKED_OUT" as const, label: "Đã trả phòng", desc: "Hoàn tất" },
-  { value: "CANCELLED" as const, label: "Đã hủy", desc: "Booking bị hủy" },
+type StatusFilter = DisplayStatus | "ALL";
+
+const statusButtons: QuickFilterOption<StatusFilter>[] = [
+  { value: "ALL", label: "Tất cả", desc: "Xem toàn bộ booking" },
+  { value: "PENDING", label: "Chờ xác nhận", desc: "Chưa ghi nhận cọc" },
+  { value: "CONFIRMED", label: "Đã xác nhận", desc: "Sẵn sàng check-in" },
+  { value: "CANCEL_REQUESTED", label: "Yêu cầu hủy", desc: "Chờ duyệt hủy" },
+  { value: "CHECKED_IN", label: "Đang ở", desc: "Khách đang lưu trú" },
+  { value: "CHECKED_OUT", label: "Đã trả phòng", desc: "Hoàn tất" },
+  { value: "CANCELLED", label: "Đã hủy", desc: "Booking bị hủy" },
 ];
 
 function getDisplayStatus(booking: RoomBookingResponse): DisplayStatus {

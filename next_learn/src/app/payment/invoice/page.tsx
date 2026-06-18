@@ -17,20 +17,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { getInvoiceByBooking, type InvoiceResponse } from "@/services/billing-service";
 import {
-  changeRoomBookingDates,
   cancelRoomBooking,
+  changeRoomBookingDates,
   getMyRoomBookings,
   type RoomBookingResponse,
 } from "@/services/booking-service";
 import {
+  type FeedbackResponse,
   getMyFeedback,
   submitFeedback,
-  type FeedbackResponse,
 } from "@/services/feedback-service";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -91,6 +91,28 @@ function InvoiceContent() {
     setNewCheckoutTime(getTimeInputValue(value?.checkout));
   }
 
+  function applyNewCheckinDate(value: string) {
+    setNewCheckinDate(value);
+    if (!booking) return;
+
+    const nextCheckout = calculateShiftedCheckout(booking, value, newCheckinTime);
+    if (nextCheckout) {
+      setNewCheckoutDate(getDateInputValue(nextCheckout));
+      setNewCheckoutTime(getTimeInputValue(nextCheckout.toISOString()));
+    }
+  }
+
+  function applyNewCheckinTime(value: string) {
+    setNewCheckinTime(value);
+    if (!booking) return;
+
+    const nextCheckout = calculateShiftedCheckout(booking, newCheckinDate, value);
+    if (nextCheckout) {
+      setNewCheckoutDate(getDateInputValue(nextCheckout));
+      setNewCheckoutTime(getTimeInputValue(nextCheckout.toISOString()));
+    }
+  }
+
   useEffect(() => {
     if (!bookingId) {
       setError("Thiếu mã booking để tải hóa đơn.");
@@ -117,9 +139,9 @@ function InvoiceContent() {
         applyDateEditValues(matchedBooking);
 
         if (matchedBooking?.bookingDetailId) {
-          const existingFeedback = await getMyFeedback(matchedBooking.bookingDetailId).catch(
-            () => null,
-          );
+          const existingFeedback = await getMyFeedback(
+            matchedBooking.bookingDetailId,
+          ).catch(() => null);
           if (!alive) return;
 
           if (existingFeedback && !existingFeedback.roomId && invoiceData.roomId) {
@@ -206,20 +228,22 @@ function InvoiceContent() {
 
   async function handleChangeDates() {
     if (!booking || changeDateLoading) return;
-    if (!newCheckinDate || !newCheckoutDate) {
-      setChangeDateMessage("Vui lòng chọn đầy đủ ngày nhận và ngày trả phòng.");
+    if (!newCheckinDate) {
+      setChangeDateMessage("Vui lòng chọn ngày nhận phòng mới.");
       return;
     }
 
     const isHourly = isHourlyBooking(booking);
+    const shiftedCheckout = calculateShiftedCheckout(
+      booking,
+      newCheckinDate,
+      isHourly ? newCheckinTime : getTimeInputValue(booking.checkin),
+    );
     const checkin = buildLocalDateTimeIso(
       newCheckinDate,
       isHourly ? newCheckinTime : getTimeInputValue(booking.checkin),
     );
-    const checkout = buildLocalDateTimeIso(
-      newCheckoutDate,
-      isHourly ? newCheckoutTime : getTimeInputValue(booking.checkout),
-    );
+    const checkout = shiftedCheckout?.toISOString() ?? null;
 
     if (!checkin || !checkout) {
       setChangeDateMessage("Ngày hoặc giờ lưu trú chưa hợp lệ.");
@@ -311,10 +335,8 @@ function InvoiceContent() {
                 cancelLoading={cancelLoading}
                 cancelMessage={cancelMessage}
                 onToggleDateForm={() => setShowDateForm((value) => !value)}
-                onNewCheckinDateChange={setNewCheckinDate}
-                onNewCheckoutDateChange={setNewCheckoutDate}
-                onNewCheckinTimeChange={setNewCheckinTime}
-                onNewCheckoutTimeChange={setNewCheckoutTime}
+                onNewCheckinDateChange={applyNewCheckinDate}
+                onNewCheckinTimeChange={applyNewCheckinTime}
                 onChangeDates={() => void handleChangeDates()}
                 onCancel={() => void handleCancelBooking()}
               />
@@ -386,9 +408,7 @@ function StayInfoPanel({
   cancelMessage,
   onToggleDateForm,
   onNewCheckinDateChange,
-  onNewCheckoutDateChange,
   onNewCheckinTimeChange,
-  onNewCheckoutTimeChange,
   onChangeDates,
   onCancel,
 }: {
@@ -404,9 +424,7 @@ function StayInfoPanel({
   cancelMessage: string;
   onToggleDateForm: () => void;
   onNewCheckinDateChange: (value: string) => void;
-  onNewCheckoutDateChange: (value: string) => void;
   onNewCheckinTimeChange: (value: string) => void;
-  onNewCheckoutTimeChange: (value: string) => void;
   onChangeDates: () => void;
   onCancel: () => void;
 }) {
@@ -416,6 +434,9 @@ function StayInfoPanel({
   const isCancelAvailable = canUsePolicyBefore(booking, 72);
   const canRequestCancel = isCancelAvailable && booking.status !== "CANCEL_REQUESTED";
   const isHourly = isHourlyBooking(booking);
+  const lockedDurationLabel = isHourly
+    ? getPaidDurationLabel(booking.checkin, booking.checkout)
+    : stayDurationLabel(booking.checkin, booking.checkout);
 
   return (
     <section className="border-border bg-muted/40 mb-6 rounded-2xl border p-4 sm:p-5">
@@ -425,7 +446,8 @@ function StayInfoPanel({
             Thông tin lưu trú
           </p>
           <h3 className="text-foreground mt-1 text-lg font-semibold">
-            {bookingStatusLabel(booking.status)} / {detailStatusLabel(booking.detailStatus)}
+            {bookingStatusLabel(booking.status)} /{" "}
+            {detailStatusLabel(booking.detailStatus)}
           </h3>
         </div>
         <span className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#8a5724]">
@@ -455,7 +477,9 @@ function StayInfoPanel({
           icon={<ShieldCheck className="h-4 w-4" />}
           label="Hủy miễn phí trước"
           value={cancelDeadline ? formatDateTime(cancelDeadline) : "Chưa có"}
-          helper={isCancelAvailable ? "Còn trong thời hạn 72 giờ" : "Đã quá hạn hủy miễn phí"}
+          helper={
+            isCancelAvailable ? "Còn trong thời hạn 72 giờ" : "Đã quá hạn hủy miễn phí"
+          }
           tone={isCancelAvailable ? "success" : "muted"}
         />
       </div>
@@ -465,7 +489,8 @@ function StayInfoPanel({
           <div>
             <p className="text-foreground text-sm font-semibold">Đổi ngày lưu trú</p>
             <p className="text-muted-foreground mt-1 text-xs">
-              Chỉ áp dụng khi còn trước giờ nhận phòng tối thiểu 48 giờ và phòng còn trống.
+              Chỉ áp dụng khi còn trước giờ nhận phòng tối thiểu 48 giờ, phòng còn trống
+              và giữ nguyên thời lượng đã thanh toán.
             </p>
           </div>
           <button
@@ -482,10 +507,12 @@ function StayInfoPanel({
           <div className="mt-4 space-y-3">
             <div className="inline-flex h-10 items-center rounded-xl bg-[#fbf5ed] p-1 text-sm font-bold text-[#8b7a6a]">
               <span className="rounded-lg bg-[#1f1b16] px-3 py-2 text-white">
-                {isHourly ? "Theo giờ" : "Theo đêm"}
+                {isHourly ? "Theo giờ" : "Theo ngày"}
               </span>
               <span className="px-3 py-2">
-                {isHourly ? "Chọn ngày và giờ lưu trú" : "Chỉ đổi ngày, giữ giờ nhận/trả phòng"}
+                {isHourly
+                  ? `Chọn ngày và giờ nhận, giữ ${lockedDurationLabel}`
+                  : `Chỉ đổi ngày nhận, giữ ${lockedDurationLabel}`}
               </span>
             </div>
 
@@ -506,28 +533,28 @@ function StayInfoPanel({
               </div>
 
               <div className={`grid gap-3 ${isHourly ? "sm:grid-cols-[1fr_130px]" : ""}`}>
-                <InvoiceDatePickerField
+                <ReadonlyStayField
                   label="Ngày trả phòng mới"
-                  value={newCheckoutDate}
-                  onChange={onNewCheckoutDateChange}
+                  value={formatDateLabel(newCheckoutDate)}
+                  icon={<CalendarDays className="h-4 w-4" />}
                 />
                 {isHourly ? (
-                  <InvoiceTimeField
+                  <ReadonlyStayField
                     label="Giờ trả"
                     value={newCheckoutTime}
-                    onChange={onNewCheckoutTimeChange}
+                    icon={<Clock3 className="h-4 w-4" />}
                   />
                 ) : null}
               </div>
 
-            <button
-              type="button"
-              onClick={onChangeDates}
-              disabled={changeDateLoading}
-              className="bg-ring text-background inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {changeDateLoading ? "Đang lưu..." : "Lưu ngày mới"}
-            </button>
+              <button
+                type="button"
+                onClick={onChangeDates}
+                disabled={changeDateLoading}
+                className="bg-ring text-background inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {changeDateLoading ? "Đang lưu..." : "Lưu ngày mới"}
+              </button>
             </div>
           </div>
         ) : null}
@@ -543,7 +570,8 @@ function StayInfoPanel({
         <div>
           <p className="text-foreground text-sm font-semibold">Yêu cầu hủy đặt phòng</p>
           <p className="text-muted-foreground mt-1 text-xs">
-            Booking đã thanh toán sẽ chuyển sang trạng thái chờ lễ tân duyệt, không hoàn tiền tự động.
+            Booking đã thanh toán sẽ chuyển sang trạng thái chờ lễ tân duyệt, không hoàn
+            tiền tự động.
           </p>
         </div>
         <button
@@ -660,7 +688,10 @@ function InvoiceDatePickerField({
 
           <div className="grid grid-cols-7 gap-1 text-center">
             {calendarWeekDays.map((day) => (
-              <span key={day} className="py-2 text-[11px] font-bold text-[#b08f6c] uppercase">
+              <span
+                key={day}
+                className="py-2 text-[11px] font-bold text-[#b08f6c] uppercase"
+              >
                 {day}
               </span>
             ))}
@@ -729,6 +760,30 @@ function InvoiceTimeField({
         />
       </span>
     </label>
+  );
+}
+
+function ReadonlyStayField({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+        {label}
+      </span>
+      <span className="flex h-11 items-center gap-2 rounded-xl border border-[#e8ddd0] bg-[#f4eee6] px-3 text-[#78695c]">
+        <span className="shrink-0 text-[#c47a34]">{icon}</span>
+        <span className="text-foreground min-w-0 flex-1 truncate text-sm font-semibold">
+          {value}
+        </span>
+      </span>
+    </div>
   );
 }
 
@@ -835,8 +890,8 @@ function FeedbackPanel({
 
       {!canReview ? (
         <div className="bg-muted text-muted-foreground mt-5 rounded-xl p-4 text-sm">
-          Booking chưa checkout nên chưa thể đánh giá. Form sẽ mở sau khi lễ tân hoàn
-          tất checkout.
+          Booking chưa checkout nên chưa thể đánh giá. Form sẽ mở sau khi lễ tân hoàn tất
+          checkout.
         </div>
       ) : (
         <div className="mt-5 space-y-4">
@@ -857,7 +912,10 @@ function FeedbackPanel({
                   }`}
                   aria-label={`${value} sao`}
                 >
-                  <Star className="h-4 w-4" fill={value <= rating ? "currentColor" : "none"} />
+                  <Star
+                    className="h-4 w-4"
+                    fill={value <= rating ? "currentColor" : "none"}
+                  />
                 </button>
               ))}
             </div>
@@ -871,7 +929,7 @@ function FeedbackPanel({
               value={comment}
               onChange={(event) => onCommentChange(event.target.value)}
               rows={4}
-              className="border-border bg-background mt-2 w-full resize-none rounded-xl border px-4 py-3 text-sm outline-none transition focus:border-[#c47b30]"
+              className="border-border bg-background mt-2 w-full resize-none rounded-xl border px-4 py-3 text-sm transition outline-none focus:border-[#c47b30]"
               placeholder="Chia sẻ trải nghiệm lưu trú của bạn..."
             />
           </label>
@@ -886,7 +944,7 @@ function FeedbackPanel({
             <span>
               <span className="block font-semibold text-[#1c1c19]">Đánh giá ẩn danh</span>
               <span className="text-xs">
-                Nếu bật, đánh giá của bạn sẽ hiển thị là "Khách đã lưu trú".
+                Nếu bật, đánh giá của bạn sẽ hiển thị là &quot;Khách đã lưu trú&quot;.
               </span>
             </span>
           </label>
@@ -903,7 +961,11 @@ function FeedbackPanel({
             disabled={submitting}
             className="bg-ring text-background inline-flex h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
             Gửi đánh giá
           </button>
         </div>
@@ -1005,6 +1067,39 @@ function buildLocalDateTimeIso(dateValue: string, timeValue: string) {
   return date.toISOString();
 }
 
+function buildLocalDateTime(dateValue: string, timeValue: string) {
+  if (!dateValue || !timeValue) return null;
+  const date = new Date(`${dateValue}T${timeValue}:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+function calculateShiftedCheckout(
+  booking: RoomBookingResponse,
+  nextCheckinDate: string,
+  nextCheckinTime: string,
+) {
+  const originalCheckin = new Date(booking.checkin);
+  const originalCheckout = new Date(booking.checkout);
+  if (
+    Number.isNaN(originalCheckin.getTime()) ||
+    Number.isNaN(originalCheckout.getTime()) ||
+    originalCheckout <= originalCheckin
+  ) {
+    return null;
+  }
+
+  const checkinTime = isHourlyBooking(booking)
+    ? nextCheckinTime
+    : getTimeInputValue(booking.checkin);
+  const nextCheckin = buildLocalDateTime(nextCheckinDate, checkinTime);
+  if (!nextCheckin) return null;
+
+  return new Date(
+    nextCheckin.getTime() + (originalCheckout.getTime() - originalCheckin.getTime()),
+  );
+}
+
 function parseDateInput(value?: string | null) {
   if (!value) return new Date();
   const [year, month, day] = value.split("-").map(Number);
@@ -1042,10 +1137,25 @@ function isHourlyBooking(booking: RoomBookingResponse) {
   if (Number.isNaN(checkin.getTime()) || Number.isNaN(checkout.getTime())) return false;
 
   const durationHours = (checkout.getTime() - checkin.getTime()) / (60 * 60 * 1000);
-  const checkinMinutes = checkin.getHours() * 60 + checkin.getMinutes();
-  const checkoutMinutes = checkout.getHours() * 60 + checkout.getMinutes();
+  return durationHours > 0 && durationHours < 24;
+}
 
-  return durationHours < 20 || checkinMinutes !== 14 * 60 || checkoutMinutes !== 12 * 60;
+function getPaidDurationLabel(checkin?: string, checkout?: string) {
+  if (!checkin || !checkout) return "thời lượng đã thanh toán";
+  const start = new Date(checkin);
+  const end = new Date(checkout);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    return "thời lượng đã thanh toán";
+  }
+
+  const totalMinutes = Math.round((end.getTime() - start.getTime()) / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0) {
+    return `${hours} giờ${minutes > 0 ? ` ${minutes} phút` : ""}`;
+  }
+  return `${minutes} phút`;
 }
 
 function canUsePolicyBefore(booking: RoomBookingResponse, hoursBeforeCheckin: number) {
@@ -1162,7 +1272,9 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          <Suspense fallback={<div className="p-10 text-center">Đang tải hóa đơn...</div>}>
+          <Suspense
+            fallback={<div className="p-10 text-center">Đang tải hóa đơn...</div>}
+          >
             <InvoiceContent />
           </Suspense>
         </section>

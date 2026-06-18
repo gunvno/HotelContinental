@@ -7,6 +7,7 @@ import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
 import {
   type BuildingResponse,
@@ -316,18 +317,20 @@ function BuildingSetupForm({
           />
         </Field>
         <Field label="Loại phòng mặc định *">
-          <select
+          <Select
             value={form.defaultRoomTypeId}
-            onChange={(event) => onChange("defaultRoomTypeId", event.target.value)}
-            className="h-10 w-full rounded-md border border-[#decdb9] bg-[#fffaf2] px-3 text-sm outline-none"
-          >
-            {roomTypes.length === 0 ? <option value="">Chưa có loại phòng</option> : null}
-            {roomTypes.map((roomType) => (
-              <option key={roomType.id} value={roomType.id}>
-                {roomType.name} · tối đa {roomType.maximumOccupancy} khách
-              </option>
-            ))}
-          </select>
+            onValueChange={(value) => onChange("defaultRoomTypeId", value)}
+            placeholder="Chọn loại phòng"
+            disabled={roomTypes.length === 0}
+            options={
+              roomTypes.length === 0
+                ? [{ value: "", label: "Chưa có loại phòng" }]
+                : roomTypes.map((roomType) => ({
+                    value: roomType.id,
+                    label: `${roomType.name} · tối đa ${roomType.maximumOccupancy} khách`,
+                  }))
+            }
+          />
         </Field>
         <Field label="Tầng bắt đầu *">
           <Input

@@ -2,11 +2,12 @@
 
 import { BedDouble, CheckCircle2, Hotel, Layers3, Plus, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { usePermission } from "@/hooks/use-permission";
+import { getRoomBookings, type RoomBookingResponse } from "@/services/booking-service";
 import {
   type BuildingResponse,
   type FloorResponse,
@@ -16,14 +17,15 @@ import {
   type RoomResponse,
 } from "@/services/room-service";
 
-const statusLabel: Record<string, string> = {
-  AVAILABLE: "Sẵn sàng",
-  OCCUPIED: "Đang ở",
-  RESERVED: "Đã giữ",
-  MAINTENANCE: "Bảo trì",
-};
-
 const ROOM_PAGE_SIZE = 10;
+
+type RoomScheduleKind = "FREE" | "BUSY_NOW" | "UPCOMING" | "MAINTENANCE";
+
+type RoomSchedule = {
+  kind: RoomScheduleKind;
+  label: string;
+  description: string;
+};
 
 export default function RoomsPage() {
   const router = useRouter();
@@ -33,10 +35,15 @@ export default function RoomsPage() {
   const [totalRooms, setTotalRooms] = useState(0);
   const [buildings, setBuildings] = useState<BuildingResponse[]>([]);
   const [floors, setFloors] = useState<FloorResponse[]>([]);
+  const [bookings, setBookings] = useState<RoomBookingResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const availableRooms = rooms.filter((room) => room.status === "AVAILABLE").length;
+  const roomSchedules = useMemo(() => buildRoomSchedules(rooms, bookings), [rooms, bookings]);
+  const availableRooms = rooms.filter((room) => {
+    const schedule = room.id ? roomSchedules[room.id] : null;
+    return schedule?.kind === "FREE";
+  }).length;
   const canCreateRoom = permission.has("ROOM_CREATE");
   const canOpenRoomDetail = permission.hasAny(
     "ROOM_UPDATE",
@@ -64,9 +71,10 @@ export default function RoomsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const [roomResult, buildingResult] = await Promise.all([
+      const [roomResult, buildingResult, bookingResult] = await Promise.all([
         getAllRooms(pageIndex, ROOM_PAGE_SIZE),
         getBuildings(),
+        getRoomBookings().catch(() => []),
       ]);
       const floorEntries = await Promise.all(
         buildingResult.map(
@@ -79,6 +87,7 @@ export default function RoomsPage() {
       setTotalRooms(roomResult.total);
       setBuildings(buildingResult);
       setFloors(floorEntries.flatMap(([, buildingFloors]) => buildingFloors));
+      setBookings(bookingResult);
     } catch (loadError) {
       console.error(loadError);
       setError(
@@ -145,6 +154,7 @@ export default function RoomsPage() {
 
       <RoomTableView
         rooms={rooms}
+        roomSchedules={roomSchedules}
         buildings={buildings}
         floors={floors}
         isLoading={isLoading}
@@ -162,6 +172,7 @@ export default function RoomsPage() {
 
 function RoomTableView({
   rooms,
+  roomSchedules,
   buildings,
   floors,
   isLoading,
@@ -174,6 +185,7 @@ function RoomTableView({
   onOpen,
 }: {
   rooms: RoomResponse[];
+  roomSchedules: Record<string, RoomSchedule>;
   buildings: BuildingResponse[];
   floors: FloorResponse[];
   isLoading: boolean;
@@ -234,7 +246,7 @@ function RoomTableView({
               <th className="px-4 py-4 font-black">Diện tích</th>
               <th className="px-4 py-4 font-black">Giá ngày</th>
               <th className="px-4 py-4 font-black">Giá giờ</th>
-              <th className="px-4 py-4 font-black">Trạng thái</th>
+              <th className="px-4 py-4 font-black">Lịch đặt</th>
             </tr>
           </thead>
           <tbody>
@@ -250,6 +262,7 @@ function RoomTableView({
             ) : (
               rooms.map((room) => {
                 const location = resolveRoomLocationParts(room, buildings, floors);
+                const schedule = room.id ? roomSchedules[room.id] : freeSchedule();
 
                 return (
                   <tr
@@ -297,10 +310,13 @@ function RoomTableView({
                     </td>
                     <td className="px-4 py-4">
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-black ${getStatusClassName(room.status)}`}
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${getScheduleClassName(schedule.kind)}`}
                       >
-                        {statusLabel[room.status] || room.status}
+                        {schedule.label}
                       </span>
+                      <div className="mt-1 max-w-[220px] text-xs leading-5 text-[#75695d]">
+                        {schedule.description}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -335,18 +351,106 @@ function resolveRoomLocationParts(
   };
 }
 
-function getStatusClassName(status: string) {
-  switch (status) {
-    case "AVAILABLE":
+function buildRoomSchedules(
+  rooms: RoomResponse[],
+  bookings: RoomBookingResponse[],
+): Record<string, RoomSchedule> {
+  const now = Date.now();
+
+  return Object.fromEntries(
+    rooms
+      .filter((room): room is RoomResponse & { id: string } => Boolean(room.id))
+      .map((room) => {
+        if (room.status === "MAINTENANCE") {
+          return [
+            room.id,
+            {
+              kind: "MAINTENANCE",
+              label: "Bảo trì",
+              description: "Phòng đang bảo trì, không mở bán theo mọi khung giờ.",
+            },
+          ];
+        }
+
+        const activeBookings = bookings
+          .filter((booking) => booking.roomId === room.id && isBlockingBooking(booking))
+          .map((booking) => ({
+            booking,
+            checkin: new Date(booking.checkin ?? "").getTime(),
+            checkout: new Date(booking.checkout ?? "").getTime(),
+          }))
+          .filter(
+            (item) =>
+              Number.isFinite(item.checkin) &&
+              Number.isFinite(item.checkout) &&
+              item.checkout > now,
+          )
+          .sort((left, right) => left.checkin - right.checkin);
+
+        const current = activeBookings.find(
+          (item) => item.checkin <= now && item.checkout > now,
+        );
+        if (current) {
+          return [
+            room.id,
+            {
+              kind: "BUSY_NOW",
+              label: "Đang có khách",
+              description: `Đến ${formatDateTime(current.booking.checkout)}.`,
+            },
+          ];
+        }
+
+        const next = activeBookings[0];
+        if (next) {
+          return [
+            room.id,
+            {
+              kind: "UPCOMING",
+              label: "Có lịch sắp tới",
+              description: `${formatDateTime(next.booking.checkin)} -> ${formatDateTime(
+                next.booking.checkout,
+              )}.`,
+            },
+          ];
+        }
+
+        return [room.id, freeSchedule()];
+      }),
+  );
+}
+
+function freeSchedule(): RoomSchedule {
+  return {
+    kind: "FREE",
+    label: "Trống theo lịch",
+    description: "Không có booking chặn ở hiện tại hoặc tương lai gần.",
+  };
+}
+
+function isBlockingBooking(booking: RoomBookingResponse) {
+  if (booking.status === "CANCEL" || booking.status === "CANCEL_REQUESTED") {
+    return false;
+  }
+  if (booking.detailStatus === "CANCELED" || booking.detailStatus === "NO_SHOW") {
+    return false;
+  }
+  if (booking.status === "DONE" || booking.detailStatus === "CHECKED_OUT") {
+    return false;
+  }
+  return booking.status === "DEPOSITED" || booking.detailStatus === "BOOKED" || booking.detailStatus === "CHECKED_IN";
+}
+
+function getScheduleClassName(kind: RoomScheduleKind) {
+  switch (kind) {
+    case "FREE":
       return "bg-emerald-50 text-emerald-700";
-    case "OCCUPIED":
+    case "BUSY_NOW":
       return "bg-blue-50 text-blue-700";
-    case "RESERVED":
+    case "UPCOMING":
       return "bg-amber-50 text-amber-700";
     case "MAINTENANCE":
       return "bg-red-50 text-red-700";
-    default:
-      return "bg-[#f3eadf] text-[#75695d]";
   }
 }
 
@@ -376,6 +480,17 @@ function Alert({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function formatCurrency(value: number | string) {
