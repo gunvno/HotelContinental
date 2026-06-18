@@ -2,6 +2,7 @@ import { http } from "@/lib/http";
 import type { ApiResponse } from "@/types/api-types";
 
 export type ServiceOrderDetailStatus = "WAITING" | "SERVED";
+export type ServiceOrderSource = "INCLUDED" | "EXTRA";
 
 export type ServiceOrderDetailPayload = {
   roomBookingId: string;
@@ -16,13 +17,18 @@ export type ServiceOrderDetailResponse = {
   serviceName?: string;
   roomBookingId?: string;
   roomBookingDetailId: string;
+  roomId?: string;
+  roomName?: string;
   quantity: number;
   amount: number;
   price: number;
   totalPrice: number;
   description?: string;
   status: ServiceOrderDetailStatus;
+  source?: ServiceOrderSource;
+  chargeable?: boolean;
   servedTime?: string;
+  servedBy?: string;
   createdTime?: string;
   createdBy?: string;
 };

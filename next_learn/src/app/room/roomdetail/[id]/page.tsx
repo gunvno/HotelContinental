@@ -25,6 +25,7 @@ import {
   getRoomFeedbacks,
   type FeedbackResponse,
 } from "@/services/feedback-service";
+import { quoteRoomRate, type RoomRateQuoteResponse } from "@/services/pricing-service";
 import { useAuthStore } from "@/store/auth-store";
 
 function getFeatureIcon(iconType: string) {
@@ -68,6 +69,7 @@ export default function RoomDetailPage() {
   const token = useAuthStore((state) => state.token);
   const [roomData, setRoomData] = useState<RoomDetailData | null>(null);
   const [reviews, setReviews] = useState<FeedbackResponse[]>([]);
+  const [rateQuote, setRateQuote] = useState<RoomRateQuoteResponse | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +106,35 @@ export default function RoomDetailPage() {
     if (roomId) loadRoomDetail();
   }, [roomId]);
 
+  useEffect(() => {
+    if (!roomData?.roomTypeId || roomData.pricePerNight <= 0) {
+      setRateQuote(null);
+      return;
+    }
+
+    let isMounted = true;
+    const unitPrice =
+      stayType === "hour" ? Math.round(roomData.pricePerNight / 8) : roomData.pricePerNight;
+
+    quoteRoomRate({
+      roomTypeId: roomData.roomTypeId,
+      basePrice: unitPrice,
+      checkin: buildCheckin(checkIn, checkInTime),
+      checkout: buildCheckout(checkIn, checkOut, checkInTime, stayType, stayHours),
+      stayType: stayType === "hour" ? "HOUR" : "NIGHT",
+    })
+      .then((quote) => {
+        if (isMounted) setRateQuote(quote);
+      })
+      .catch(() => {
+        if (isMounted) setRateQuote(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [checkIn, checkInTime, checkOut, roomData, stayHours, stayType]);
+
   if (isLoading) {
     return (
       <main className="min-h-screen bg-[#fdf9f4] pt-32 pb-24">
@@ -120,6 +151,7 @@ export default function RoomDetailPage() {
 
   function buildBookingHref({
     roomId,
+    roomTypeId,
     roomTitle,
     pricePerNight,
     checkIn,
@@ -131,6 +163,7 @@ export default function RoomDetailPage() {
     token,
   }: {
     roomId: string;
+    roomTypeId?: string;
     roomTitle: string;
     pricePerNight: number;
     checkIn: string;
@@ -143,6 +176,7 @@ export default function RoomDetailPage() {
   }) {
     const paymentParams = new URLSearchParams({
       roomId,
+      ...(roomTypeId ? { roomTypeId } : {}),
       roomTitle,
       pricePerNight: String(pricePerNight),
       checkIn,
@@ -181,6 +215,27 @@ export default function RoomDetailPage() {
     }).format(new Date(value));
   }
 
+  function buildCheckin(checkInValue: string, checkInTimeValue: string) {
+    return `${checkInValue}T${checkInTimeValue.length === 5 ? checkInTimeValue : "14:00"}:00`;
+  }
+
+  function buildCheckout(
+    checkInValue: string,
+    checkOutValue: string,
+    checkInTimeValue: string,
+    stayTypeValue: string,
+    stayHoursValue: number,
+  ) {
+    if (stayTypeValue === "hour") {
+      const start = new Date(buildCheckin(checkInValue, checkInTimeValue));
+      start.setHours(start.getHours() + stayHoursValue);
+      const pad = (num: number) => String(num).padStart(2, "0");
+      return `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}T${pad(start.getHours())}:${pad(start.getMinutes())}:00`;
+    }
+
+    return `${checkOutValue}T12:00:00`;
+  }
+
   function getReviewAuthor(review: FeedbackResponse) {
     if (review.anonymous) return "Khách đã lưu trú";
     return review.customerName?.trim() || "Khách đã lưu trú";
@@ -216,8 +271,9 @@ export default function RoomDetailPage() {
     stayType === "hour"
       ? Math.round((pricePerNight / 8) * stayHours)
       : pricePerNight * nightCount;
-  const taxFee = Math.round(roomSubtotal * 0.1);
-  const totalPrice = roomSubtotal + taxFee;
+  const pricedRoomSubtotal = rateQuote?.totalPrice ?? roomSubtotal;
+  const taxFee = Math.round(pricedRoomSubtotal * 0.1);
+  const totalPrice = pricedRoomSubtotal + taxFee;
   const stayLabel = stayType === "hour" ? `${stayHours} giờ` : `${nightCount} đêm`;
   const averageRating =
     reviews.length > 0
@@ -225,6 +281,7 @@ export default function RoomDetailPage() {
       : 0;
   const bookingHref = buildBookingHref({
     roomId: roomData.id,
+    roomTypeId: roomData.roomTypeId,
     roomTitle: title,
     pricePerNight,
     checkIn,
@@ -504,8 +561,13 @@ export default function RoomDetailPage() {
               <div className="space-y-3 border-t border-[#d6c3b4]/20 pt-5">
                 <div className="flex justify-between text-sm text-[#514439] sm:text-base">
                   <span>Giá phòng ({stayLabel})</span>
-                  <span>{roomSubtotal.toLocaleString("vi-VN")} VNĐ</span>
+                  <span>{pricedRoomSubtotal.toLocaleString("vi-VN")} VNĐ</span>
                 </div>
+                {rateQuote?.items?.some((item) => Number(item.multiplier) !== 1) ? (
+                  <div className="rounded-xl bg-[#fff6df] p-3 text-xs leading-5 text-[#8a5724]">
+                    Giá đã áp dụng hệ số theo ngày lưu trú như cuối tuần hoặc ngày lễ.
+                  </div>
+                ) : null}
                 <div className="flex justify-between text-sm text-[#514439] sm:text-base">
                   <span>VAT và phụ phí (10%)</span>
                   <span>{taxFee.toLocaleString("vi-VN")} VNĐ</span>

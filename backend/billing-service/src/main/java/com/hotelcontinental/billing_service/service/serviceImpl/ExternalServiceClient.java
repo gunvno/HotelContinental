@@ -4,6 +4,9 @@ import com.hotelcontinental.billing_service.dto.ApiResponse;
 import com.hotelcontinental.billing_service.dto.request.RoomBookingTotalsUpdateRequest;
 import com.hotelcontinental.billing_service.dto.response.CatalogServiceSnapshotResponse;
 import com.hotelcontinental.billing_service.dto.response.RoomBookingSnapshotResponse;
+import com.hotelcontinental.billing_service.dto.response.RoomSnapshotResponse;
+import com.hotelcontinental.billing_service.dto.response.RoomTypeServiceSnapshotResponse;
+import com.hotelcontinental.billing_service.dto.response.SpringPageResponse;
 import com.hotelcontinental.billing_service.exception.AppException;
 import com.hotelcontinental.billing_service.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +18,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.List;
+
 @Component
 @RequiredArgsConstructor
 public class ExternalServiceClient {
@@ -25,6 +30,9 @@ public class ExternalServiceClient {
 
     @Value("${app.services.catalog:http://localhost:8083/catalog}")
     private String catalogServiceUrl;
+
+    @Value("${app.services.room:http://localhost:8081/room}")
+    private String roomServiceUrl;
 
     @Value("${app.internal-secret:dev-internal-secret}")
     private String internalSecret;
@@ -98,6 +106,39 @@ public class ExternalServiceClient {
         }
 
         return response.getResult();
+    }
+
+    public RoomSnapshotResponse getRoom(String roomId) {
+        ApiResponse<RoomSnapshotResponse> response = restClientBuilder.baseUrl(roomServiceUrl).build()
+                .get()
+                .uri("/room/customer/{id}", roomId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+
+        if (response == null || response.getResult() == null) {
+            throw new AppException(ErrorCode.BOOKING_SYNC_FAILED);
+        }
+
+        return response.getResult();
+    }
+
+    public List<RoomTypeServiceSnapshotResponse> getIncludedServicesByRoomType(String roomTypeId) {
+        ApiResponse<SpringPageResponse<RoomTypeServiceSnapshotResponse>> response =
+                restClientBuilder.baseUrl(catalogServiceUrl).build()
+                        .get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/roomTypeService/roomType/{roomTypeId}")
+                                .queryParam("page", 0)
+                                .queryParam("size", 200)
+                                .build(roomTypeId))
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<>() {});
+
+        if (response == null || response.getResult() == null || response.getResult().getContent() == null) {
+            return List.of();
+        }
+
+        return response.getResult().getContent();
     }
 
     private String bearerHeader() {

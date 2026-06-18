@@ -54,6 +54,13 @@ public class ServiceOrderDetailController {
                 .build();
     }
 
+    @PostMapping("/bookings/{roomBookingId}/included")
+    public ApiResponse<List<ServiceOrderDetailResponse>> ensureIncludedServices(@PathVariable String roomBookingId) {
+        return ApiResponse.<List<ServiceOrderDetailResponse>>builder()
+                .result(serviceOrderDetailService.ensureIncludedServices(roomBookingId))
+                .build();
+    }
+
     @PostMapping("/{id}/serve")
     public ApiResponse<ServiceOrderDetailResponse> markServed(@PathVariable String id) {
         return ApiResponse.<ServiceOrderDetailResponse>builder()

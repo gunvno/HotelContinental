@@ -2,6 +2,7 @@ import { http } from "@/lib/http";
 import type { ApiResponse } from "@/types/api-types";
 
 export type ServiceOrderDetailStatus = "WAITING" | "SERVED";
+export type ServiceOrderSource = "INCLUDED" | "EXTRA";
 
 export type ServiceOrderDetailPayload = {
   roomBookingId: string;
@@ -16,13 +17,18 @@ export type ServiceOrderDetailResponse = {
   serviceName?: string;
   roomBookingId?: string;
   roomBookingDetailId: string;
+  roomId?: string;
+  roomName?: string;
   quantity: number;
   amount: number;
   price: number;
   totalPrice: number;
   description?: string;
   status: ServiceOrderDetailStatus;
+  source?: ServiceOrderSource;
+  chargeable?: boolean;
   servedTime?: string;
+  servedBy?: string;
   createdTime?: string;
   createdBy?: string;
 };
@@ -40,6 +46,13 @@ export async function createServiceOrderDetail(payload: ServiceOrderDetailPayloa
     .post("billing/service-order-details", { json: payload })
     .json<ApiResponse<ServiceOrderDetailResponse>>();
   return (res.result ?? res.content) as ServiceOrderDetailResponse;
+}
+
+export async function ensureIncludedServiceOrderDetails(roomBookingId: string) {
+  const res = await http
+    .post(`billing/service-order-details/bookings/${roomBookingId}/included`)
+    .json<ApiResponse<ServiceOrderDetailResponse[]>>();
+  return (res.result ?? res.content ?? []) as ServiceOrderDetailResponse[];
 }
 
 export async function markServiceOrderServed(id: string) {

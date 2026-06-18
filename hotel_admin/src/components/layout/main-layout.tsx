@@ -107,6 +107,12 @@ const catalogNav = [
     icon: ShieldCheck,
     requiredPermission: "ROOM_TYPE_SERVICE_VIEW",
   },
+  {
+    label: "Hệ số giá phòng",
+    href: "/admin/room-rate-rules",
+    icon: TicketPercent,
+    requiredPermission: "ROOM_RATE_RULE_VIEW",
+  },
 ];
 
 const promotionNav = [
@@ -388,6 +394,7 @@ function getPathTitle(pathname: string) {
     return "Gắn cơ sở vật chất theo loại phòng";
   if (pathname.startsWith("/admin/room-type-services"))
     return "Gắn dịch vụ bổ sung theo loại phòng";
+  if (pathname.startsWith("/admin/room-rate-rules")) return "Hệ số giá phòng";
   if (pathname.startsWith("/admin/vouchers")) return "Quản lý voucher";
   if (pathname.startsWith("/admin/policies")) return "Quản lý chính sách";
   if (pathname.startsWith("/bookings")) return "Đặt phòng";

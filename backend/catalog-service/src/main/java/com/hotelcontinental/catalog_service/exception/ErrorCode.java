@@ -12,7 +12,9 @@ public enum ErrorCode {
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     FILE_NOT_FOUND(1008, "File not found", HttpStatus.NOT_FOUND),
     ROOM_NOT_FOUND(2001, "Room type not found", HttpStatus.NOT_FOUND),
-    ROOM_ALREADY_EXISTS(2002, "Room type already exists", HttpStatus.BAD_REQUEST);
+    ROOM_ALREADY_EXISTS(2002, "Room type already exists", HttpStatus.BAD_REQUEST),
+    ROOM_RATE_RULE_NOT_FOUND(2101, "Room rate rule not found", HttpStatus.NOT_FOUND),
+    INVALID_ROOM_RATE_RULE(2102, "Invalid room rate rule", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

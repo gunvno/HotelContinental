@@ -187,6 +187,32 @@ export type RoomTypeOption = {
   name: string;
 };
 
+// ============= ROOM RATE RULES =============
+export type RoomRateRuleType = "WEEKEND" | "HOLIDAY" | "SEASON" | "MANUAL";
+
+export type RoomRateRulePayload = {
+  roomTypeId?: string | null;
+  name: string;
+  ruleType: RoomRateRuleType;
+  startDate: string;
+  endDate: string;
+  daysOfWeek?: string | null;
+  multiplier: number;
+  priority: number;
+  note?: string;
+  active?: boolean;
+};
+
+export type RoomRateRuleResponse = RoomRateRulePayload & {
+  id: string;
+  roomTypeName?: string | null;
+  createdBy?: string;
+  createdTime?: string;
+  modifiedBy?: string;
+  modifiedTime?: string;
+  deleted?: boolean;
+};
+
 type SpringPage<T> = {
   content: T[];
   totalElements?: number;
@@ -455,6 +481,49 @@ export async function updateRoomTypeService(
 
 export async function deleteRoomTypeService(id: string): Promise<void> {
   await http.delete(`catalog/roomTypeService/${id}`);
+}
+
+// ============= ROOM RATE RULE SERVICES =============
+export async function createRoomRateRule(
+  payload: RoomRateRulePayload,
+): Promise<RoomRateRuleResponse> {
+  const res = await http
+    .post("catalog/room-rate-rules", { json: payload })
+    .json<ApiResponse<RoomRateRuleResponse>>();
+  return (res.result ?? res.content) as RoomRateRuleResponse;
+}
+
+export async function getRoomRateRules(
+  page = 0,
+  size = 100,
+): Promise<{ data: RoomRateRuleResponse[]; total: number }> {
+  const res = await http
+    .get("catalog/room-rate-rules", {
+      searchParams: { page, size },
+    })
+    .json<ApiResponse<SpringPage<RoomRateRuleResponse>>>();
+
+  const pageData = (res.result ?? res.content) as
+    | SpringPage<RoomRateRuleResponse>
+    | undefined;
+  return {
+    data: pageData?.content ?? [],
+    total: pageData?.totalElements ?? 0,
+  };
+}
+
+export async function updateRoomRateRule(
+  id: string,
+  payload: RoomRateRulePayload,
+): Promise<RoomRateRuleResponse> {
+  const res = await http
+    .put(`catalog/room-rate-rules/${id}`, { json: payload })
+    .json<ApiResponse<RoomRateRuleResponse>>();
+  return (res.result ?? res.content) as RoomRateRuleResponse;
+}
+
+export async function deleteRoomRateRule(id: string): Promise<void> {
+  await http.delete(`catalog/room-rate-rules/${id}`);
 }
 
 // ============= ROOM SERVICES (EXISTING) =============

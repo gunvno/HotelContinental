@@ -24,7 +24,8 @@ public class SecurityConfig {
             "/service",
             "/service/**",
             "/roomTypeService",
-            "/roomTypeService/**"
+            "/roomTypeService/**",
+            "/room-rate-rules/quote"
     };
 
     private final CustomJwtDecoder customJwtDecoder;
@@ -37,6 +38,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request -> request
                 .requestMatchers(HttpMethod.GET, PUBLIC_ENDPOINTS).permitAll()
+                .requestMatchers(HttpMethod.POST, "/room-rate-rules/quote").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated());
 

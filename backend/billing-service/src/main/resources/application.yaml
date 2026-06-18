@@ -28,6 +28,7 @@ app:
     identity: http://localhost:8080/identity
     booking: http://localhost:8084/booking
     catalog: http://localhost:8083/catalog
+    room: http://localhost:8081/room
 
 payos:
   enabled: true

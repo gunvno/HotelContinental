@@ -4,9 +4,12 @@ import com.hotelcontinental.billing_service.dto.request.RoomBookingTotalsUpdateR
 import com.hotelcontinental.billing_service.dto.request.ServiceOrderDetailCreationRequest;
 import com.hotelcontinental.billing_service.dto.response.CatalogServiceSnapshotResponse;
 import com.hotelcontinental.billing_service.dto.response.RoomBookingSnapshotResponse;
+import com.hotelcontinental.billing_service.dto.response.RoomSnapshotResponse;
+import com.hotelcontinental.billing_service.dto.response.RoomTypeServiceSnapshotResponse;
 import com.hotelcontinental.billing_service.dto.response.ServiceOrderDetailResponse;
 import com.hotelcontinental.billing_service.entity.ServiceOrderDetails;
 import com.hotelcontinental.billing_service.enums.ServiceOrderDetailStatus;
+import com.hotelcontinental.billing_service.enums.ServiceOrderSource;
 import com.hotelcontinental.billing_service.exception.AppException;
 import com.hotelcontinental.billing_service.exception.ErrorCode;
 import com.hotelcontinental.billing_service.repository.ServiceOrderDetailsRepository;
@@ -59,6 +62,7 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
         if (Boolean.TRUE.equals(catalogService.getDeleted()) || catalogService.getPrice() < 0) {
             throw new AppException(ErrorCode.CATALOG_SERVICE_NOT_FOUND);
         }
+        RoomSnapshotResponse room = loadRoomSafely(booking.getRoomId());
 
         LocalDateTime now = LocalDateTime.now();
         String actor = getCurrentActor();
@@ -67,12 +71,17 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
         ServiceOrderDetails detail = new ServiceOrderDetails();
         detail.setRoomBookingId(booking.getId());
         detail.setRoomBookingDetailId(booking.getBookingDetailId());
+        detail.setRoomId(booking.getRoomId());
+        detail.setRoomNameSnapshot(room != null ? room.getName() : booking.getRoomId());
         detail.setServiceId(catalogService.getId());
+        detail.setServiceNameSnapshot(catalogService.getName());
         detail.setQuantity(quantity);
         detail.setAmount(quantity);
         detail.setPrice(catalogService.getPrice());
         detail.setDescription(request.getDescription());
         detail.setStatus(ServiceOrderDetailStatus.WAITING);
+        detail.setSource(ServiceOrderSource.EXTRA);
+        detail.setChargeable(true);
         detail.setCreatedTime(now);
         detail.setCreatedBy(actor);
         detail.setDeleted(false);
@@ -83,6 +92,64 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
         }
 
         return map(detail, request.getRoomBookingId().trim(), catalogService);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAuthority('SERVICE_ORDER_INCLUDED_SYNC')")
+    public List<ServiceOrderDetailResponse> ensureIncludedServices(String roomBookingId) {
+        if (roomBookingId == null || roomBookingId.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_SERVICE_ORDER_REQUEST);
+        }
+
+        RoomBookingSnapshotResponse booking = externalServiceClient.getBooking(roomBookingId.trim());
+        if (booking.getBookingDetailId() == null || booking.getBookingDetailId().isBlank()) {
+            throw new AppException(ErrorCode.INVALID_SERVICE_ORDER_REQUEST);
+        }
+
+        RoomSnapshotResponse room = externalServiceClient.getRoom(booking.getRoomId());
+        if (room.getRoomTypeId() == null || room.getRoomTypeId().isBlank()) {
+            throw new AppException(ErrorCode.INVALID_SERVICE_ORDER_REQUEST);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        String actor = getCurrentActor();
+        List<RoomTypeServiceSnapshotResponse> includedServices =
+                externalServiceClient.getIncludedServicesByRoomType(room.getRoomTypeId());
+
+        for (RoomTypeServiceSnapshotResponse includedService : includedServices) {
+            if (Boolean.TRUE.equals(includedService.getDeleted())
+                    || includedService.getServiceId() == null
+                    || includedService.getServiceId().isBlank()
+                    || serviceOrderDetailsRepository.existsByRoomBookingIdAndServiceIdAndSourceAndDeletedFalse(
+                    booking.getId(),
+                    includedService.getServiceId(),
+                    ServiceOrderSource.INCLUDED
+            )) {
+                continue;
+            }
+
+            ServiceOrderDetails detail = new ServiceOrderDetails();
+            detail.setRoomBookingId(booking.getId());
+            detail.setRoomBookingDetailId(booking.getBookingDetailId());
+            detail.setRoomId(booking.getRoomId());
+            detail.setRoomNameSnapshot(room.getName());
+            detail.setServiceId(includedService.getServiceId());
+            detail.setServiceNameSnapshot(includedService.getServiceName());
+            detail.setQuantity(Math.max(1, includedService.getAmount()));
+            detail.setAmount(Math.max(1, includedService.getAmount()));
+            detail.setPrice(0);
+            detail.setDescription("Dịch vụ kèm theo loại phòng");
+            detail.setStatus(ServiceOrderDetailStatus.WAITING);
+            detail.setSource(ServiceOrderSource.INCLUDED);
+            detail.setChargeable(false);
+            detail.setCreatedTime(now);
+            detail.setCreatedBy(actor);
+            detail.setDeleted(false);
+            serviceOrderDetailsRepository.save(detail);
+        }
+
+        return getAll(booking.getId());
     }
 
     @Override
@@ -125,6 +192,7 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
         ServiceOrderDetails detail = getRequiredDetail(id);
         detail.setStatus(ServiceOrderDetailStatus.SERVED);
         detail.setServedTime(LocalDateTime.now());
+        detail.setServedBy(getCurrentActor());
         detail.setModifiedTime(LocalDateTime.now());
         detail.setModifiedBy(getCurrentActor());
         return map(serviceOrderDetailsRepository.save(detail), null, null);
@@ -207,18 +275,34 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
         return ServiceOrderDetailResponse.builder()
                 .id(detail.getId())
                 .serviceId(detail.getServiceId())
-                .serviceName(catalogService != null ? catalogService.getName() : null)
+                .serviceName(catalogService != null ? catalogService.getName() : detail.getServiceNameSnapshot())
                 .roomBookingId(roomBookingId != null ? roomBookingId : detail.getRoomBookingId())
                 .roomBookingDetailId(detail.getRoomBookingDetailId())
+                .roomId(detail.getRoomId())
+                .roomName(detail.getRoomNameSnapshot())
                 .quantity(detail.getQuantity())
                 .amount(detail.getAmount())
                 .price(detail.getPrice())
-                .totalPrice(detail.getPrice() * detail.getQuantity())
+                .totalPrice(Boolean.FALSE.equals(detail.getChargeable()) ? 0 : detail.getPrice() * detail.getQuantity())
                 .description(detail.getDescription())
                 .status(detail.getStatus())
+                .source(detail.getSource() != null ? detail.getSource() : ServiceOrderSource.EXTRA)
+                .chargeable(detail.getChargeable() != null ? detail.getChargeable() : true)
                 .servedTime(detail.getServedTime())
+                .servedBy(detail.getServedBy())
                 .createdTime(detail.getCreatedTime())
                 .createdBy(detail.getCreatedBy())
                 .build();
+    }
+
+    private RoomSnapshotResponse loadRoomSafely(String roomId) {
+        if (roomId == null || roomId.isBlank()) {
+            return null;
+        }
+        try {
+            return externalServiceClient.getRoom(roomId);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }

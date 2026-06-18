@@ -262,6 +262,7 @@ async function enrichRoom(room: RoomResponse): Promise<RoomResponse> {
 
 export interface RoomDetailData {
   id: string;
+  roomTypeId?: string;
   image: string;
   label: string;
   title: string;
@@ -302,6 +303,7 @@ export async function getRoomDetail(id: string): Promise<RoomDetailData | null> 
 
     return {
       id: room.id,
+      roomTypeId: room.roomTypeId ?? room.roomTypes?.id,
       image: gallery[0],
       label: room.roomTypes?.name || "Phòng khách sạn",
       title: room.name || "Tên phòng",

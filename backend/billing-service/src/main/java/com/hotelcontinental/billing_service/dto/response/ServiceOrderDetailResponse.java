@@ -1,6 +1,7 @@
 package com.hotelcontinental.billing_service.dto.response;
 
 import com.hotelcontinental.billing_service.enums.ServiceOrderDetailStatus;
+import com.hotelcontinental.billing_service.enums.ServiceOrderSource;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -17,13 +18,18 @@ public class ServiceOrderDetailResponse {
     String serviceName;
     String roomBookingId;
     String roomBookingDetailId;
+    String roomId;
+    String roomName;
     int quantity;
     int amount;
     float price;
     float totalPrice;
     String description;
     ServiceOrderDetailStatus status;
+    ServiceOrderSource source;
+    Boolean chargeable;
     LocalDateTime servedTime;
+    String servedBy;
     LocalDateTime createdTime;
     String createdBy;
 }

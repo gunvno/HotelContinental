@@ -1,6 +1,7 @@
 package com.hotelcontinental.billing_service.entity;
 
 import com.hotelcontinental.billing_service.enums.ServiceOrderDetailStatus;
+import com.hotelcontinental.billing_service.enums.ServiceOrderSource;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -31,11 +32,20 @@ public class ServiceOrderDetails {
     @Column(name = "service_id", nullable = false)
     String serviceId;
 
+    @Column(name = "service_name_snapshot")
+    String serviceNameSnapshot;
+
     @Column(name = "room_booking_id")
     String roomBookingId;
 
     @Column(name = "room_booking_detail_id", nullable = false)
     String roomBookingDetailId;
+
+    @Column(name = "room_id")
+    String roomId;
+
+    @Column(name = "room_name_snapshot")
+    String roomNameSnapshot;
 
     @Column(name = "quantity", nullable = false)
     int quantity;
@@ -53,8 +63,18 @@ public class ServiceOrderDetails {
     @Column(name = "status")
     ServiceOrderDetailStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source")
+    ServiceOrderSource source;
+
+    @Column(name = "chargeable")
+    Boolean chargeable = true;
+
     @Column(name = "served_time")
     LocalDateTime servedTime;
+
+    @Column(name = "served_by", length = 100)
+    String servedBy;
 
     @Column(name = "created_time")
     LocalDateTime createdTime;

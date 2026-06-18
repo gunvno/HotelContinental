@@ -10,6 +10,8 @@ public interface ServiceOrderDetailService {
 
     ServiceOrderDetailResponse createForCurrentCustomer(ServiceOrderDetailCreationRequest request);
 
+    List<ServiceOrderDetailResponse> ensureIncludedServices(String roomBookingId);
+
     List<ServiceOrderDetailResponse> getAll(String roomBookingId);
 
     List<ServiceOrderDetailResponse> getForCurrentCustomer(String roomBookingId);

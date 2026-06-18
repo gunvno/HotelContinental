@@ -26,6 +26,7 @@ import {
   type RoomBookingResponse,
 } from "@/services/booking-service";
 import { getRoom, type RoomResponse } from "@/services/room-service";
+import { ensureIncludedServiceOrderDetails } from "@/services/service-order-service";
 import { getUserSummary, type UserSummaryResponse } from "@/services/user-service";
 
 type GuestForm = ResidenceGuestPayload;
@@ -150,6 +151,7 @@ export default function BookingCheckInPage() {
         })),
       );
       const updated = await checkInRoomBooking(booking.id);
+      await ensureIncludedServiceOrderDetails(booking.id).catch(() => null);
       setBooking(updated);
       setMessage("Đã lưu đăng ký lưu trú và check-in thành công.");
       window.setTimeout(() => router.push("/bookings"), 700);

@@ -27,6 +27,7 @@ import {
   type VoucherApplyResponse,
 } from "@/services/promotion-service";
 import { getCatalogServices, type ServiceResponse } from "@/services/room-service";
+import { quoteRoomRate, type RoomRateQuoteResponse } from "@/services/pricing-service";
 import { createMyServiceOrderDetail } from "@/services/service-order-service";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -56,6 +57,9 @@ function PaymentContent() {
   const [voucherMessage, setVoucherMessage] = useState<string | null>(null);
   const [services, setServices] = useState<ServiceResponse[]>([]);
   const [selectedServices, setSelectedServices] = useState<SelectedServiceMap>({});
+  const [rateQuote, setRateQuote] = useState<RoomRateQuoteResponse | null>(null);
+  const [rateLoading, setRateLoading] = useState(false);
+  const [rateMessage, setRateMessage] = useState<string | null>(null);
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
     phoneNumber: "",
@@ -65,6 +69,7 @@ function PaymentContent() {
 
   const paymentData = useMemo(() => {
     const roomId = searchParams.get("roomId") || "";
+    const roomTypeId = searchParams.get("roomTypeId") || "";
     const roomTitle = searchParams.get("roomTitle") || "Phòng khách sạn";
     const checkIn = searchParams.get("checkIn") || "";
     const checkOut = searchParams.get("checkOut") || "";
@@ -92,6 +97,7 @@ function PaymentContent() {
 
     return {
       roomId,
+      roomTypeId,
       roomTitle,
       checkIn,
       checkOut,
@@ -123,12 +129,18 @@ function PaymentContent() {
     (total, item) => total + Number(item.service.price ?? 0) * item.quantity,
     0,
   );
+  const quotedRoomAmount = rateQuote?.totalPrice ?? paymentData.roomAmount;
+  const quotedUnitPrice =
+    rateQuote?.items?.[0]?.finalUnitPrice ?? paymentData.unitPrice;
+  const quotedTax = Math.round(quotedRoomAmount * 0.1);
+  const quotedMemberDiscount = Math.round(quotedRoomAmount * 0.05);
+  const quotedBaseTotal = quotedRoomAmount + quotedTax - quotedMemberDiscount;
   const voucherDiscount = appliedVoucher?.discountAmount ?? 0;
   const finalTotal = Math.max(
     0,
-    paymentData.baseTotal + selectedServiceTotal - voucherDiscount,
+    quotedBaseTotal + selectedServiceTotal - voucherDiscount,
   );
-  const totalExtraPrice = paymentData.tax - paymentData.memberDiscount - voucherDiscount;
+  const totalExtraPrice = quotedTax - quotedMemberDiscount - voucherDiscount;
   const isActionBusy = isSubmitting || isApplyingVoucher;
 
   useEffect(() => {
@@ -189,6 +201,54 @@ function PaymentContent() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!paymentData.roomTypeId || paymentData.unitPrice <= 0) {
+      setRateQuote(null);
+      return;
+    }
+
+    let isMounted = true;
+    setRateLoading(true);
+    setRateMessage(null);
+    quoteRoomRate({
+      roomTypeId: paymentData.roomTypeId,
+      basePrice: paymentData.unitPrice,
+      checkin: buildCheckin(paymentData.checkIn, paymentData.checkInTime),
+      checkout: buildCheckout(
+        paymentData.checkIn,
+        paymentData.checkOut,
+        paymentData.checkInTime,
+        paymentData.stayType,
+        paymentData.stayDuration,
+      ),
+      stayType: paymentData.stayType === "hour" ? "HOUR" : "NIGHT",
+    })
+      .then((quote) => {
+        if (!isMounted) return;
+        setRateQuote(quote);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setRateQuote(null);
+        setRateMessage("Đang dùng giá tiêu chuẩn do chưa tải được hệ số giá.");
+      })
+      .finally(() => {
+        if (isMounted) setRateLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    paymentData.checkIn,
+    paymentData.checkInTime,
+    paymentData.checkOut,
+    paymentData.roomTypeId,
+    paymentData.stayDuration,
+    paymentData.stayType,
+    paymentData.unitPrice,
+  ]);
+
   async function handleApplyVoucher() {
     if (isActionBusy) return;
 
@@ -201,7 +261,7 @@ function PaymentContent() {
     setIsApplyingVoucher(true);
     setVoucherMessage(null);
     try {
-      const voucher = await applyVoucher(code, paymentData.baseTotal + selectedServiceTotal);
+      const voucher = await applyVoucher(code, quotedBaseTotal + selectedServiceTotal);
       setAppliedVoucher(voucher);
       setVoucherCode(voucher.code);
       setVoucherMessage(
@@ -262,8 +322,8 @@ function PaymentContent() {
             paymentData.stayType,
             paymentData.stayDuration,
           ),
-          roomPrice: paymentData.unitPrice,
-          totalRoomPrice: paymentData.roomAmount,
+          roomPrice: quotedUnitPrice,
+          totalRoomPrice: quotedRoomAmount,
           totalServicePrice: selectedServiceTotal,
           totalExtraPrice,
           totalPrice: finalTotal,
@@ -527,12 +587,12 @@ function PaymentContent() {
             <div className="mt-5 space-y-2 text-sm">
               <SummaryRow
                 label={`Giá phòng (${paymentData.stayDuration} ${paymentData.stayUnit} x ${formatMoney(paymentData.unitPrice)})`}
-                value={formatMoney(paymentData.roomAmount)}
+                value={formatMoney(quotedRoomAmount)}
               />
-              <SummaryRow label="VAT và phụ phí (10%)" value={formatMoney(paymentData.tax)} />
+              <SummaryRow label="VAT và phụ phí (10%)" value={formatMoney(quotedTax)} />
               <SummaryRow
                 label="Ưu đãi thành viên (5%)"
-                value={`- ${formatMoney(paymentData.memberDiscount)}`}
+                value={`- ${formatMoney(quotedMemberDiscount)}`}
                 highlight
               />
               {selectedServiceTotal > 0 ? (
@@ -569,6 +629,34 @@ function PaymentContent() {
                   ))}
                 </div>
               </div>
+            ) : null}
+
+            {rateQuote?.items?.length ? (
+              <div className="border-border mt-5 border-t pt-4">
+                <p className="text-muted-foreground mb-2 text-[11px] tracking-[0.12em] uppercase">
+                  Hệ số giá theo ngày
+                </p>
+                <div className="space-y-2">
+                  {rateQuote.items.map((item) => (
+                    <div
+                      key={`${item.date}-${item.ruleName}`}
+                      className="text-muted-foreground flex justify-between gap-3 text-xs"
+                    >
+                      <span>
+                        {formatShortDate(item.date)} - {item.ruleName}
+                        {Number(item.multiplier) !== 1
+                          ? ` x${Number(item.multiplier).toFixed(2)}`
+                          : ""}
+                      </span>
+                      <span>{formatMoney(item.finalPrice)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : rateLoading || rateMessage ? (
+              <p className="mt-4 rounded-xl bg-[#fff6df] p-3 text-sm text-[#8a5724]">
+                {rateLoading ? "Đang kiểm tra hệ số giá..." : rateMessage}
+              </p>
             ) : null}
 
             <div className="border-border mt-5 border-t pt-4">
@@ -698,6 +786,14 @@ function SummaryRow({
 
 function formatMoney(value?: number) {
   return `${currencyFormatter.format(Number(value ?? 0))}đ`;
+}
+
+function formatShortDate(value?: string) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date(`${value}T00:00:00`));
 }
 
 function buildCheckin(checkIn: string, checkInTime: string) {

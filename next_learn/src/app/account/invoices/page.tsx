@@ -15,9 +15,21 @@ import { useAuthStore } from "@/store/auth-store";
 
 const currencyFormatter = new Intl.NumberFormat("vi-VN");
 
+const paymentStatusOptions: Array<{
+  value: PaymentRequestStatus | "ALL";
+  label: string;
+}> = [
+  { value: "ALL", label: "Tất cả trạng thái" },
+  { value: "PENDING", label: "Chờ thanh toán" },
+  { value: "PAID", label: "Đã thanh toán" },
+  { value: "EXPIRED", label: "Đã hết hạn" },
+  { value: "FAILED", label: "Thất bại" },
+];
+
 export default function InvoicesPage() {
   const token = useAuthStore((state) => state.token);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequestResponse[]>([]);
+  const [statusFilter, setStatusFilter] = useState<PaymentRequestStatus | "ALL">("ALL");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +55,11 @@ export default function InvoicesPage() {
       isMounted = false;
     };
   }, [token]);
+
+  const filteredPaymentRequests =
+    statusFilter === "ALL"
+      ? paymentRequests
+      : paymentRequests.filter((request) => request.status === statusFilter);
 
   return (
     <ProtectedRoute>
@@ -74,59 +91,97 @@ export default function InvoicesPage() {
                   </p>
                 ) : (
                   <>
-                    <div className="space-y-3 md:hidden">
-                      {paymentRequests.map((request) => (
-                        <PaymentRequestCard key={request.id} request={request} />
-                      ))}
+                    <div className="mb-5 flex flex-col gap-3 border-b border-[#f0ece5] pb-5 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-[#1f1a17]">
+                          {filteredPaymentRequests.length} hóa đơn
+                        </p>
+                        <p className="text-xs text-[#8c8277]">
+                          Lọc theo trạng thái thanh toán của từng yêu cầu.
+                        </p>
+                      </div>
+                      <select
+                        value={statusFilter}
+                        onChange={(event) =>
+                          setStatusFilter(event.target.value as PaymentRequestStatus | "ALL")
+                        }
+                        className="h-11 rounded-xl border border-[#ead8c4] bg-white px-3 text-sm font-semibold text-[#1f1a17] outline-none transition focus:border-[#c8792a] sm:w-56"
+                      >
+                        {paymentStatusOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="hidden overflow-x-auto md:block">
-                      <table className="w-full min-w-[860px] text-left">
-                      <thead>
-                        <tr className="border-b border-[#f0ece5]">
-                          <TableHead>Mã thanh toán</TableHead>
-                          <TableHead>Mã booking</TableHead>
-                          <TableHead>Ngày tạo</TableHead>
-                          <TableHead>Trạng thái</TableHead>
-                          <TableHead>Tổng tiền</TableHead>
-                          <TableHead alignRight>Thao tác</TableHead>
-                        </tr>
-                      </thead>
-                      <tbody className="text-[14px] font-medium text-[#1f1a17]">
-                        {paymentRequests.map((request, index) => (
-                          <tr
-                            key={request.id}
-                            className={
-                              index !== paymentRequests.length - 1
-                                ? "border-b border-[#f0ece5]/60"
-                                : ""
-                            }
-                          >
-                            <td className="py-6">
-                              <div className="font-semibold">{shortCode(request.id)}</div>
-                              <div className="mt-1 text-xs text-[#9d8f82]">{request.id}</div>
-                            </td>
-                            <td className="py-6 text-[#8c8277]">
-                              <div>{shortCode(request.roomBookingId)}</div>
-                              <div className="mt-1 text-xs">{request.roomBookingId}</div>
-                            </td>
-                            <td className="py-6 text-[#8c8277]">
-                              {formatDate(request.paidTime ?? request.createdTime)}
-                            </td>
-                            <td className="py-6">
-                              <StatusBadge status={request.status} />
-                            </td>
-                            <td className="py-6 font-bold text-[#b97a38]">
-                              {formatMoney(request.amount)}
-                            </td>
-                            <td className="py-6 text-right">
-                              <InvoiceAction request={request} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      </table>
-                    </div>
+                    {filteredPaymentRequests.length === 0 ? (
+                      <p className="py-10 text-center text-sm text-[#8c8277]">
+                        Không có hóa đơn nào ở trạng thái này.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="space-y-3 md:hidden">
+                          {filteredPaymentRequests.map((request) => (
+                            <PaymentRequestCard key={request.id} request={request} />
+                          ))}
+                        </div>
+
+                        <div className="hidden overflow-x-auto md:block">
+                          <table className="w-full min-w-[860px] text-left">
+                            <thead>
+                              <tr className="border-b border-[#f0ece5]">
+                                <TableHead>Mã thanh toán</TableHead>
+                                <TableHead>Mã booking</TableHead>
+                                <TableHead>Ngày tạo</TableHead>
+                                <TableHead>Trạng thái</TableHead>
+                                <TableHead>Tổng tiền</TableHead>
+                                <TableHead alignRight>Thao tác</TableHead>
+                              </tr>
+                            </thead>
+                            <tbody className="text-[14px] font-medium text-[#1f1a17]">
+                              {filteredPaymentRequests.map((request, index) => (
+                                <tr
+                                  key={request.id}
+                                  className={
+                                    index !== filteredPaymentRequests.length - 1
+                                      ? "border-b border-[#f0ece5]/60"
+                                      : ""
+                                  }
+                                >
+                                  <td className="py-6">
+                                    <div className="font-semibold">
+                                      {shortCode(request.id)}
+                                    </div>
+                                    <div className="mt-1 text-xs text-[#9d8f82]">
+                                      {request.id}
+                                    </div>
+                                  </td>
+                                  <td className="py-6 text-[#8c8277]">
+                                    <div>{shortCode(request.roomBookingId)}</div>
+                                    <div className="mt-1 text-xs">
+                                      {request.roomBookingId}
+                                    </div>
+                                  </td>
+                                  <td className="py-6 text-[#8c8277]">
+                                    {formatDate(request.paidTime ?? request.createdTime)}
+                                  </td>
+                                  <td className="py-6">
+                                    <StatusBadge status={request.status} />
+                                  </td>
+                                  <td className="py-6 font-bold text-[#b97a38]">
+                                    {formatMoney(request.amount)}
+                                  </td>
+                                  <td className="py-6 text-right">
+                                    <InvoiceAction request={request} />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>

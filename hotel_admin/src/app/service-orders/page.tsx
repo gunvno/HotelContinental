@@ -20,16 +20,38 @@ import { getCatalogServices, type ServiceResponse } from "@/services/room-servic
 import {
   createServiceOrderDetail,
   deleteServiceOrderDetail,
+  ensureIncludedServiceOrderDetails,
   getServiceOrderDetails,
   markServiceOrderServed,
   type ServiceOrderDetailResponse,
+  type ServiceOrderDetailStatus,
+  type ServiceOrderSource,
 } from "@/services/service-order-service";
+
+const serviceOrderStatusOptions: Array<{
+  value: ServiceOrderDetailStatus | "ALL";
+  label: string;
+}> = [
+  { value: "ALL", label: "Tất cả trạng thái" },
+  { value: "WAITING", label: "Đang chờ" },
+  { value: "SERVED", label: "Đã phục vụ" },
+];
+
+const serviceOrderSourceOptions: Array<{
+  value: ServiceOrderSource | "ALL";
+  label: string;
+}> = [
+  { value: "ALL", label: "Tất cả nguồn" },
+  { value: "INCLUDED", label: "Kèm phòng" },
+  { value: "EXTRA", label: "Gọi thêm" },
+];
 
 export default function ServiceOrdersPage() {
   const permission = usePermission();
   const canOpenPage = permission.hasAny("SERVICE_ORDER_VIEW", "BOOKING_VIEW");
   const canView = permission.has("SERVICE_ORDER_VIEW");
   const canCreate = permission.has("SERVICE_ORDER_CREATE");
+  const canSyncIncluded = permission.has("SERVICE_ORDER_INCLUDED_SYNC");
   const canServe = permission.has("SERVICE_ORDER_SERVE");
   const canDelete = permission.has("SERVICE_ORDER_DELETE");
 
@@ -41,6 +63,8 @@ export default function ServiceOrdersPage() {
   const [quantity, setQuantity] = useState(1);
   const [description, setDescription] = useState("");
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ServiceOrderDetailStatus | "ALL">("ALL");
+  const [sourceFilter, setSourceFilter] = useState<ServiceOrderSource | "ALL">("ALL");
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -56,25 +80,38 @@ export default function ServiceOrdersPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const [bookingData, serviceData, orderData] = await Promise.all([
+      const [bookingData, serviceData] = await Promise.all([
         getRoomBookings(),
         getCatalogServices(0, 500),
-        getServiceOrderDetails(roomBookingId || undefined),
       ]);
+
+      const targetBookingId =
+        roomBookingId ||
+        bookingData.find((booking) => booking.status === "CHECKED_IN")?.id ||
+        bookingData.find((booking) => booking.status === "DEPOSITED")?.id ||
+        bookingData[0]?.id ||
+        "";
+
+      let orderData: ServiceOrderDetailResponse[] = [];
+      if (targetBookingId) {
+        try {
+          orderData = canSyncIncluded
+            ? await ensureIncludedServiceOrderDetails(targetBookingId)
+            : await getServiceOrderDetails(targetBookingId);
+        } catch {
+          orderData = await getServiceOrderDetails(targetBookingId);
+        }
+      } else {
+        orderData = await getServiceOrderDetails(undefined);
+      }
 
       setBookings(bookingData);
       setServices(serviceData.data);
       setItems(orderData);
-
-      if (!roomBookingId) {
-        const firstActive =
-          bookingData.find((booking) => booking.status === "CHECKED_IN") ??
-          bookingData[0];
-        if (firstActive) setSelectedBookingId(firstActive.id);
-      }
+      setSelectedBookingId(targetBookingId);
     } catch {
       setMessage(
-        "Không tải được dữ liệu dịch vụ phát sinh. Kiểm tra billing-service, booking-service, catalog-service và quyền.",
+        "Không tải được dữ liệu dịch vụ phòng. Kiểm tra billing-service, booking-service, catalog-service và quyền.",
       );
     } finally {
       setLoading(false);
@@ -152,15 +189,21 @@ export default function ServiceOrdersPage() {
 
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return items;
 
     return items.filter((item) => {
+      const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
+      if (!matchesStatus) return false;
+      const source = item.source ?? "EXTRA";
+      const matchesSource = sourceFilter === "ALL" || source === sourceFilter;
+      if (!matchesSource) return false;
+      if (!normalized) return true;
+
       const service = serviceMap.get(item.serviceId);
-      return `${service?.name ?? item.serviceName ?? ""} ${item.description ?? ""} ${item.serviceId}`
+      return `${service?.name ?? item.serviceName ?? ""} ${item.description ?? ""} ${item.serviceId} ${item.roomName ?? ""} ${item.roomId ?? ""}`
         .toLowerCase()
         .includes(normalized);
     });
-  }, [items, query, serviceMap]);
+  }, [items, query, serviceMap, sourceFilter, statusFilter]);
 
   if (!canOpenPage) {
     return (
@@ -177,11 +220,11 @@ export default function ServiceOrdersPage() {
               Vận hành lưu trú
             </p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">
-              Dịch vụ phát sinh
+              Dịch vụ phòng
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-[#7c6f63]">
-              Thêm dịch vụ khách gọi riêng trong quá trình lưu trú. Dữ liệu này cộng vào
-              tổng dịch vụ của booking.
+              Theo dõi dịch vụ kèm phòng và dịch vụ khách gọi thêm. Chỉ dịch vụ gọi
+              thêm mới cộng vào tổng bill.
             </p>
           </div>
           <Button
@@ -217,7 +260,7 @@ export default function ServiceOrdersPage() {
             <div>
               <h3 className="font-bold text-[#17213a]">Thêm dịch vụ</h3>
               <p className="text-sm text-[#7c6f63]">
-                Chọn booking và dịch vụ trong catalog.
+                Dịch vụ gọi thêm sẽ được tính tiền vào booking.
               </p>
             </div>
           </div>
@@ -236,7 +279,7 @@ export default function ServiceOrdersPage() {
                 {bookings.map((booking) => (
                   <option key={booking.id} value={booking.id}>
                     {shortCode(booking.id)} - {booking.status} -{" "}
-                    {booking.detailStatus ?? "N/A"}
+                    {booking.detailStatus ?? "N/A"} - Phòng {booking.roomId}
                   </option>
                 ))}
               </select>
@@ -297,6 +340,9 @@ export default function ServiceOrdersPage() {
                 <b>{selectedBooking ? shortCode(selectedBooking.id) : "Chưa chọn"}</b>
               </p>
               <p>
+                Phòng: <b>{selectedBooking?.roomId ?? "Chưa chọn"}</b>
+              </p>
+              <p>
                 Tổng dịch vụ hiện tại:{" "}
                 <b>{formatMoney(selectedBooking?.totalServicePrice ?? 0)}</b>
               </p>
@@ -324,17 +370,47 @@ export default function ServiceOrdersPage() {
         <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="font-bold text-[#17213a]">Danh sách dịch vụ phát sinh</h3>
-              <p className="text-sm text-[#7c6f63]">Theo booking đang chọn.</p>
+              <h3 className="font-bold text-[#17213a]">Danh sách dịch vụ cần phục vụ</h3>
+              <p className="text-sm text-[#7c6f63]">
+                Dịch vụ kèm phòng được đồng bộ từ loại phòng.
+              </p>
             </div>
-            <div className="relative w-full md:w-80">
-              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Tìm dịch vụ..."
-                className="pl-9"
-              />
+            <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
+              <div className="relative w-full md:w-72">
+                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#9b5c24]" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Tìm dịch vụ..."
+                  className="pl-9"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as ServiceOrderDetailStatus | "ALL")
+                }
+                className="h-10 rounded-md border border-[#decdb9] bg-white px-3 text-sm font-semibold text-[#17213a] outline-none transition focus:border-[#c8792a] md:w-44"
+              >
+                {serviceOrderStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={sourceFilter}
+                onChange={(event) =>
+                  setSourceFilter(event.target.value as ServiceOrderSource | "ALL")
+                }
+                className="h-10 rounded-md border border-[#decdb9] bg-white px-3 text-sm font-semibold text-[#17213a] outline-none transition focus:border-[#c8792a] md:w-40"
+              >
+                {serviceOrderSourceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -343,6 +419,8 @@ export default function ServiceOrdersPage() {
               <thead className="bg-[#fbf8f2] text-xs tracking-[0.14em] text-[#6f5f50] uppercase">
                 <tr>
                   <th className="px-4 py-3">Dịch vụ</th>
+                  <th className="px-4 py-3">Phòng</th>
+                  <th className="px-4 py-3">Nguồn</th>
                   <th className="px-4 py-3">SL</th>
                   <th className="px-4 py-3">Thành tiền</th>
                   <th className="px-4 py-3">Trạng thái</th>
@@ -352,20 +430,21 @@ export default function ServiceOrdersPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-[#7c6f63]">
+                    <td colSpan={7} className="px-4 py-10 text-center text-[#7c6f63]">
                       Đang tải...
                     </td>
                   </tr>
                 ) : filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-[#7c6f63]">
-                      Chưa có dịch vụ phát sinh
+                    <td colSpan={7} className="px-4 py-10 text-center text-[#7c6f63]">
+                      Không có dịch vụ phòng phù hợp bộ lọc
                     </td>
                   </tr>
                 ) : (
                   filteredItems.map((item) => {
                     const service = serviceMap.get(item.serviceId);
                     const busy = actionId === item.id;
+                    const source = item.source ?? "EXTRA";
                     return (
                       <tr key={item.id} className="border-t border-[#ead8c4]">
                         <td className="px-4 py-3">
@@ -376,9 +455,30 @@ export default function ServiceOrdersPage() {
                             {item.description || "Không có ghi chú"}
                           </div>
                         </td>
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-[#17213a]">
+                            {item.roomName || item.roomId || selectedBooking?.roomId || "N/A"}
+                          </div>
+                          <div className="text-xs text-[#8a7967]">
+                            {shortCode(item.roomBookingId || selectedBookingId)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                              source === "INCLUDED"
+                                ? "bg-sky-50 text-sky-700"
+                                : "bg-[#fff6df] text-[#9b5c24]"
+                            }`}
+                          >
+                            {source === "INCLUDED" ? "Kèm phòng" : "Gọi thêm"}
+                          </span>
+                        </td>
                         <td className="px-4 py-3">{item.quantity}</td>
                         <td className="px-4 py-3 font-semibold">
-                          {formatMoney(item.totalPrice || item.price * item.quantity)}
+                          {item.chargeable === false
+                            ? "Miễn phí"
+                            : formatMoney(item.totalPrice || item.price * item.quantity)}
                         </td>
                         <td className="px-4 py-3">
                           <span

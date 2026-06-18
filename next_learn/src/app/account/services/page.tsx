@@ -364,9 +364,9 @@ export default function AccountServicesPage() {
 
                 <section className="rounded-3xl border border-[#ead8c4] bg-white p-6 shadow-sm">
                   <div>
-                    <h2 className="font-bold text-[#1f1a17]">Dịch vụ đã gọi</h2>
+                    <h2 className="font-bold text-[#1f1a17]">Dịch vụ của kỳ lưu trú</h2>
                     <p className="mt-1 text-sm text-[#7c6f63]">
-                      Danh sách yêu cầu theo booking đang chọn.
+                      Bao gồm dịch vụ kèm phòng và dịch vụ bạn gọi thêm.
                     </p>
                   </div>
 
@@ -396,18 +396,25 @@ export default function AccountServicesPage() {
                         ) : (
                           items.map((item) => (
                             <tr key={item.id} className="border-t border-[#ead8c4]">
-                              <td className="px-4 py-3">
-                                <div className="font-bold text-[#1f1a17]">
-                                  {item.serviceName || item.serviceId}
+                            <td className="px-4 py-3">
+                              <div className="font-bold text-[#1f1a17]">
+                                {item.serviceName || item.serviceId}
+                              </div>
+                              {item.source === "INCLUDED" ? (
+                                <div className="mt-1 text-xs font-bold text-sky-700">
+                                  Kèm phòng
                                 </div>
-                                <div className="mt-1 flex items-center gap-1 text-xs text-[#8a7967]">
-                                  <Clock className="h-3.5 w-3.5" />
-                                  {item.description || "Không có ghi chú"}
+                              ) : null}
+                              <div className="mt-1 flex items-center gap-1 text-xs text-[#8a7967]">
+                                <Clock className="h-3.5 w-3.5" />
+                                {item.description || "Không có ghi chú"}
                                 </div>
                               </td>
                               <td className="px-4 py-3">{item.quantity}</td>
                               <td className="px-4 py-3 font-semibold">
-                                {formatMoney(item.totalPrice || item.price * item.quantity)}
+                                {item.chargeable === false
+                                  ? "Miễn phí"
+                                  : formatMoney(item.totalPrice || item.price * item.quantity)}
                               </td>
                               <td className="px-4 py-3">
                                 <span
