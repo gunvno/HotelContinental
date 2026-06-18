@@ -4,6 +4,9 @@ import {
   ArrowLeft,
   BedDouble,
   CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Download,
   Loader2,
@@ -14,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { getInvoiceByBooking, type InvoiceResponse } from "@/services/billing-service";
@@ -32,6 +35,21 @@ import {
 import { useAuthStore } from "@/store/auth-store";
 
 const currencyFormatter = new Intl.NumberFormat("vi-VN");
+const calendarWeekDays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+const calendarMonthNames = [
+  "Tháng 1",
+  "Tháng 2",
+  "Tháng 3",
+  "Tháng 4",
+  "Tháng 5",
+  "Tháng 6",
+  "Tháng 7",
+  "Tháng 8",
+  "Tháng 9",
+  "Tháng 10",
+  "Tháng 11",
+  "Tháng 12",
+];
 
 function InvoiceContent() {
   const searchParams = useSearchParams();
@@ -47,8 +65,10 @@ function InvoiceContent() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [changeDateLoading, setChangeDateLoading] = useState(false);
   const [showDateForm, setShowDateForm] = useState(false);
-  const [newCheckin, setNewCheckin] = useState("");
-  const [newCheckout, setNewCheckout] = useState("");
+  const [newCheckinDate, setNewCheckinDate] = useState("");
+  const [newCheckoutDate, setNewCheckoutDate] = useState("");
+  const [newCheckinTime, setNewCheckinTime] = useState("");
+  const [newCheckoutTime, setNewCheckoutTime] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [cancelMessage, setCancelMessage] = useState("");
   const [changeDateMessage, setChangeDateMessage] = useState("");
@@ -63,6 +83,13 @@ function InvoiceContent() {
   const userName = useAuthStore((state) => state.userName);
   const customerDisplayName =
     [firstName, lastName].filter(Boolean).join(" ").trim() || userName || null;
+
+  function applyDateEditValues(value?: RoomBookingResponse | null) {
+    setNewCheckinDate(getDateInputValue(value?.checkin));
+    setNewCheckoutDate(getDateInputValue(value?.checkout));
+    setNewCheckinTime(getTimeInputValue(value?.checkin));
+    setNewCheckoutTime(getTimeInputValue(value?.checkout));
+  }
 
   useEffect(() => {
     if (!bookingId) {
@@ -87,8 +114,7 @@ function InvoiceContent() {
         const matchedBooking = bookings.find((item) => item.id === bookingId) ?? null;
         setInvoice(invoiceData);
         setBooking(matchedBooking);
-        setNewCheckin(toDateTimeInputValue(matchedBooking?.checkin));
-        setNewCheckout(toDateTimeInputValue(matchedBooking?.checkout));
+        applyDateEditValues(matchedBooking);
 
         if (matchedBooking?.bookingDetailId) {
           const existingFeedback = await getMyFeedback(matchedBooking.bookingDetailId).catch(
@@ -180,8 +206,23 @@ function InvoiceContent() {
 
   async function handleChangeDates() {
     if (!booking || changeDateLoading) return;
-    if (!newCheckin || !newCheckout) {
+    if (!newCheckinDate || !newCheckoutDate) {
       setChangeDateMessage("Vui lòng chọn đầy đủ ngày nhận và ngày trả phòng.");
+      return;
+    }
+
+    const isHourly = isHourlyBooking(booking);
+    const checkin = buildLocalDateTimeIso(
+      newCheckinDate,
+      isHourly ? newCheckinTime : getTimeInputValue(booking.checkin),
+    );
+    const checkout = buildLocalDateTimeIso(
+      newCheckoutDate,
+      isHourly ? newCheckoutTime : getTimeInputValue(booking.checkout),
+    );
+
+    if (!checkin || !checkout) {
+      setChangeDateMessage("Ngày hoặc giờ lưu trú chưa hợp lệ.");
       return;
     }
 
@@ -189,12 +230,11 @@ function InvoiceContent() {
     setChangeDateMessage("");
     try {
       const updatedBooking = await changeRoomBookingDates(booking.id, {
-        checkin: new Date(newCheckin).toISOString(),
-        checkout: new Date(newCheckout).toISOString(),
+        checkin,
+        checkout,
       });
       setBooking(updatedBooking);
-      setNewCheckin(toDateTimeInputValue(updatedBooking.checkin));
-      setNewCheckout(toDateTimeInputValue(updatedBooking.checkout));
+      applyDateEditValues(updatedBooking);
       setShowDateForm(false);
       setChangeDateMessage("Ngày lưu trú đã được cập nhật.");
     } catch {
@@ -262,15 +302,19 @@ function InvoiceContent() {
               <StayInfoPanel
                 booking={booking}
                 showDateForm={showDateForm}
-                newCheckin={newCheckin}
-                newCheckout={newCheckout}
+                newCheckinDate={newCheckinDate}
+                newCheckoutDate={newCheckoutDate}
+                newCheckinTime={newCheckinTime}
+                newCheckoutTime={newCheckoutTime}
                 changeDateLoading={changeDateLoading}
                 changeDateMessage={changeDateMessage}
                 cancelLoading={cancelLoading}
                 cancelMessage={cancelMessage}
                 onToggleDateForm={() => setShowDateForm((value) => !value)}
-                onNewCheckinChange={setNewCheckin}
-                onNewCheckoutChange={setNewCheckout}
+                onNewCheckinDateChange={setNewCheckinDate}
+                onNewCheckoutDateChange={setNewCheckoutDate}
+                onNewCheckinTimeChange={setNewCheckinTime}
+                onNewCheckoutTimeChange={setNewCheckoutTime}
                 onChangeDates={() => void handleChangeDates()}
                 onCancel={() => void handleCancelBooking()}
               />
@@ -332,29 +376,37 @@ function InvoiceContent() {
 function StayInfoPanel({
   booking,
   showDateForm,
-  newCheckin,
-  newCheckout,
+  newCheckinDate,
+  newCheckoutDate,
+  newCheckinTime,
+  newCheckoutTime,
   changeDateLoading,
   changeDateMessage,
   cancelLoading,
   cancelMessage,
   onToggleDateForm,
-  onNewCheckinChange,
-  onNewCheckoutChange,
+  onNewCheckinDateChange,
+  onNewCheckoutDateChange,
+  onNewCheckinTimeChange,
+  onNewCheckoutTimeChange,
   onChangeDates,
   onCancel,
 }: {
   booking: RoomBookingResponse;
   showDateForm: boolean;
-  newCheckin: string;
-  newCheckout: string;
+  newCheckinDate: string;
+  newCheckoutDate: string;
+  newCheckinTime: string;
+  newCheckoutTime: string;
   changeDateLoading: boolean;
   changeDateMessage: string;
   cancelLoading: boolean;
   cancelMessage: string;
   onToggleDateForm: () => void;
-  onNewCheckinChange: (value: string) => void;
-  onNewCheckoutChange: (value: string) => void;
+  onNewCheckinDateChange: (value: string) => void;
+  onNewCheckoutDateChange: (value: string) => void;
+  onNewCheckinTimeChange: (value: string) => void;
+  onNewCheckoutTimeChange: (value: string) => void;
   onChangeDates: () => void;
   onCancel: () => void;
 }) {
@@ -363,6 +415,7 @@ function StayInfoPanel({
   const isChangeAvailable = canUsePolicyBefore(booking, 48);
   const isCancelAvailable = canUsePolicyBefore(booking, 72);
   const canRequestCancel = isCancelAvailable && booking.status !== "CANCEL_REQUESTED";
+  const isHourly = isHourlyBooking(booking);
 
   return (
     <section className="border-border bg-muted/40 mb-6 rounded-2xl border p-4 sm:p-5">
@@ -426,29 +479,47 @@ function StayInfoPanel({
         </div>
 
         {showDateForm ? (
-          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
-            <label className="block">
-              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-                Ngày nhận phòng mới
+          <div className="mt-4 space-y-3">
+            <div className="inline-flex h-10 items-center rounded-xl bg-[#fbf5ed] p-1 text-sm font-bold text-[#8b7a6a]">
+              <span className="rounded-lg bg-[#1f1b16] px-3 py-2 text-white">
+                {isHourly ? "Theo giờ" : "Theo đêm"}
               </span>
-              <input
-                type="datetime-local"
-                value={newCheckin}
-                onChange={(event) => onNewCheckinChange(event.target.value)}
-                className="border-border bg-background mt-2 h-11 w-full rounded-xl border px-3 text-sm outline-none transition focus:border-[#c47b30]"
-              />
-            </label>
-            <label className="block">
-              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
-                Ngày trả phòng mới
+              <span className="px-3 py-2">
+                {isHourly ? "Chọn ngày và giờ lưu trú" : "Chỉ đổi ngày, giữ giờ nhận/trả phòng"}
               </span>
-              <input
-                type="datetime-local"
-                value={newCheckout}
-                onChange={(event) => onNewCheckoutChange(event.target.value)}
-                className="border-border bg-background mt-2 h-11 w-full rounded-xl border px-3 text-sm outline-none transition focus:border-[#c47b30]"
-              />
-            </label>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+              <div className={`grid gap-3 ${isHourly ? "sm:grid-cols-[1fr_130px]" : ""}`}>
+                <InvoiceDatePickerField
+                  label="Ngày nhận phòng mới"
+                  value={newCheckinDate}
+                  onChange={onNewCheckinDateChange}
+                />
+                {isHourly ? (
+                  <InvoiceTimeField
+                    label="Giờ nhận"
+                    value={newCheckinTime}
+                    onChange={onNewCheckinTimeChange}
+                  />
+                ) : null}
+              </div>
+
+              <div className={`grid gap-3 ${isHourly ? "sm:grid-cols-[1fr_130px]" : ""}`}>
+                <InvoiceDatePickerField
+                  label="Ngày trả phòng mới"
+                  value={newCheckoutDate}
+                  onChange={onNewCheckoutDateChange}
+                />
+                {isHourly ? (
+                  <InvoiceTimeField
+                    label="Giờ trả"
+                    value={newCheckoutTime}
+                    onChange={onNewCheckoutTimeChange}
+                  />
+                ) : null}
+              </div>
+
             <button
               type="button"
               onClick={onChangeDates}
@@ -457,6 +528,7 @@ function StayInfoPanel({
             >
               {changeDateLoading ? "Đang lưu..." : "Lưu ngày mới"}
             </button>
+            </div>
           </div>
         ) : null}
 
@@ -496,6 +568,167 @@ function StayInfoPanel({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function InvoiceDatePickerField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => parseDateInput(value));
+  const rootRef = useRef<HTMLDivElement>(null);
+  const todayValue = getDateInputValue(new Date());
+
+  useEffect(() => {
+    setVisibleMonth(parseDateInput(value));
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative min-w-0 space-y-1.5">
+      <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className={`flex h-11 w-full items-center gap-2 rounded-xl border px-3 text-left transition-all ${
+          open
+            ? "border-[#c47a34] bg-white shadow-[0_12px_30px_-20px_rgba(134,83,22,0.55)] ring-2 ring-[#c47a34]/15"
+            : "border-[#e8ddd0] bg-[#faf7f2] hover:border-[#d8b98c]"
+        }`}
+      >
+        <CalendarDays className="h-4 w-4 shrink-0 text-[#c47a34]" />
+        <span className="text-foreground flex-1 text-sm font-semibold">
+          {formatDateLabel(value)}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-[#8b6a3e] transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open ? (
+        <div className="absolute top-full left-0 z-40 mt-3 w-[min(310px,calc(100vw-2rem))] rounded-3xl border border-[#ead8c4] bg-white p-4 shadow-[0_28px_70px_-28px_rgba(64,38,12,0.55)]">
+          <div className="mb-4 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleMonth(
+                  (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1),
+                )
+              }
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fbf5ed] text-[#8b6a3e] transition-colors hover:bg-[#f0dec6]"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="text-center">
+              <p className="text-foreground text-sm font-black">
+                {calendarMonthNames[visibleMonth.getMonth()]} {visibleMonth.getFullYear()}
+              </p>
+              <p className="text-[11px] font-medium text-[#a58b70]">Chọn ngày lưu trú</p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleMonth(
+                  (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1),
+                )
+              }
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fbf5ed] text-[#8b6a3e] transition-colors hover:bg-[#f0dec6]"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {calendarWeekDays.map((day) => (
+              <span key={day} className="py-2 text-[11px] font-bold text-[#b08f6c] uppercase">
+                {day}
+              </span>
+            ))}
+            {getCalendarDays(visibleMonth).map((date) => {
+              const dateValue = getDateInputValue(date);
+              const isSelected = dateValue === value;
+              const isToday = dateValue === todayValue;
+              const inCurrentMonth = date.getMonth() === visibleMonth.getMonth();
+
+              return (
+                <button
+                  key={dateValue}
+                  type="button"
+                  onClick={() => {
+                    onChange(dateValue);
+                    setOpen(false);
+                  }}
+                  className={`flex h-9 items-center justify-center rounded-xl text-sm font-semibold transition-all ${
+                    isSelected
+                      ? "bg-gradient-to-br from-[#c47a34] to-[#ffd45e] text-white shadow-lg shadow-[#c47a34]/25"
+                      : inCurrentMonth
+                        ? "text-[#2b251f] hover:bg-[#fbf0e3]"
+                        : "text-[#c9b9a8] hover:bg-[#fbf0e3]/60"
+                  }`}
+                >
+                  <span
+                    className={
+                      isToday && !isSelected
+                        ? "rounded-full border border-[#c47a34] px-2 py-0.5"
+                        : ""
+                    }
+                  >
+                    {date.getDate()}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function InvoiceTimeField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="min-w-0 space-y-1.5">
+      <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+        {label}
+      </span>
+      <span className="flex h-11 items-center gap-2 rounded-xl border border-[#e8ddd0] bg-[#faf7f2] px-3 transition-all focus-within:border-[#c47a34] focus-within:ring-2 focus-within:ring-[#c47a34]/15 hover:border-[#d8b98c]">
+        <Clock3 className="h-4 w-4 shrink-0 text-[#c47a34]" />
+        <input
+          type="time"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="text-foreground min-w-0 flex-1 bg-transparent text-sm font-semibold [color-scheme:light] outline-none"
+        />
+      </span>
+    </label>
   );
 }
 
@@ -746,12 +979,73 @@ function subtractHours(value?: string, hours = 0) {
   return new Date(date.getTime() - hours * 60 * 60 * 1000);
 }
 
-function toDateTimeInputValue(value?: string | null) {
+function getDateInputValue(value?: string | Date | null) {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTimeInputValue(value?: string | null) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  const offset = date.getTimezoneOffset() * 60 * 1000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function buildLocalDateTimeIso(dateValue: string, timeValue: string) {
+  if (!dateValue || !timeValue) return null;
+  const date = new Date(`${dateValue}T${timeValue}:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+function parseDateInput(value?: string | null) {
+  if (!value) return new Date();
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return new Date();
+  return new Date(year, month - 1, day);
+}
+
+function getCalendarDays(visibleMonth: Date) {
+  const year = visibleMonth.getFullYear();
+  const month = visibleMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const mondayBasedStart = (firstDay.getDay() + 6) % 7;
+  const start = new Date(year, month, 1 - mondayBasedStart);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date;
+  });
+}
+
+function formatDateLabel(value?: string) {
+  if (!value) return "Chọn ngày";
+  const date = parseDateInput(value);
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function isHourlyBooking(booking: RoomBookingResponse) {
+  const checkin = new Date(booking.checkin);
+  const checkout = new Date(booking.checkout);
+  if (Number.isNaN(checkin.getTime()) || Number.isNaN(checkout.getTime())) return false;
+
+  const durationHours = (checkout.getTime() - checkin.getTime()) / (60 * 60 * 1000);
+  const checkinMinutes = checkin.getHours() * 60 + checkin.getMinutes();
+  const checkoutMinutes = checkout.getHours() * 60 + checkout.getMinutes();
+
+  return durationHours < 20 || checkinMinutes !== 14 * 60 || checkoutMinutes !== 12 * 60;
 }
 
 function canUsePolicyBefore(booking: RoomBookingResponse, hoursBeforeCheckin: number) {
