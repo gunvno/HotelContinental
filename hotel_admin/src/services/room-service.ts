@@ -132,6 +132,15 @@ export type ServiceResponse = {
   deleted?: boolean;
 };
 
+export type CatalogServicePayload = {
+  name: string;
+  description?: string;
+  price: number;
+  image?: string;
+  status?: "AVAILABLE" | "UNAVAILABLE" | "MAINTENANCE";
+  deleted?: boolean;
+};
+
 export type BuildingSetupPayload = {
   buildingName: string;
   description?: string;
@@ -337,6 +346,15 @@ export async function getCatalogServices(
     data: pageData?.content ?? [],
     total: pageData?.totalElements ?? 0,
   };
+}
+
+export async function createCatalogService(
+  payload: CatalogServicePayload,
+): Promise<ServiceResponse> {
+  const res = await http
+    .post("catalog/service", { json: payload })
+    .json<ApiResponse<ServiceResponse>>();
+  return (res.result ?? res.content) as ServiceResponse;
 }
 
 // ============= AMENITY ROOM SERVICES =============
