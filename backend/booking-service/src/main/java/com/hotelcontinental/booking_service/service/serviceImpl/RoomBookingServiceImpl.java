@@ -339,7 +339,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @Override
     @PreAuthorize("hasAuthority('BOOKING_UPDATE_TOTALS')")
     public RoomBookingResponse updateTotals(String id, RoomBookingTotalsUpdateRequest request) {
-        if (request == null || request.getTotalRoomPrice() <= 0 || request.getTotalPrice() <= 0) {
+        if (request == null || request.getTotalRoomPrice() <= 0 || request.getTotalPrice() < 0) {
             throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
         }
 

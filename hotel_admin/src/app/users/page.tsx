@@ -18,11 +18,11 @@ import {
   createStaffAccount,
   getPermissions,
   getStaffAccounts,
+  type PermissionResponse,
   resetStaffPassword,
   type StaffAccountStatus,
-  type PermissionResponse,
-  type StaffRoleName,
   type StaffPermissionResponse,
+  type StaffRoleName,
   updateStaffAccountStatus,
   updateStaffPermissions,
 } from "@/services/permission-service";

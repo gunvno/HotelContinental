@@ -102,12 +102,6 @@ export function DatePicker({
   });
 
   useEffect(() => {
-    if (selectedDate) {
-      setVisibleMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
-    }
-  }, [selectedDate]);
-
-  useEffect(() => {
     if (!open) return;
 
     function handlePointerDown(event: PointerEvent) {
@@ -158,6 +152,12 @@ export function DatePicker({
     setOpen(false);
   }
 
+  function openCalendar() {
+    const baseDate = selectedDate ?? parseDateValue(min || "") ?? new Date();
+    setVisibleMonth(new Date(baseDate.getFullYear(), baseDate.getMonth(), 1));
+    setOpen((current) => !current);
+  }
+
   return (
     <div ref={rootRef} className={cn("relative space-y-2", className)}>
       {label ? (
@@ -170,7 +170,7 @@ export function DatePicker({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={openCalendar}
         className={cn(
           "flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-[#decdb9] bg-white px-3 text-left text-sm font-semibold text-[#17213a] shadow-sm transition outline-none hover:border-[#c8792a] focus-visible:border-[#c8792a] focus-visible:ring-2 focus-visible:ring-[#c8792a]/20 disabled:cursor-not-allowed disabled:bg-[#f2eadf] disabled:text-[#9f8a77]",
           buttonClassName,

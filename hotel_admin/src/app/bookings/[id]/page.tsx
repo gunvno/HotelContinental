@@ -14,13 +14,13 @@ import {
   RefreshCcw,
   ScrollText,
   ShieldCheck,
-  Utensils,
   UserRound,
   UsersRound,
+  Utensils,
   XCircle,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { type ReactNode,useEffect, useMemo, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
@@ -30,27 +30,27 @@ import { usePermission } from "@/hooks/use-permission";
 import {
   getInvoiceByBooking,
   getLatestPaymentRequestByBooking,
-  mockPaymentRequestPaid,
   type InvoiceResponse,
+  mockPaymentRequestPaid,
   type PaymentRequestResponse,
 } from "@/services/billing-service";
 import {
   approveRoomBookingCancellation,
   cancelRoomBooking,
   checkOutRoomBooking,
+  type EditHistoryResponse,
   getResidenceRegistrations,
   getRoomBooking,
   getRoomBookingEditHistory,
-  updateRoomBookingTotals,
-  type EditHistoryResponse,
   type ResidenceRegistrationResponse,
   type RoomBookingResponse,
+  updateRoomBookingTotals,
 } from "@/services/booking-service";
+import { getRoom, type RoomResponse } from "@/services/room-service";
 import {
   getServiceOrderDetails,
   type ServiceOrderDetailResponse,
 } from "@/services/service-order-service";
-import { getRoom, type RoomResponse } from "@/services/room-service";
 import { getUserSummary, type UserSummaryResponse } from "@/services/user-service";
 
 type DisplayStatus =

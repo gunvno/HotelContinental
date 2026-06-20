@@ -17,7 +17,6 @@ import {
   type AmenityRoomResponse,
   createAmenity,
   createAmenityRoom,
-  createCatalogService,
   createRoomType,
   createRoomTypeService,
   deleteAmenity,
@@ -1334,20 +1333,12 @@ export function RoomTypeServicesSection() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     roomTypeId: "",
     serviceId: "",
     amount: 1,
     deleted: false,
-  });
-  const [serviceFormData, setServiceFormData] = useState({
-    name: "",
-    description: "",
-    price: 0,
-    image: "",
-    status: "AVAILABLE" as ServiceResponse["status"],
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -1481,45 +1472,6 @@ export function RoomTypeServicesSection() {
     } catch (saveError) {
       console.error(saveError);
       setError("Lỗi lưu dịch vụ bổ sung");
-    }
-  };
-
-  const handleCreateCatalogService = async () => {
-    const name = serviceFormData.name.trim();
-    if (!name) {
-      setError("Vui lòng nhập tên dịch vụ");
-      return;
-    }
-    if (Number(serviceFormData.price) < 0) {
-      setError("Giá dịch vụ không được âm");
-      return;
-    }
-
-    try {
-      const created = await createCatalogService({
-        name,
-        description: serviceFormData.description.trim() || undefined,
-        price: Number(serviceFormData.price) || 0,
-        image: serviceFormData.image.trim() || undefined,
-        status: serviceFormData.status || "AVAILABLE",
-      });
-      const catalogServiceResult = await getCatalogServices(0, 500);
-      setServices(catalogServiceResult.data);
-      setFormData((prev) => ({ ...prev, serviceId: created.id }));
-      setServiceFormData({
-        name: "",
-        description: "",
-        price: 0,
-        image: "",
-        status: "AVAILABLE",
-      });
-      setIsServiceModalOpen(false);
-      setSuccess(
-        "Tạo dịch vụ mới thành công. Bạn có thể gán dịch vụ này cho loại phòng nếu cần.",
-      );
-    } catch (saveError) {
-      console.error(saveError);
-      setError("Lỗi tạo dịch vụ mới");
     }
   };
 
@@ -1722,127 +1674,6 @@ export function RoomTypeServicesSection() {
             </div>
           </div>
         </>
-      )}
-
-      {isServiceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
-            <h3 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">
-              Thêm dịch vụ
-            </h3>
-            <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-              Tạo dịch vụ gốc trong catalog. Sau đó mới gán dịch vụ này cho loại phòng nếu
-              cần.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Tên dịch vụ
-                </Label>
-                <Input
-                  value={serviceFormData.name}
-                  onChange={(event) =>
-                    setServiceFormData({
-                      ...serviceFormData,
-                      name: event.target.value,
-                    })
-                  }
-                  placeholder="Ví dụ: Massage thư giãn 60 phút"
-                  className="mt-1"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Giá
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={serviceFormData.price}
-                    onChange={(event) =>
-                      setServiceFormData({
-                        ...serviceFormData,
-                        price: Number(event.target.value) || 0,
-                      })
-                    }
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Trạng thái
-                  </Label>
-                  <Select
-                    value={serviceFormData.status || "AVAILABLE"}
-                    onValueChange={(status) =>
-                      setServiceFormData({ ...serviceFormData, status })
-                    }
-                    className="mt-1"
-                    options={[
-                      { value: "AVAILABLE", label: "Sẵn sàng" },
-                      { value: "UNAVAILABLE", label: "Tạm ngưng" },
-                      { value: "MAINTENANCE", label: "Bảo trì" },
-                    ]}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Ảnh
-                </Label>
-                <Input
-                  value={serviceFormData.image}
-                  onChange={(event) =>
-                    setServiceFormData({
-                      ...serviceFormData,
-                      image: event.target.value,
-                    })
-                  }
-                  placeholder="URL ảnh dịch vụ"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Mô tả
-                </Label>
-                <textarea
-                  value={serviceFormData.description}
-                  onChange={(event) =>
-                    setServiceFormData({
-                      ...serviceFormData,
-                      description: event.target.value,
-                    })
-                  }
-                  rows={3}
-                  className="mt-1 w-full rounded-xl border border-[#decdb9] bg-white px-3 py-2 text-sm text-[#17213a] outline-none focus:border-[#9b5c24] dark:bg-white dark:text-gray-950"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex gap-3">
-              <Button
-                type="button"
-                onClick={() => setIsServiceModalOpen(false)}
-                className="flex-1 bg-gray-300 text-gray-900 hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-700"
-              >
-                Hủy
-              </Button>
-              <Button
-                type="button"
-                onClick={handleCreateCatalogService}
-                className="flex-1 bg-emerald-700 text-white hover:bg-emerald-800"
-              >
-                Lưu dịch vụ
-              </Button>
-            </div>
-          </div>
-        </div>
       )}
 
       {isModalOpen && (
