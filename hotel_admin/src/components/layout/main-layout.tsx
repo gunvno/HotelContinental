@@ -96,6 +96,12 @@ const catalogNav = [
     requiredPermission: "AMENITY_VIEW",
   },
   {
+    label: "Dịch vụ",
+    href: "/admin/services",
+    icon: Utensils,
+    requiredPermission: "SERVICE_VIEW",
+  },
+  {
     label: "Gắn cơ sở vật chất theo loại",
     href: "/admin/amenity-rooms",
     icon: ClipboardList,
@@ -390,6 +396,7 @@ function getPathTitle(pathname: string) {
   if (pathname === "/admin") return "Danh mục vận hành";
   if (pathname.startsWith("/admin/room-types")) return "Loại phòng";
   if (pathname.startsWith("/admin/amenities")) return "Cơ sở vật chất";
+  if (pathname.startsWith("/admin/services")) return "Quản lý dịch vụ";
   if (pathname.startsWith("/admin/amenity-rooms"))
     return "Gắn cơ sở vật chất theo loại phòng";
   if (pathname.startsWith("/admin/room-type-services"))

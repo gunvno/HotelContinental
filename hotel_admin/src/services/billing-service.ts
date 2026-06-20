@@ -18,11 +18,39 @@ export type PaymentRequestResponse = {
   expiredTime?: string;
 };
 
+export type InvoiceResponse = {
+  invoiceNo: string;
+  roomBookingId: string;
+  paymentId?: string;
+  customerId?: string;
+  roomId?: string;
+  totalRoomPrice: number;
+  totalServicePrice: number;
+  totalExtraPrice: number;
+  voucherCode?: string;
+  discountAmount: number;
+  totalPrice: number;
+  paidAmount: number;
+  remainingAmount: number;
+  refundStatus?: string;
+  refundAmount: number;
+  paymentMethod?: string;
+  paymentTime?: string;
+  issuedTime?: string;
+};
+
 export async function getLatestPaymentRequestByBooking(roomBookingId: string) {
   const res = await http
     .get(`billing/payment-requests/booking/${roomBookingId}`)
     .json<ApiResponse<PaymentRequestResponse>>();
   return (res.result ?? res.content) as PaymentRequestResponse;
+}
+
+export async function getInvoiceByBooking(roomBookingId: string) {
+  const res = await http
+    .get(`billing/invoices/booking/${roomBookingId}`)
+    .json<ApiResponse<InvoiceResponse>>();
+  return (res.result ?? res.content) as InvoiceResponse;
 }
 
 export async function mockPaymentRequestPaid(id: string) {

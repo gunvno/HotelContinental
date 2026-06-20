@@ -4,11 +4,8 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-import java.util.List;
-
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AccountPermissionUpdateRequest {
-    String roleName;
-    List<String> permissionNames;
+public class AccountStatusUpdateRequest {
+    String status;
 }

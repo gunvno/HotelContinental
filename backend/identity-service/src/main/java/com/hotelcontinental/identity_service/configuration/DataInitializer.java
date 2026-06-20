@@ -33,9 +33,15 @@ public class DataInitializer implements ApplicationRunner {
     private static final String ADMIN_USERNAME = "admin";
     private static final String ADMIN_PASSWORD = "admin";
     private static final String ADMIN_EMAIL = "admin@hotelcontinental.local";
-    private static final String STAFF_USERNAME = "staff";
-    private static final String STAFF_PASSWORD = "staff";
-    private static final String STAFF_EMAIL = "staff@hotelcontinental.local";
+    private static final String MANAGER_USERNAME = "manager";
+    private static final String MANAGER_PASSWORD = "manager";
+    private static final String MANAGER_EMAIL = "manager@hotelcontinental.local";
+    private static final String RECEPTIONIST_USERNAME = "receptionist";
+    private static final String RECEPTIONIST_PASSWORD = "receptionist";
+    private static final String RECEPTIONIST_EMAIL = "receptionist@hotelcontinental.local";
+    private static final String SUPPORT_USERNAME = "support";
+    private static final String SUPPORT_PASSWORD = "support";
+    private static final String SUPPORT_EMAIL = "support@hotelcontinental.local";
     private static final String CUSTOMER_USERNAME = "customer";
     private static final String CUSTOMER_PASSWORD = "customer";
     private static final String CUSTOMER_EMAIL = "customer@hotelcontinental.local";
@@ -50,7 +56,13 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        Role[] requiredRoles = {Role.ADMIN, Role.STAFF, Role.CUSTOMER};
+        Role[] requiredRoles = {
+                Role.ADMIN,
+                Role.MANAGER,
+                Role.RECEPTIONIST,
+                Role.CUSTOMER_SUPPORT,
+                Role.CUSTOMER
+        };
         for (Role role : requiredRoles) {
             ensureRole(role);
         }
@@ -65,12 +77,28 @@ public class DataInitializer implements ApplicationRunner {
                 Role.ADMIN
         );
         ensureDefaultAccount(
-                STAFF_USERNAME,
-                STAFF_PASSWORD,
-                STAFF_EMAIL,
-                "System",
-                "Staff",
-                Role.STAFF
+                MANAGER_USERNAME,
+                MANAGER_PASSWORD,
+                MANAGER_EMAIL,
+                "Hotel",
+                "Manager",
+                Role.MANAGER
+        );
+        ensureDefaultAccount(
+                RECEPTIONIST_USERNAME,
+                RECEPTIONIST_PASSWORD,
+                RECEPTIONIST_EMAIL,
+                "Front Desk",
+                "Receptionist",
+                Role.RECEPTIONIST
+        );
+        ensureDefaultAccount(
+                SUPPORT_USERNAME,
+                SUPPORT_PASSWORD,
+                SUPPORT_EMAIL,
+                "Customer",
+                "Support",
+                Role.CUSTOMER_SUPPORT
         );
         ensureDefaultAccount(
                 CUSTOMER_USERNAME,
@@ -134,7 +162,9 @@ public class DataInitializer implements ApplicationRunner {
 
     private void syncRolePermissions() {
         assignPermissions(Role.ADMIN, rolePermissionProperties.getAdminPermission());
-        assignPermissions(Role.STAFF, rolePermissionProperties.getStaffPermission());
+        assignPermissions(Role.MANAGER, rolePermissionProperties.getManagerPermission());
+        assignPermissions(Role.RECEPTIONIST, rolePermissionProperties.getReceptionistPermission());
+        assignPermissions(Role.CUSTOMER_SUPPORT, rolePermissionProperties.getCustomerSupportPermission());
         assignPermissions(Role.CUSTOMER, rolePermissionProperties.getCustomerPermission());
     }
 

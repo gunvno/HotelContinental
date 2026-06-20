@@ -35,7 +35,7 @@ public interface AccountsRepository extends JpaRepository<Accounts, String> {
         from Accounts account
         join account.user user
         join account.roles role
-        where role.name = com.hotelcontinental.identity_service.enums.Role.STAFF
+        where role.name <> com.hotelcontinental.identity_service.enums.Role.CUSTOMER
           and (account.deleted = false or account.deleted is null)
           and (user.deleted = false or user.deleted is null)
         order by account.createdTime desc

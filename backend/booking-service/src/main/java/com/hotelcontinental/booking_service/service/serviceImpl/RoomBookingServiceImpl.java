@@ -4,7 +4,10 @@ import com.hotelcontinental.booking_service.dto.request.ResidenceRegistrationReq
 import com.hotelcontinental.booking_service.dto.request.RoomBookingCreationRequest;
 import com.hotelcontinental.booking_service.dto.request.RoomBookingDateChangeRequest;
 import com.hotelcontinental.booking_service.dto.request.RoomBookingTotalsUpdateRequest;
+import com.hotelcontinental.booking_service.dto.response.EditHistoryResponse;
+import com.hotelcontinental.booking_service.dto.response.ResidenceRegistrationResponse;
 import com.hotelcontinental.booking_service.dto.response.RoomBookingResponse;
+import com.hotelcontinental.booking_service.entity.EditHistory;
 import com.hotelcontinental.booking_service.entity.ResidenceRegistration;
 import com.hotelcontinental.booking_service.entity.RoomBookingDetails;
 import com.hotelcontinental.booking_service.entity.RoomBookings;
@@ -12,6 +15,7 @@ import com.hotelcontinental.booking_service.enums.RoomBookingDetailStatus;
 import com.hotelcontinental.booking_service.enums.RoomBookingStatus;
 import com.hotelcontinental.booking_service.exception.AppException;
 import com.hotelcontinental.booking_service.exception.ErrorCode;
+import com.hotelcontinental.booking_service.repository.EditHistoryRepository;
 import com.hotelcontinental.booking_service.repository.ResidenceRegistrationRepository;
 import com.hotelcontinental.booking_service.repository.RoomBookingDetailsRepository;
 import com.hotelcontinental.booking_service.repository.RoomBookingsRepository;
@@ -28,6 +32,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +40,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     private final RoomBookingsRepository roomBookingsRepository;
     private final RoomBookingDetailsRepository roomBookingDetailsRepository;
     private final ResidenceRegistrationRepository residenceRegistrationRepository;
+    private final EditHistoryRepository editHistoryRepository;
 
     private static final List<RoomBookingDetailStatus> BLOCKING_STATUSES = List.of(
             RoomBookingDetailStatus.BOOKED,
@@ -79,7 +85,11 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         LocalDateTime now = LocalDateTime.now();
         float initialServicePrice = Math.max(0, request.getTotalServicePrice());
-        float initialTotalPrice = request.getTotalRoomPrice() + initialServicePrice + request.getTotalExtraPrice();
+        float initialDiscountAmount = Math.max(0, request.getDiscountAmount());
+        float initialTotalPrice = Math.max(
+                0,
+                request.getTotalRoomPrice() + initialServicePrice + request.getTotalExtraPrice() - initialDiscountAmount
+        );
         RoomBookings booking = new RoomBookings();
         booking.setCustomerId(customerId);
         booking.setBookingType(request.getBookingType());
@@ -88,6 +98,12 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         booking.setTotalServicePrice(initialServicePrice);
         booking.setTotalExtraPrice(request.getTotalExtraPrice());
         booking.setTotalPrice(initialTotalPrice);
+        if (request.getVoucherCode() != null) {
+            booking.setVoucherCode(StringUtils.hasText(request.getVoucherCode()) ? request.getVoucherCode().trim() : null);
+        }
+        booking.setDiscountAmount(initialDiscountAmount);
+        booking.setRefundStatus(StringUtils.hasText(request.getRefundStatus()) ? request.getRefundStatus().trim() : "NONE");
+        booking.setRefundAmount(Math.max(0, request.getRefundAmount()));
         booking.setCreatedTime(now);
         booking.setCreatedBy(customerId);
         booking.setDeleted(false);
@@ -146,6 +162,35 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         return map(booking, detail);
     }
 
+    @Override
+    @PreAuthorize("hasAuthority('BOOKING_VIEW')")
+    public List<EditHistoryResponse> getEditHistory(String id) {
+        RoomBookings booking = getBooking(id);
+        validateBookingAccess(booking);
+        return editHistoryRepository
+                .findByRoomBookingDetailsRoomBookingsIdOrderByModifiedAtDesc(id)
+                .stream()
+                .map(this::mapEditHistory)
+                .toList();
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('BOOKING_VIEW')")
+    public List<ResidenceRegistrationResponse> getResidenceRegistrations(String id) {
+        RoomBookings booking = getBooking(id);
+        validateBookingAccess(booking);
+        RoomBookingDetails detail = getPrimaryDetail(id);
+        if (detail == null) {
+            return List.of();
+        }
+
+        return residenceRegistrationRepository
+                .findByRoomBookingDetailsId(detail.getId())
+                .stream()
+                .map(this::mapResidenceRegistration)
+                .toList();
+    }
+
     @Transactional
     @Override
     public RoomBookingResponse markDeposited(String id) {
@@ -156,12 +201,22 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 ? authentication.getName()
                 : "system";
 
+        RoomBookingStatus oldStatus = booking.getStatus();
         booking.setStatus(RoomBookingStatus.DEPOSITED);
         booking.setModifiedTime(LocalDateTime.now());
         booking.setModifiedBy(actor);
         booking = roomBookingsRepository.save(booking);
 
         RoomBookingDetails detail = getPrimaryDetail(id);
+        logBookingEdit(
+                detail,
+                "booking_status",
+                oldStatus,
+                RoomBookingStatus.DEPOSITED,
+                "Booking marked as deposited",
+                actor,
+                booking.getModifiedTime()
+        );
         return map(booking, detail);
     }
 
@@ -222,6 +277,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         String actor = getCurrentActor();
         LocalDateTime now = LocalDateTime.now();
+        RoomBookingStatus oldBookingStatus = booking.getStatus();
+        RoomBookingDetailStatus oldDetailStatus = detail.getStatus();
+        LocalDateTime oldCheckinReality = detail.getCheckinReality();
 
         booking.setStatus(RoomBookingStatus.CHECKED_IN);
         booking.setModifiedTime(now);
@@ -233,6 +291,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         detail.setModifiedTime(now);
         detail.setModifiedBy(actor);
         detail = roomBookingDetailsRepository.save(detail);
+
+        logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking checked in", actor, now);
+        logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail checked in", actor, now);
+        logBookingEdit(detail, "checkin_reality", oldCheckinReality, detail.getCheckinReality(), "Actual check-in time updated", actor, now);
 
         return map(booking, detail);
     }
@@ -251,6 +313,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         String actor = getCurrentActor();
         LocalDateTime now = LocalDateTime.now();
+        RoomBookingStatus oldBookingStatus = booking.getStatus();
+        RoomBookingDetailStatus oldDetailStatus = detail.getStatus();
+        LocalDateTime oldCheckoutReality = detail.getCheckoutReality();
 
         booking.setStatus(RoomBookingStatus.DONE);
         booking.setModifiedTime(now);
@@ -262,6 +327,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         detail.setModifiedTime(now);
         detail.setModifiedBy(actor);
         detail = roomBookingDetailsRepository.save(detail);
+
+        logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking checked out", actor, now);
+        logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail checked out", actor, now);
+        logBookingEdit(detail, "checkout_reality", oldCheckoutReality, detail.getCheckoutReality(), "Actual check-out time updated", actor, now);
 
         return map(booking, detail);
     }
@@ -281,16 +350,45 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         String actor = authentication != null && authentication.isAuthenticated()
                 ? authentication.getName()
                 : "system";
+        RoomBookingDetails detail = getPrimaryDetail(id);
+        float oldTotalRoomPrice = booking.getTotalRoomPrice();
+        float oldTotalServicePrice = booking.getTotalServicePrice();
+        float oldTotalExtraPrice = booking.getTotalExtraPrice();
+        float oldTotalPrice = booking.getTotalPrice();
+        String oldVoucherCode = booking.getVoucherCode();
+        float oldDiscountAmount = booking.getDiscountAmount();
+        String oldRefundStatus = booking.getRefundStatus();
+        float oldRefundAmount = booking.getRefundAmount();
+        LocalDateTime now = LocalDateTime.now();
 
         booking.setTotalRoomPrice(request.getTotalRoomPrice());
         booking.setTotalServicePrice(request.getTotalServicePrice());
         booking.setTotalExtraPrice(request.getTotalExtraPrice());
         booking.setTotalPrice(request.getTotalPrice());
-        booking.setModifiedTime(LocalDateTime.now());
+        if (request.getVoucherCode() != null) {
+            booking.setVoucherCode(StringUtils.hasText(request.getVoucherCode()) ? request.getVoucherCode().trim() : null);
+        }
+        if (request.getDiscountAmount() != null) {
+            booking.setDiscountAmount(Math.max(0, request.getDiscountAmount()));
+        }
+        if (request.getRefundStatus() != null) {
+            booking.setRefundStatus(StringUtils.hasText(request.getRefundStatus()) ? request.getRefundStatus().trim() : "NONE");
+        }
+        if (request.getRefundAmount() != null) {
+            booking.setRefundAmount(Math.max(0, request.getRefundAmount()));
+        }
+        booking.setModifiedTime(now);
         booking.setModifiedBy(actor);
         booking = roomBookingsRepository.save(booking);
 
-        RoomBookingDetails detail = getPrimaryDetail(id);
+        logBookingEdit(detail, "total_room_price", oldTotalRoomPrice, booking.getTotalRoomPrice(), "Room total price updated", actor, now);
+        logBookingEdit(detail, "total_service_price", oldTotalServicePrice, booking.getTotalServicePrice(), "Service total price updated", actor, now);
+        logBookingEdit(detail, "total_extra_price", oldTotalExtraPrice, booking.getTotalExtraPrice(), "Extra total price updated", actor, now);
+        logBookingEdit(detail, "total_price", oldTotalPrice, booking.getTotalPrice(), "Booking total price updated", actor, now);
+        logBookingEdit(detail, "voucher_code", oldVoucherCode, booking.getVoucherCode(), "Voucher code updated", actor, now);
+        logBookingEdit(detail, "discount_amount", oldDiscountAmount, booking.getDiscountAmount(), "Discount amount updated", actor, now);
+        logBookingEdit(detail, "refund_status", oldRefundStatus, booking.getRefundStatus(), "Refund status updated", actor, now);
+        logBookingEdit(detail, "refund_amount", oldRefundAmount, booking.getRefundAmount(), "Refund amount updated", actor, now);
         return map(booking, detail);
     }
 
@@ -325,6 +423,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         String actor = getCurrentActor();
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime oldCheckin = detail.getCheckin();
+        LocalDateTime oldCheckout = detail.getCheckout();
 
         detail.setCheckin(request.getCheckin());
         detail.setCheckout(request.getCheckout());
@@ -335,6 +435,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         booking.setModifiedTime(now);
         booking.setModifiedBy(actor);
         booking = roomBookingsRepository.save(booking);
+
+        logBookingEdit(detail, "checkin", oldCheckin, detail.getCheckin(), "Booking check-in date changed", actor, now);
+        logBookingEdit(detail, "checkout", oldCheckout, detail.getCheckout(), "Booking check-out date changed", actor, now);
 
         return map(booking, detail);
     }
@@ -357,12 +460,15 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         String actor = getCurrentActor();
         LocalDateTime now = LocalDateTime.now();
+        RoomBookingStatus oldBookingStatus = booking.getStatus();
+        RoomBookingDetailStatus oldDetailStatus = detail.getStatus();
 
         if (booking.getStatus() == RoomBookingStatus.DEPOSITED) {
             booking.setStatus(RoomBookingStatus.CANCEL_REQUESTED);
             booking.setModifiedTime(now);
             booking.setModifiedBy(actor);
             booking = roomBookingsRepository.save(booking);
+            logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking cancellation requested", actor, now);
             return map(booking, detail);
         }
 
@@ -375,6 +481,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         detail.setModifiedTime(now);
         detail.setModifiedBy(actor);
         detail = roomBookingDetailsRepository.save(detail);
+
+        logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking cancelled", actor, now);
+        logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail cancelled", actor, now);
 
         return map(booking, detail);
     }
@@ -397,6 +506,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         String actor = getCurrentActor();
         LocalDateTime now = LocalDateTime.now();
+        RoomBookingStatus oldBookingStatus = booking.getStatus();
+        RoomBookingDetailStatus oldDetailStatus = detail.getStatus();
 
         booking.setStatus(RoomBookingStatus.CANCEL);
         booking.setModifiedTime(now);
@@ -407,6 +518,9 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         detail.setModifiedTime(now);
         detail.setModifiedBy(actor);
         detail = roomBookingDetailsRepository.save(detail);
+
+        logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking cancellation approved", actor, now);
+        logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail cancelled after approval", actor, now);
 
         return map(booking, detail);
     }
@@ -425,6 +539,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
         LocalDateTime now = LocalDateTime.now();
         for (RoomBookings booking : expiredBookings) {
+            RoomBookingStatus oldBookingStatus = booking.getStatus();
             booking.setStatus(RoomBookingStatus.CANCEL);
             booking.setModifiedTime(now);
             booking.setModifiedBy("system-expired-payment");
@@ -434,10 +549,13 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                     .filter(detail -> !Boolean.TRUE.equals(detail.getDeleted()))
                     .filter(detail -> detail.getStatus() == RoomBookingDetailStatus.BOOKED)
                     .forEach(detail -> {
+                        RoomBookingDetailStatus oldDetailStatus = detail.getStatus();
                         detail.setStatus(RoomBookingDetailStatus.CANCELED);
                         detail.setModifiedTime(now);
                         detail.setModifiedBy("system-expired-payment");
                         roomBookingDetailsRepository.save(detail);
+                        logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking auto-cancelled because payment expired", "system-expired-payment", now);
+                        logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail auto-cancelled because payment expired", "system-expired-payment", now);
                     });
         }
     }
@@ -503,7 +621,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         }
         float initialTotalPrice = request.getTotalRoomPrice()
                 + Math.max(0, request.getTotalServicePrice())
-                + request.getTotalExtraPrice();
+                + request.getTotalExtraPrice()
+                - Math.max(0, request.getDiscountAmount());
         if (initialTotalPrice <= 0 || request.getTotalRoomPrice() <= 0 || request.getRoomPrice() <= 0) {
             throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
         }
@@ -519,6 +638,68 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         if (!request.getCheckin().isAfter(LocalDateTime.now())) {
             throw new AppException(ErrorCode.INVALID_BOOKING_REQUEST);
         }
+    }
+
+    private void logBookingEdit(
+            RoomBookingDetails detail,
+            String fieldName,
+            Object oldValue,
+            Object newValue,
+            String description,
+            String actor,
+            LocalDateTime modifiedAt
+    ) {
+        if (detail == null || Objects.equals(oldValue, newValue)) {
+            return;
+        }
+
+        EditHistory history = new EditHistory();
+        history.setRoomBookingDetails(detail);
+        history.setFieldName(fieldName);
+        history.setContent(formatEditContent(oldValue, newValue));
+        history.setDescription(description);
+        history.setModifiedAt(modifiedAt);
+        history.setModifiedBy(actor);
+        editHistoryRepository.save(history);
+    }
+
+    private String formatEditContent(Object oldValue, Object newValue) {
+        return "%s -> %s".formatted(formatEditValue(oldValue), formatEditValue(newValue));
+    }
+
+    private String formatEditValue(Object value) {
+        return value == null ? "null" : value.toString();
+    }
+
+    private EditHistoryResponse mapEditHistory(EditHistory history) {
+        return EditHistoryResponse.builder()
+                .id(history.getId())
+                .roomBookingDetailId(
+                        history.getRoomBookingDetails() != null
+                                ? history.getRoomBookingDetails().getId()
+                                : null
+                )
+                .fieldName(history.getFieldName())
+                .content(history.getContent())
+                .description(history.getDescription())
+                .modifiedAt(history.getModifiedAt())
+                .modifiedBy(history.getModifiedBy())
+                .build();
+    }
+
+    private ResidenceRegistrationResponse mapResidenceRegistration(ResidenceRegistration registration) {
+        return ResidenceRegistrationResponse.builder()
+                .id(registration.getId())
+                .roomBookingDetailId(
+                        registration.getRoomBookingDetails() != null
+                                ? registration.getRoomBookingDetails().getId()
+                                : null
+                )
+                .fullName(registration.getFullName())
+                .identityNumber(registration.getIdentityNumber())
+                .gender(registration.getGender())
+                .dateOfBirth(registration.getDateOfBirth())
+                .build();
     }
 
     private RoomBookingResponse map(RoomBookings booking, RoomBookingDetails detail) {
@@ -540,6 +721,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .totalExtraPrice(booking.getTotalExtraPrice())
                 .totalPrice(booking.getTotalPrice())
                 .deposit(detail != null ? detail.getDeposit() : 0)
+                .voucherCode(booking.getVoucherCode())
+                .discountAmount(booking.getDiscountAmount())
+                .refundStatus(booking.getRefundStatus())
+                .refundAmount(booking.getRefundAmount())
                 .build();
     }
 }

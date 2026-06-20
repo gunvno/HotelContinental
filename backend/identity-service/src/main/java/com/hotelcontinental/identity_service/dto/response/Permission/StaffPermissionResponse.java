@@ -16,6 +16,8 @@ public class StaffPermissionResponse {
     String username;
     String email;
     String fullName;
+    String accountStatus;
+    List<String> roleNames;
     List<String> rolePermissions;
     List<String> directPermissions;
     List<String> effectivePermissions;

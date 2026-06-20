@@ -5,6 +5,8 @@ import com.hotelcontinental.booking_service.dto.request.ResidenceRegistrationReq
 import com.hotelcontinental.booking_service.dto.request.RoomBookingCreationRequest;
 import com.hotelcontinental.booking_service.dto.request.RoomBookingDateChangeRequest;
 import com.hotelcontinental.booking_service.dto.request.RoomBookingTotalsUpdateRequest;
+import com.hotelcontinental.booking_service.dto.response.EditHistoryResponse;
+import com.hotelcontinental.booking_service.dto.response.ResidenceRegistrationResponse;
 import com.hotelcontinental.booking_service.dto.response.RoomBookingResponse;
 import com.hotelcontinental.booking_service.service.interfaces.RoomBookingService;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +50,20 @@ public class RoomBookingController {
     public ApiResponse<RoomBookingResponse> getRoomBooking(@PathVariable String id) {
         return ApiResponse.<RoomBookingResponse>builder()
                 .result(roomBookingService.getRoomBooking(id))
+                .build();
+    }
+
+    @GetMapping("/{id}/edit-history")
+    public ApiResponse<List<EditHistoryResponse>> getEditHistory(@PathVariable String id) {
+        return ApiResponse.<List<EditHistoryResponse>>builder()
+                .result(roomBookingService.getEditHistory(id))
+                .build();
+    }
+
+    @GetMapping("/{id}/residence-registrations")
+    public ApiResponse<List<ResidenceRegistrationResponse>> getResidenceRegistrations(@PathVariable String id) {
+        return ApiResponse.<List<ResidenceRegistrationResponse>>builder()
+                .result(roomBookingService.getResidenceRegistrations(id))
                 .build();
     }
 

@@ -17,4 +17,8 @@ public class RoomBookingSnapshotResponse {
     float totalServicePrice;
     float totalExtraPrice;
     float totalPrice;
+    String voucherCode;
+    float discountAmount;
+    String refundStatus;
+    float refundAmount;
 }

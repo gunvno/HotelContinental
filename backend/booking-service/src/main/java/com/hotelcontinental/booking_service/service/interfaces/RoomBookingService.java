@@ -4,6 +4,8 @@ import com.hotelcontinental.booking_service.dto.request.RoomBookingCreationReque
 import com.hotelcontinental.booking_service.dto.request.RoomBookingDateChangeRequest;
 import com.hotelcontinental.booking_service.dto.request.RoomBookingTotalsUpdateRequest;
 import com.hotelcontinental.booking_service.dto.request.ResidenceRegistrationRequest;
+import com.hotelcontinental.booking_service.dto.response.EditHistoryResponse;
+import com.hotelcontinental.booking_service.dto.response.ResidenceRegistrationResponse;
 import com.hotelcontinental.booking_service.dto.response.RoomBookingResponse;
 
 import java.util.List;
@@ -13,6 +15,8 @@ public interface RoomBookingService {
     List<RoomBookingResponse> getRoomBookings();
     List<RoomBookingResponse> getMyRoomBookings();
     RoomBookingResponse getRoomBooking(String id);
+    List<EditHistoryResponse> getEditHistory(String id);
+    List<ResidenceRegistrationResponse> getResidenceRegistrations(String id);
     RoomBookingResponse markDeposited(String id);
     RoomBookingResponse registerResidence(String id, ResidenceRegistrationRequest request);
     RoomBookingResponse checkIn(String id);

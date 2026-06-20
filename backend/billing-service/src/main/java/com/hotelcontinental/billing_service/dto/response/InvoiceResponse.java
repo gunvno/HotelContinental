@@ -21,8 +21,13 @@ public class InvoiceResponse {
     float totalRoomPrice;
     float totalServicePrice;
     float totalExtraPrice;
+    String voucherCode;
+    float discountAmount;
     float totalPrice;
     float paidAmount;
+    float remainingAmount;
+    String refundStatus;
+    float refundAmount;
     PaymentMethod paymentMethod;
     LocalDate paymentTime;
     LocalDateTime issuedTime;

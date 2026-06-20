@@ -8,20 +8,48 @@ import {
   CheckCircle2,
   Clock3,
   CreditCard,
+  FileText,
+  LogOut,
+  ReceiptText,
   RefreshCcw,
+  ScrollText,
+  ShieldCheck,
+  Utensils,
   UserRound,
+  UsersRound,
+  XCircle,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
 import {
+  getInvoiceByBooking,
   getLatestPaymentRequestByBooking,
   mockPaymentRequestPaid,
+  type InvoiceResponse,
+  type PaymentRequestResponse,
 } from "@/services/billing-service";
-import { getRoomBooking, type RoomBookingResponse } from "@/services/booking-service";
+import {
+  approveRoomBookingCancellation,
+  cancelRoomBooking,
+  checkOutRoomBooking,
+  getResidenceRegistrations,
+  getRoomBooking,
+  getRoomBookingEditHistory,
+  updateRoomBookingTotals,
+  type EditHistoryResponse,
+  type ResidenceRegistrationResponse,
+  type RoomBookingResponse,
+} from "@/services/booking-service";
+import {
+  getServiceOrderDetails,
+  type ServiceOrderDetailResponse,
+} from "@/services/service-order-service";
 import { getRoom, type RoomResponse } from "@/services/room-service";
 import { getUserSummary, type UserSummaryResponse } from "@/services/user-service";
 
@@ -59,20 +87,65 @@ const detailStatusLabel: Record<string, string> = {
   NO_SHOW: "Không đến",
 };
 
+const paymentStatusLabel: Record<string, string> = {
+  PENDING: "Chờ thanh toán",
+  PAID: "Đã thanh toán",
+  EXPIRED: "Hết hạn",
+  FAILED: "Thất bại",
+};
+
+const serviceStatusLabel: Record<string, string> = {
+  WAITING: "Chờ phục vụ",
+  SERVED: "Đã phục vụ",
+};
+
+const historyFieldLabel: Record<string, string> = {
+  checkin: "Ngày nhận phòng",
+  checkout: "Ngày trả phòng",
+  checkin_reality: "Giờ thực nhận",
+  checkout_reality: "Giờ thực trả",
+  booking_status: "Trạng thái booking",
+  detail_status: "Trạng thái phòng",
+  total_room_price: "Tiền phòng",
+  total_service_price: "Tiền dịch vụ",
+  total_extra_price: "Phụ thu",
+  total_price: "Tổng tiền",
+  voucher_code: "Mã voucher",
+  discount_amount: "Tiền giảm giá",
+  refund_status: "Trạng thái hoàn tiền",
+  refund_amount: "Tiền hoàn",
+};
+
 export default function BookingDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const permission = usePermission();
   const canViewBookings = permission.has("BOOKING_VIEW");
   const canCheckIn = permission.has("BOOKING_CHECKIN");
+  const canCheckOut = permission.has("BOOKING_CHECKOUT");
+  const canCancelBooking = permission.has("BOOKING_CANCEL");
   const canConfirmPayment = permission.has("PAYMENT_CONFIRM");
+  const canUpdateTotals = permission.has("BOOKING_UPDATE_TOTALS");
   const bookingId = useMemo(() => String(params.id ?? ""), [params.id]);
 
   const [booking, setBooking] = useState<RoomBookingResponse | null>(null);
   const [room, setRoom] = useState<RoomResponse | null>(null);
   const [customer, setCustomer] = useState<UserSummaryResponse | null>(null);
+  const [paymentRequest, setPaymentRequest] = useState<PaymentRequestResponse | null>(
+    null,
+  );
+  const [invoice, setInvoice] = useState<InvoiceResponse | null>(null);
+  const [guests, setGuests] = useState<ResidenceRegistrationResponse[]>([]);
+  const [services, setServices] = useState<ServiceOrderDetailResponse[]>([]);
+  const [editHistory, setEditHistory] = useState<EditHistoryResponse[]>([]);
+  const [financeForm, setFinanceForm] = useState({
+    voucherCode: "",
+    discountAmount: 0,
+    refundStatus: "NONE",
+    refundAmount: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   async function loadBooking() {
@@ -82,13 +155,38 @@ export default function BookingDetailPage() {
     try {
       const bookingData = await getRoomBooking(bookingId);
       setBooking(bookingData);
+      setFinanceForm({
+        voucherCode: bookingData.voucherCode ?? "",
+        discountAmount: bookingData.discountAmount ?? 0,
+        refundStatus: bookingData.refundStatus ?? "NONE",
+        refundAmount: bookingData.refundAmount ?? 0,
+      });
 
-      const [roomData, customerData] = await Promise.all([
-        getRoom(bookingData.roomId).catch(() => null),
-        getUserSummary(bookingData.customerId).catch(() => null),
-      ]);
+      const [
+        roomData,
+        customerData,
+        historyData,
+        guestData,
+        serviceData,
+        paymentData,
+        invoiceData,
+      ] = await Promise.all([
+          getRoom(bookingData.roomId).catch(() => null),
+          getUserSummary(bookingData.customerId).catch(() => null),
+          getRoomBookingEditHistory(bookingId).catch(() => []),
+          getResidenceRegistrations(bookingId).catch(() => []),
+          getServiceOrderDetails(bookingId).catch(() => []),
+          getLatestPaymentRequestByBooking(bookingId).catch(() => null),
+          getInvoiceByBooking(bookingId).catch(() => null),
+        ]);
+
       setRoom(roomData);
       setCustomer(customerData);
+      setEditHistory(historyData);
+      setGuests(guestData);
+      setServices(serviceData);
+      setPaymentRequest(paymentData);
+      setInvoice(invoiceData);
     } catch {
       setMessage(
         "Không thể tải chi tiết booking. Kiểm tra booking-service và quyền BOOKING_VIEW.",
@@ -102,22 +200,60 @@ export default function BookingDetailPage() {
     void loadBooking();
   }, [bookingId, canViewBookings]);
 
-  async function handleMockConfirmPayment() {
+  async function runBookingAction(
+    actionKey: string,
+    successMessage: string,
+    action: () => Promise<unknown>,
+  ) {
     if (!booking || actionLoading) return;
-    setActionLoading(true);
+    setActionLoading(actionKey);
     setMessage(null);
     try {
-      const paymentRequest = await getLatestPaymentRequestByBooking(booking.id);
-      await mockPaymentRequestPaid(paymentRequest.id);
+      await action();
       await loadBooking();
-      setMessage(`Đã xác nhận chuyển khoản cho booking ${shortCode(booking.id)}.`);
+      setMessage(successMessage);
     } catch {
-      setMessage(
-        "Không thể xác nhận chuyển khoản. Kiểm tra payment request và billing-service.",
-      );
+      setMessage("Không thể thực hiện thao tác này. Kiểm tra trạng thái booking và quyền tài khoản.");
     } finally {
-      setActionLoading(false);
+      setActionLoading(null);
     }
+  }
+
+  function handleCancelBooking() {
+    if (!booking) return;
+    const ok = window.confirm(
+      "Bạn chắc chắn muốn hủy booking này? Booking đã thanh toán sẽ chuyển sang yêu cầu hủy để quản lý duyệt.",
+    );
+    if (!ok) return;
+    void runBookingAction("cancel", `Đã gửi thao tác hủy booking ${shortCode(booking.id)}.`, () =>
+      cancelRoomBooking(booking.id),
+    );
+  }
+
+  async function handleSaveFinance() {
+    if (!booking || actionLoading) return;
+    const discountAmount = Math.max(0, Number(financeForm.discountAmount) || 0);
+    const refundAmount = Math.max(0, Number(financeForm.refundAmount) || 0);
+    const totalPrice = Math.max(
+      0,
+      booking.totalRoomPrice + booking.totalServicePrice + booking.totalExtraPrice - discountAmount,
+    );
+
+    await runBookingAction(
+      "finance",
+      `Đã cập nhật thanh toán cho booking ${shortCode(booking.id)}.`,
+      () =>
+        updateRoomBookingTotals(booking.id, {
+          totalRoomPrice: booking.totalRoomPrice,
+          totalServicePrice: booking.totalServicePrice,
+          totalExtraPrice: booking.totalExtraPrice,
+          totalPrice,
+          voucherCode: financeForm.voucherCode.trim(),
+          discountAmount,
+          refundStatus: financeForm.refundStatus,
+          refundAmount,
+        }),
+    );
   }
 
   if (!canViewBookings) {
@@ -131,6 +267,32 @@ export default function BookingDetailPage() {
   const roomName = room?.name || booking?.roomId || "-";
   const readyToCheckIn =
     booking?.status === "DEPOSITED" && booking?.detailStatus === "BOOKED";
+  const readyToCheckOut =
+    booking?.status === "CHECKED_IN" && booking?.detailStatus === "CHECKED_IN";
+  const canCancelThisBooking =
+    booking &&
+    (booking.status === "PENDING" || booking.status === "DEPOSITED") &&
+    booking.detailStatus === "BOOKED";
+  const canApproveThisCancellation = booking?.status === "CANCEL_REQUESTED";
+  const invoiceRoomTotal = invoice?.totalRoomPrice ?? booking?.totalRoomPrice ?? 0;
+  const invoiceServiceTotal =
+    invoice?.totalServicePrice ?? booking?.totalServicePrice ?? 0;
+  const invoiceExtraTotal = invoice?.totalExtraPrice ?? booking?.totalExtraPrice ?? 0;
+  const invoiceGrandTotal = invoice?.totalPrice ?? booking?.totalPrice ?? 0;
+  const voucherCode = invoice?.voucherCode ?? booking?.voucherCode ?? "";
+  const discountAmount = invoice?.discountAmount ?? booking?.discountAmount ?? 0;
+  const paidAmount =
+    invoice?.paidAmount ??
+    (paymentRequest?.status === "PAID" ? paymentRequest.amount : booking?.deposit) ??
+    0;
+  const remainingAmount =
+    invoice?.remainingAmount ?? Math.max(invoiceGrandTotal - paidAmount, 0);
+  const refundStatus = getRefundStatus(
+    displayStatus,
+    paidAmount,
+    invoice?.refundStatus ?? booking?.refundStatus,
+    invoice?.refundAmount ?? booking?.refundAmount ?? 0,
+  );
 
   return (
     <div className="space-y-6">
@@ -156,22 +318,22 @@ export default function BookingDetailPage() {
       ) : booking ? (
         <>
           <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-              <div>
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0">
                 <p className="text-xs font-bold tracking-[0.22em] text-[#9b5c24] uppercase">
-                  Chi tiết booking
+                  Trung tâm vận hành booking
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <h2 className="text-4xl font-bold tracking-tight text-[#17213a]">
+                  <h2 className="text-3xl font-black tracking-tight break-all text-[#17213a] md:text-4xl">
                     {shortCode(booking.id)}
                   </h2>
                   <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(displayStatus)}`}
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${badgeClass(displayStatus)}`}
                   >
                     {statusLabel[displayStatus]}
                   </span>
                 </div>
-                <p className="mt-3 max-w-3xl text-sm break-all text-[#7c6f63]">
+                <p className="mt-3 text-sm break-all text-[#7c6f63]">
                   Mã đầy đủ: {booking.id}
                 </p>
               </div>
@@ -181,7 +343,7 @@ export default function BookingDetailPage() {
                   type="button"
                   variant="outline"
                   onClick={() => void loadBooking()}
-                  disabled={loading || actionLoading}
+                  disabled={loading || Boolean(actionLoading)}
                   className="gap-2"
                 >
                   <RefreshCcw className="h-4 w-4" />
@@ -190,8 +352,19 @@ export default function BookingDetailPage() {
                 {displayStatus === "PENDING" ? (
                   <Button
                     type="button"
-                    disabled={!canConfirmPayment || actionLoading}
-                    onClick={() => void handleMockConfirmPayment()}
+                    disabled={!canConfirmPayment || Boolean(actionLoading)}
+                    onClick={() =>
+                      void runBookingAction(
+                        "payment",
+                        `Đã xác nhận chuyển khoản cho booking ${shortCode(booking.id)}.`,
+                        async () => {
+                          const latestPayment = await getLatestPaymentRequestByBooking(
+                            booking.id,
+                          );
+                          await mockPaymentRequestPaid(latestPayment.id);
+                        },
+                      )
+                    }
                     className="gap-2"
                   >
                     <CreditCard className="h-4 w-4" />
@@ -201,12 +374,57 @@ export default function BookingDetailPage() {
                 {readyToCheckIn ? (
                   <Button
                     type="button"
-                    disabled={!canCheckIn || actionLoading}
+                    disabled={!canCheckIn || Boolean(actionLoading)}
                     onClick={() => router.push(`/bookings/${booking.id}/checkin`)}
                     className="gap-2"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     Check-in
+                  </Button>
+                ) : null}
+                {readyToCheckOut ? (
+                  <Button
+                    type="button"
+                    disabled={!canCheckOut || Boolean(actionLoading)}
+                    onClick={() =>
+                      void runBookingAction(
+                        "checkout",
+                        `Đã check-out booking ${shortCode(booking.id)}.`,
+                        () => checkOutRoomBooking(booking.id),
+                      )
+                    }
+                    className="gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Check-out
+                  </Button>
+                ) : null}
+                {canCancelThisBooking ? (
+                  <Button
+                    type="button"
+                    disabled={!canCancelBooking || Boolean(actionLoading)}
+                    onClick={handleCancelBooking}
+                    className="gap-2 border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Hủy booking
+                  </Button>
+                ) : null}
+                {canApproveThisCancellation ? (
+                  <Button
+                    type="button"
+                    disabled={!canCancelBooking || Boolean(actionLoading)}
+                    onClick={() =>
+                      void runBookingAction(
+                        "approve-cancel",
+                        `Đã duyệt hủy booking ${shortCode(booking.id)}.`,
+                        () => approveRoomBookingCancellation(booking.id),
+                      )
+                    }
+                    className="gap-2"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Duyệt hủy
                   </Button>
                 ) : null}
               </div>
@@ -216,7 +434,7 @@ export default function BookingDetailPage() {
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <SummaryCard
               icon={<UserRound className="h-5 w-5" />}
-              label="Khách hàng"
+              label="Khách đặt"
               value={customerName}
               sub={customer?.email || customer?.username || booking.customerId}
             />
@@ -240,10 +458,13 @@ export default function BookingDetailPage() {
             />
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-[#17213a]">Thời gian lưu trú</h3>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+            <Panel
+              eyebrow="Booking"
+              title="Thông tin booking"
+              icon={<FileText className="h-5 w-5" />}
+            >
+              <div className="grid gap-4 md:grid-cols-2">
                 <LargeInfo
                   icon={<CalendarDays className="h-5 w-5" />}
                   label="Nhận phòng dự kiến"
@@ -257,54 +478,304 @@ export default function BookingDetailPage() {
                 <LargeInfo
                   icon={<CheckCircle2 className="h-5 w-5" />}
                   label="Thực nhận"
-                  value={
-                    booking.checkinReality ? formatDateTime(booking.checkinReality) : "-"
-                  }
+                  value={booking.checkinReality ? formatDateTime(booking.checkinReality) : "-"}
                 />
                 <LargeInfo
                   icon={<CheckCircle2 className="h-5 w-5" />}
                   label="Thực trả"
-                  value={
-                    booking.checkoutReality
-                      ? formatDateTime(booking.checkoutReality)
-                      : "-"
-                  }
+                  value={booking.checkoutReality ? formatDateTime(booking.checkoutReality) : "-"}
                 />
               </div>
-            </div>
-
-            <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-[#17213a]">Trạng thái</h3>
-              <div className="mt-5 space-y-4">
-                <DetailLine
-                  label="Trạng thái booking"
-                  value={formatBookingStatus(booking.status)}
-                />
-                <DetailLine
-                  label="Trạng thái phòng"
-                  value={formatDetailStatus(booking.detailStatus)}
-                />
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <DetailLine label="Trạng thái booking" value={formatBookingStatus(booking.status)} />
+                <DetailLine label="Trạng thái phòng" value={formatDetailStatus(booking.detailStatus)} />
                 <DetailLine label="Loại booking" value={booking.bookingType} />
                 <DetailLine label="Mã khách" value={booking.customerId} />
-                <DetailLine label="Mã phòng" value={booking.roomId} />
               </div>
-            </div>
+            </Panel>
+
+            <Panel
+              eyebrow="Phòng"
+              title="Phòng đang xử lý"
+              icon={<BedDouble className="h-5 w-5" />}
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <DetailLine label="Tên phòng" value={roomName} />
+                <DetailLine label="Loại phòng" value={room?.roomTypes?.name || "-"} />
+                <DetailLine label="Diện tích" value={room?.roomSize || "-"} />
+                <DetailLine label="Trạng thái phòng" value={room?.status || "-"} />
+                <DetailLine label="Giá theo ngày" value={formatMoney(room?.pricePerDay)} />
+                <DetailLine label="Giá theo giờ" value={formatMoney(room?.pricePerHour)} />
+              </div>
+            </Panel>
           </section>
 
-          <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
-            <h3 className="text-xl font-bold text-[#17213a]">Chi phí</h3>
-            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <MoneyCard label="Giá phòng" value={formatMoney(booking.roomPrice)} />
-              <MoneyCard label="Tiền phòng" value={formatMoney(booking.totalRoomPrice)} />
-              <MoneyCard label="Dịch vụ" value={formatMoney(booking.totalServicePrice)} />
-              <MoneyCard label="Phụ thu" value={formatMoney(booking.totalExtraPrice)} />
-              <MoneyCard label="Đặt cọc" value={formatMoney(booking.deposit)} />
-              <MoneyCard
-                label="Tổng tiền"
-                value={formatMoney(booking.totalPrice)}
-                strong
-              />
-            </div>
+          <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+            <Panel
+              eyebrow="Khách lưu trú"
+              title="Danh sách người ở"
+              icon={<UsersRound className="h-5 w-5" />}
+              right={
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canCheckIn || displayStatus === "CHECKED_OUT" || displayStatus === "CANCELLED"}
+                  onClick={() => router.push(`/bookings/${booking.id}/checkin`)}
+                >
+                  Cập nhật
+                </Button>
+              }
+            >
+              {guests.length === 0 ? (
+                <EmptyState text="Chưa có khách lưu trú. Khi check-in, lễ tân nhập danh sách người ở tại đây." />
+              ) : (
+                <div className="space-y-3">
+                  {guests.map((guest, index) => (
+                    <div
+                      key={guest.id}
+                      className="rounded-2xl border border-[#eee3d5] bg-[#fbf6ed] p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-bold tracking-[0.14em] text-[#9b5c24] uppercase">
+                            Khách {index + 1}
+                          </p>
+                          <p className="mt-1 text-base font-black text-[#17213a]">
+                            {guest.fullName}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#8a5724]">
+                          {guest.gender || "-"}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid gap-2 text-sm text-[#7c6f63] sm:grid-cols-2">
+                        <span>Giấy tờ: {guest.identityNumber}</span>
+                        <span>Ngày sinh: {formatPlainDate(guest.dateOfBirth)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Panel>
+
+            <Panel
+              eyebrow="Dịch vụ phát sinh"
+              title="Dịch vụ của booking"
+              icon={<Utensils className="h-5 w-5" />}
+            >
+              {services.length === 0 ? (
+                <EmptyState text="Chưa có dịch vụ phát sinh hoặc dịch vụ đi kèm nào được ghi nhận." />
+              ) : (
+                <div className="overflow-hidden rounded-2xl border border-[#eee3d5]">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-[#fbf6ed] text-xs font-bold tracking-[0.12em] text-[#7c6f63] uppercase">
+                      <tr>
+                        <th className="px-4 py-3">Dịch vụ</th>
+                        <th className="px-4 py-3">SL</th>
+                        <th className="px-4 py-3">Tiền</th>
+                        <th className="px-4 py-3">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#eee3d5] bg-white">
+                      {services.map((item) => (
+                        <tr key={item.id}>
+                          <td className="px-4 py-3">
+                            <p className="font-bold text-[#17213a]">
+                              {item.serviceName || item.serviceId}
+                            </p>
+                            <p className="text-xs text-[#9f8a77]">
+                              {item.source === "INCLUDED" ? "Đi kèm" : "Phát sinh"}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-[#17213a]">
+                            {item.quantity}
+                          </td>
+                          <td className="px-4 py-3 font-bold text-[#8a5724]">
+                            {formatMoney(item.totalPrice || item.amount || item.price)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                item.status === "SERVED"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}
+                            >
+                              {serviceStatusLabel[item.status] ?? item.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+            <Panel
+              eyebrow="Hóa đơn / thanh toán"
+              title="Invoice & thanh toán"
+              icon={<ReceiptText className="h-5 w-5" />}
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <MoneyCard label="Tiền phòng" value={formatMoney(invoiceRoomTotal)} />
+                <MoneyCard label="Tiền dịch vụ" value={formatMoney(invoiceServiceTotal)} />
+                <MoneyCard label="Phụ thu" value={formatMoney(invoiceExtraTotal)} />
+                <MoneyCard
+                  label="Voucher"
+                  value={
+                    discountAmount > 0
+                      ? `-${formatMoney(discountAmount)}${voucherCode ? ` (${voucherCode})` : ""}`
+                      : "Chưa áp dụng"
+                  }
+                />
+                <MoneyCard label="Đặt cọc / đã trả" value={formatMoney(paidAmount)} />
+                <MoneyCard label="Còn phải trả" value={formatMoney(remainingAmount)} strong />
+              </div>
+              <div className="mt-4 rounded-2xl border border-[#eee3d5] bg-[#fbf6ed] p-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
+                      Trạng thái thanh toán
+                    </p>
+                    <p className="mt-1 font-black text-[#17213a]">
+                      {paymentRequest
+                        ? paymentStatusLabel[paymentRequest.status] ?? paymentRequest.status
+                        : "Chưa có yêu cầu thanh toán"}
+                    </p>
+                    <p className="mt-1 text-xs break-all text-[#9f8a77]">
+                      {paymentRequest?.transferContent ||
+                        invoice?.invoiceNo ||
+                        "Chưa phát sinh mã thanh toán/hóa đơn."}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
+                      Trạng thái hoàn tiền
+                    </p>
+                    <p className="mt-1 font-black text-[#17213a]">{refundStatus.label}</p>
+                    <p className="mt-1 text-xs text-[#9f8a77]">{refundStatus.description}</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 border-t border-[#eadfcd] pt-4 text-sm md:grid-cols-2">
+                  <DetailMini label="Tổng trước voucher" value={formatMoney(invoiceGrandTotal)} />
+                  <DetailMini label="Số tiền request" value={formatMoney(paymentRequest?.amount)} />
+                  <DetailMini
+                    label="Thời gian thanh toán"
+                    value={
+                      paymentRequest?.paidTime
+                        ? formatDateTime(paymentRequest.paidTime)
+                        : invoice?.paymentTime || "-"
+                    }
+                  />
+                  <DetailMini
+                    label="Mã invoice"
+                    value={invoice?.invoiceNo || "Chưa có invoice đã thanh toán"}
+                  />
+                  <DetailMini
+                    label="Phương thức"
+                    value={invoice?.paymentMethod || paymentRequest?.provider || "-"}
+                  />
+                  <DetailMini
+                    label="Hết hạn thanh toán"
+                    value={
+                      paymentRequest?.expiredTime
+                        ? formatDateTime(paymentRequest.expiredTime)
+                        : "-"
+                    }
+                  />
+                </div>
+                <div className="mt-4 rounded-xl bg-white p-3 text-xs font-semibold text-[#7c6f63]">
+                  Voucher và hoàn tiền đang lấy từ booking/invoice. Nếu chưa có giao dịch
+                  hoàn tiền thật, trạng thái sẽ hiển thị theo dữ liệu refund hiện có.
+                </div>
+                {canUpdateTotals ? (
+                  <div className="mt-4 rounded-2xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-sm font-black text-[#17213a]">
+                      Cập nhật voucher / hoàn tiền
+                    </p>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <Input
+                        value={financeForm.voucherCode}
+                        onChange={(event) =>
+                          setFinanceForm({
+                            ...financeForm,
+                            voucherCode: event.target.value,
+                          })
+                        }
+                        placeholder="Mã voucher"
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        value={financeForm.discountAmount}
+                        onChange={(event) =>
+                          setFinanceForm({
+                            ...financeForm,
+                            discountAmount: Number(event.target.value) || 0,
+                          })
+                        }
+                        placeholder="Tiền giảm"
+                      />
+                      <Select
+                        value={financeForm.refundStatus}
+                        onValueChange={(value) =>
+                          setFinanceForm({ ...financeForm, refundStatus: value })
+                        }
+                        options={[
+                          { value: "NONE", label: "Chưa phát sinh" },
+                          { value: "REQUESTED", label: "Chờ duyệt hoàn tiền" },
+                          { value: "APPROVED", label: "Đã duyệt hoàn tiền" },
+                          { value: "REJECTED", label: "Từ chối hoàn tiền" },
+                          { value: "PAID", label: "Đã hoàn tiền" },
+                        ]}
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        value={financeForm.refundAmount}
+                        onChange={(event) =>
+                          setFinanceForm({
+                            ...financeForm,
+                            refundAmount: Number(event.target.value) || 0,
+                          })
+                        }
+                        placeholder="Tiền hoàn"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => void handleSaveFinance()}
+                      disabled={Boolean(actionLoading)}
+                      className="mt-3 w-full"
+                    >
+                      Lưu thanh toán
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </Panel>
+
+            <Panel
+              eyebrow="Audit"
+              title="Lịch sử chỉnh sửa"
+              icon={<ScrollText className="h-5 w-5" />}
+              right={
+                <span className="rounded-full bg-[#fff6df] px-3 py-1 text-xs font-bold text-[#8a5724]">
+                  {editHistory.length} bản ghi
+                </span>
+              }
+            >
+              <div className="space-y-3">
+                {editHistory.length === 0 ? (
+                  <EmptyState text="Chưa có lịch sử chỉnh sửa cho booking này." />
+                ) : (
+                  editHistory.map((item) => <HistoryItem key={item.id} item={item} />)
+                )}
+              </div>
+            </Panel>
           </section>
         </>
       ) : (
@@ -316,13 +787,76 @@ export default function BookingDetailPage() {
   );
 }
 
+function Panel({
+  eyebrow,
+  title,
+  icon,
+  right,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  icon: ReactNode;
+  right?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
+      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="rounded-full bg-[#fff6df] p-2 text-[#9b5c24]">{icon}</div>
+          <div>
+            <p className="text-xs font-bold tracking-[0.18em] text-[#9b5c24] uppercase">
+              {eyebrow}
+            </p>
+            <h3 className="mt-1 text-xl font-black text-[#17213a]">{title}</h3>
+          </div>
+        </div>
+        {right}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function HistoryItem({ item }: { item: EditHistoryResponse }) {
+  return (
+    <div className="rounded-2xl border border-[#eee3d5] bg-[#fbf6ed] p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="flex min-w-0 gap-3">
+          <div className="mt-0.5 rounded-full bg-white p-2 text-[#9b5c24]">
+            <ScrollText className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-black text-[#17213a]">
+              {formatHistoryField(item.fieldName)}
+            </p>
+            <p className="mt-1 text-sm font-semibold break-words text-[#8a5724]">
+              {formatHistoryContent(item.content)}
+            </p>
+            {item.description ? (
+              <p className="mt-1 text-xs text-[#7c6f63]">{item.description}</p>
+            ) : null}
+          </div>
+        </div>
+        <div className="shrink-0 text-left md:text-right">
+          <p className="text-xs font-bold text-[#17213a]">
+            {item.modifiedBy || "system"}
+          </p>
+          <p className="mt-1 text-xs text-[#7c6f63]">{formatDateTime(item.modifiedAt)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SummaryCard({
   icon,
   label,
   value,
   sub,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
   sub?: string;
@@ -348,7 +882,7 @@ function LargeInfo({
   label,
   value,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
 }) {
@@ -378,6 +912,17 @@ function DetailLine({ label, value }: { label: string; value: string }) {
   );
 }
 
+function DetailMini({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-bold tracking-[0.12em] text-[#7c6f63] uppercase">
+        {label}
+      </p>
+      <p className="mt-1 font-semibold break-words text-[#17213a]">{value}</p>
+    </div>
+  );
+}
+
 function MoneyCard({
   label,
   value,
@@ -393,10 +938,20 @@ function MoneyCard({
         {label}
       </p>
       <p
-        className={`mt-2 text-xl ${strong ? "font-black text-[#17213a]" : "font-bold text-[#8a5724]"}`}
+        className={`mt-2 text-xl ${
+          strong ? "font-black text-[#17213a]" : "font-bold text-[#8a5724]"
+        }`}
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-[#decdb9] bg-[#fbf6ed] p-6 text-center text-sm font-semibold text-[#7c6f63]">
+      {text}
     </div>
   );
 }
@@ -441,6 +996,51 @@ function badgeClass(status: DisplayStatus) {
   }
 }
 
+function getRefundStatus(
+  status: DisplayStatus,
+  paidAmount: number,
+  refundStatus?: string,
+  refundAmount = 0,
+) {
+  if (refundStatus && refundStatus !== "NONE") {
+    return {
+      label: formatRefundStatus(refundStatus),
+      description:
+        refundAmount > 0
+          ? `Số tiền hoàn: ${formatMoney(refundAmount)}`
+          : "Đã có trạng thái hoàn tiền từ hệ thống.",
+    };
+  }
+  if (status === "CANCEL_REQUESTED" && paidAmount > 0) {
+    return {
+      label: "Chờ duyệt hoàn tiền",
+      description: "Booking đã thanh toán và đang chờ quản lý duyệt hủy.",
+    };
+  }
+  if (status === "CANCELLED" && paidAmount > 0) {
+    return {
+      label: "Cần kiểm tra hoàn tiền",
+      description: "Hệ thống chưa có giao dịch hoàn tiền riêng để đối soát tự động.",
+    };
+  }
+  return {
+    label: "Chưa phát sinh",
+    description: "Chưa có yêu cầu hoàn tiền được ghi nhận cho booking này.",
+  };
+}
+
+function formatRefundStatus(status?: string) {
+  const labels: Record<string, string> = {
+    NONE: "Chưa phát sinh",
+    REQUESTED: "Chờ duyệt hoàn tiền",
+    APPROVED: "Đã duyệt hoàn tiền",
+    REJECTED: "Từ chối hoàn tiền",
+    PAID: "Đã hoàn tiền",
+  };
+  if (!status) return labels.NONE;
+  return labels[status] ?? status;
+}
+
 function formatCustomerName(customer: UserSummaryResponse | null) {
   if (!customer) return "";
   const fullName = [customer.firstName, customer.lastName].filter(Boolean).join(" ");
@@ -457,6 +1057,33 @@ function formatDetailStatus(status?: string) {
   return detailStatusLabel[status] ?? status;
 }
 
+function formatHistoryField(fieldName?: string) {
+  if (!fieldName) return "-";
+  return historyFieldLabel[fieldName] ?? fieldName;
+}
+
+function formatHistoryContent(content?: string) {
+  if (!content) return "-";
+  const [from, to] = content.split(" -> ");
+  if (!to) return content;
+  return `${formatHistoryValue(from)} -> ${formatHistoryValue(to)}`;
+}
+
+function formatHistoryValue(value: string) {
+  if (!value || value === "null") return "-";
+  const asDate = new Date(value);
+  if (Number.isFinite(asDate.getTime()) && value.includes("T")) {
+    return formatDateTime(value);
+  }
+  if (bookingStatusLabel[value]) return bookingStatusLabel[value];
+  if (detailStatusLabel[value]) return detailStatusLabel[value];
+  const asNumber = Number(value);
+  if (Number.isFinite(asNumber) && /^-?\d+(\.\d+)?$/.test(value)) {
+    return formatMoney(asNumber);
+  }
+  return value;
+}
+
 function shortCode(id: string) {
   return `BK-${id.slice(0, 8).toUpperCase()}`;
 }
@@ -470,6 +1097,17 @@ function formatDateTime(value?: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatPlainDate(value?: string) {
+  if (!value) return "-";
+  const asDate = new Date(value);
+  if (!Number.isFinite(asDate.getTime())) return value;
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(asDate);
 }
 
 function getDurationLabel(start?: string, end?: string) {
@@ -494,10 +1132,7 @@ function getDurationLabel(start?: string, end?: string) {
   return `${minutes} phút`;
 }
 
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value || 0);
+function formatMoney(value?: number) {
+  if (value == null || !Number.isFinite(value)) return "-";
+  return `${new Intl.NumberFormat("vi-VN").format(value)} đ`;
 }

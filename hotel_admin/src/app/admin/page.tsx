@@ -61,6 +61,12 @@ export default function AdminPage() {
       requiredPermission: "AMENITY_ROOM_VIEW",
     },
     {
+      title: "Dịch Vụ",
+      description: "Quản lý dịch vụ gốc: thêm, sửa, xóa, đổi giá và trạng thái hoạt động.",
+      href: "/admin/services",
+      requiredPermission: "SERVICE_VIEW",
+    },
+    {
       title: "Dịch Vụ Bổ Sung Theo Loại Phòng",
       description: "Bảng trung gian gán mã dịch vụ và số lượng cho từng loại phòng.",
       href: "/admin/room-type-services",
@@ -1555,19 +1561,10 @@ export function RoomTypeServicesSection() {
           <div className="mt-4 flex flex-col gap-3 sm:flex-row md:mt-0">
             <Button
               type="button"
-              onClick={() => {
-                setServiceFormData({
-                  name: "",
-                  description: "",
-                  price: 0,
-                  image: "",
-                  status: "AVAILABLE",
-                });
-                setIsServiceModalOpen(true);
-              }}
+              onClick={() => router.push("/admin/services")}
               className="bg-emerald-700 text-white hover:bg-emerald-800"
             >
-              + Thêm dịch vụ
+              Quản lý dịch vụ gốc
             </Button>
             <Button
               type="button"

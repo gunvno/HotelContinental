@@ -217,13 +217,23 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
 
     private void syncBookingTotals(String roomBookingId, RoomBookingSnapshotResponse booking) {
         float totalServicePrice = serviceOrderDetailsRepository.sumActiveServiceTotal(roomBookingId);
-        float totalPrice = booking.getTotalRoomPrice() + totalServicePrice + booking.getTotalExtraPrice();
+        float totalPrice = Math.max(
+                0,
+                booking.getTotalRoomPrice()
+                        + totalServicePrice
+                        + booking.getTotalExtraPrice()
+                        - booking.getDiscountAmount()
+        );
 
         externalServiceClient.updateBookingTotals(roomBookingId, RoomBookingTotalsUpdateRequest.builder()
                 .totalRoomPrice(booking.getTotalRoomPrice())
                 .totalServicePrice(totalServicePrice)
                 .totalExtraPrice(booking.getTotalExtraPrice())
                 .totalPrice(totalPrice)
+                .voucherCode(booking.getVoucherCode())
+                .discountAmount(booking.getDiscountAmount())
+                .refundStatus(booking.getRefundStatus())
+                .refundAmount(booking.getRefundAmount())
                 .build());
     }
 

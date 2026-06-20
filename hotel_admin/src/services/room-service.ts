@@ -357,6 +357,20 @@ export async function createCatalogService(
   return (res.result ?? res.content) as ServiceResponse;
 }
 
+export async function updateCatalogService(
+  id: string,
+  payload: CatalogServicePayload,
+): Promise<ServiceResponse> {
+  const res = await http
+    .put(`catalog/service/${id}`, { json: payload })
+    .json<ApiResponse<ServiceResponse>>();
+  return (res.result ?? res.content) as ServiceResponse;
+}
+
+export async function deleteCatalogService(id: string): Promise<void> {
+  await http.delete(`catalog/service/${id}`);
+}
+
 // ============= AMENITY ROOM SERVICES =============
 export async function createAmenityRoom(
   payload: AmenityRoomPayload,

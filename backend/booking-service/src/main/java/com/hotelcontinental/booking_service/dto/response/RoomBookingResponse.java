@@ -31,4 +31,8 @@ public class RoomBookingResponse {
     float totalExtraPrice;
     float totalPrice;
     float deposit;
+    String voucherCode;
+    float discountAmount;
+    String refundStatus;
+    float refundAmount;
 }

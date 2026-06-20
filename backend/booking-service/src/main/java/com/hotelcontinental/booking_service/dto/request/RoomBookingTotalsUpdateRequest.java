@@ -11,4 +11,8 @@ public class RoomBookingTotalsUpdateRequest {
     float totalServicePrice;
     float totalExtraPrice;
     float totalPrice;
+    String voucherCode;
+    Float discountAmount;
+    String refundStatus;
+    Float refundAmount;
 }

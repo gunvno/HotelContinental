@@ -41,6 +41,14 @@ public class RoomBookings {
     float totalServicePrice;
     @Column(name = "total_extra_price", nullable = false)
     float totalExtraPrice;
+    @Column(name = "voucher_code", length = 100)
+    String voucherCode;
+    @Column(name = "discount_amount")
+    float discountAmount;
+    @Column(name = "refund_status", length = 30)
+    String refundStatus;
+    @Column(name = "refund_amount")
+    float refundAmount;
 
     @Column(name = "created_time")
     LocalDateTime createdTime;

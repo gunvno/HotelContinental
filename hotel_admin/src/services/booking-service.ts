@@ -33,6 +33,29 @@ export type RoomBookingResponse = {
   totalExtraPrice: number;
   totalPrice: number;
   deposit: number;
+  voucherCode?: string;
+  discountAmount: number;
+  refundStatus?: string;
+  refundAmount: number;
+};
+
+export type EditHistoryResponse = {
+  id: string;
+  roomBookingDetailId?: string;
+  fieldName: string;
+  content: string;
+  description?: string;
+  modifiedAt?: string;
+  modifiedBy?: string;
+};
+
+export type ResidenceRegistrationResponse = {
+  id: string;
+  roomBookingDetailId?: string;
+  fullName: string;
+  identityNumber: string;
+  gender: string;
+  dateOfBirth: string;
 };
 
 export type ResidenceGuestPayload = {
@@ -40,6 +63,17 @@ export type ResidenceGuestPayload = {
   identityNumber: string;
   gender: string;
   dateOfBirth: string;
+};
+
+export type RoomBookingTotalsPayload = {
+  totalRoomPrice: number;
+  totalServicePrice: number;
+  totalExtraPrice: number;
+  totalPrice: number;
+  voucherCode?: string;
+  discountAmount?: number;
+  refundStatus?: string;
+  refundAmount?: number;
 };
 
 export async function getRoomBookings() {
@@ -56,6 +90,20 @@ export async function getRoomBooking(id: string) {
   return (res.result ?? res.content) as RoomBookingResponse;
 }
 
+export async function getRoomBookingEditHistory(id: string) {
+  const res = await http
+    .get(`booking/room-bookings/${id}/edit-history`)
+    .json<ApiResponse<EditHistoryResponse[]>>();
+  return (res.result ?? res.content ?? []) as EditHistoryResponse[];
+}
+
+export async function getResidenceRegistrations(id: string) {
+  const res = await http
+    .get(`booking/room-bookings/${id}/residence-registrations`)
+    .json<ApiResponse<ResidenceRegistrationResponse[]>>();
+  return (res.result ?? res.content ?? []) as ResidenceRegistrationResponse[];
+}
+
 export async function checkInRoomBooking(id: string) {
   const res = await http
     .post(`booking/room-bookings/${id}/check-in`)
@@ -63,10 +111,7 @@ export async function checkInRoomBooking(id: string) {
   return (res.result ?? res.content) as RoomBookingResponse;
 }
 
-export async function registerResidence(
-  id: string,
-  guests: ResidenceGuestPayload[],
-) {
+export async function registerResidence(id: string, guests: ResidenceGuestPayload[]) {
   const res = await http
     .post(`booking/room-bookings/${id}/residence-registrations`, {
       json: { guests },
@@ -78,6 +123,23 @@ export async function registerResidence(
 export async function checkOutRoomBooking(id: string) {
   const res = await http
     .post(`booking/room-bookings/${id}/check-out`)
+    .json<ApiResponse<RoomBookingResponse>>();
+  return (res.result ?? res.content) as RoomBookingResponse;
+}
+
+export async function updateRoomBookingTotals(
+  id: string,
+  payload: RoomBookingTotalsPayload,
+) {
+  const res = await http
+    .post(`booking/room-bookings/${id}/totals`, { json: payload })
+    .json<ApiResponse<RoomBookingResponse>>();
+  return (res.result ?? res.content) as RoomBookingResponse;
+}
+
+export async function cancelRoomBooking(id: string) {
+  const res = await http
+    .post(`booking/room-bookings/${id}/cancel`)
     .json<ApiResponse<RoomBookingResponse>>();
   return (res.result ?? res.content) as RoomBookingResponse;
 }

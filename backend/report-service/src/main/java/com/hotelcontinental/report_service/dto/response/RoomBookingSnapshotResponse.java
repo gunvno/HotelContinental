@@ -26,4 +26,8 @@ public class RoomBookingSnapshotResponse {
     double totalExtraPrice;
     double totalPrice;
     double deposit;
+    String voucherCode;
+    double discountAmount;
+    String refundStatus;
+    double refundAmount;
 }

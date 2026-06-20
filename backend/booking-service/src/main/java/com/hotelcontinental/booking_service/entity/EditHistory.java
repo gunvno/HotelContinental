@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "edit_history")
@@ -29,7 +29,9 @@ public class EditHistory {
     @Column(name = "description")
     String description;
     @Column(name = "modified_at")
-    LocalDate modifiedAt;
+    LocalDateTime modifiedAt;
+    @Column(name = "modified_by", length = 100)
+    String modifiedBy;
 
 
 }

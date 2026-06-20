@@ -14,6 +14,8 @@ import java.util.List;
 @ConfigurationProperties(prefix = "authorization")
 public class RolePermissionProperties {
     private List<String> adminPermission = new ArrayList<>();
-    private List<String> staffPermission = new ArrayList<>();
+    private List<String> managerPermission = new ArrayList<>();
+    private List<String> receptionistPermission = new ArrayList<>();
+    private List<String> customerSupportPermission = new ArrayList<>();
     private List<String> customerPermission = new ArrayList<>();
 }

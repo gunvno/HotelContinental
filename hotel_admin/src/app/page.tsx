@@ -1,13 +1,16 @@
 "use client";
 
 import {
-  Activity,
+  AlertTriangle,
   BedDouble,
   CalendarCheck,
+  CalendarClock,
   CircleDollarSign,
   ClipboardCheck,
+  DoorOpen,
+  LogOut,
+  ReceiptText,
   RefreshCcw,
-  Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -44,7 +47,10 @@ function formatCompactCurrency(value = 0) {
 }
 
 function toDateInputValue(date: Date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function getDefaultRange() {
@@ -55,6 +61,10 @@ function getDefaultRange() {
     from: toDateInputValue(from),
     to: toDateInputValue(to),
   };
+}
+
+function getMonthStartValue(date = new Date()) {
+  return toDateInputValue(new Date(date.getFullYear(), date.getMonth(), 1));
 }
 
 function getDatePart(value?: string) {
@@ -75,12 +85,28 @@ function isSameDay(value: string | undefined, dateValue: string) {
   return getDatePart(value) === dateValue;
 }
 
+function isCheckedIn(booking: RoomBookingResponse) {
+  return booking.status === "CHECKED_IN" || booking.detailStatus === "CHECKED_IN";
+}
+
+function isReadyToCheckInToday(booking: RoomBookingResponse, today: string) {
+  return (
+    booking.status === "DEPOSITED" &&
+    booking.detailStatus === "BOOKED" &&
+    isSameDay(booking.checkin, today)
+  );
+}
+
+function isReadyToCheckOutToday(booking: RoomBookingResponse, today: string) {
+  return isCheckedIn(booking) && isSameDay(booking.checkout, today);
+}
+
 function bookingStatusLabel(status: RoomBookingResponse["status"]) {
   const labels: Record<RoomBookingResponse["status"], string> = {
-    PENDING: "Chờ xác nhận",
-    DEPOSITED: "Đã thanh toán",
+    PENDING: "Chờ thanh toán",
+    DEPOSITED: "Đã xác nhận",
     CANCEL_REQUESTED: "Yêu cầu hủy",
-    CHECKED_IN: "Đang lưu trú",
+    CHECKED_IN: "Đang ở",
     CANCEL: "Đã hủy",
     DONE: "Hoàn tất",
   };
@@ -101,17 +127,17 @@ function MetricCard({
   tone: string;
 }) {
   return (
-    <div className="group overflow-hidden rounded-[1.5rem] border border-[#decdb9] bg-white/72 p-5 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-xl dark:border-[#3a2e24] dark:bg-white/[0.05]">
+    <div className="rounded-2xl border border-[#decdb9] bg-white/82 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-[#3a2e24] dark:bg-white/[0.05]">
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-[#75695d] dark:text-[#b7a99a]">
             {label}
           </p>
-          <p className="mt-3 text-4xl font-black tracking-tight">{value}</p>
+          <p className="mt-3 text-3xl font-black tracking-tight text-[#17213a] dark:text-white">
+            {value}
+          </p>
         </div>
-        <div className={`rounded-2xl bg-gradient-to-br ${tone} p-3 text-white shadow-lg`}>
-          {icon}
-        </div>
+        <div className={`rounded-2xl ${tone} p-3 text-white shadow-sm`}>{icon}</div>
       </div>
       <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#5f7f24] dark:text-[#a8d86b]">
         <TrendingUp className="h-3.5 w-3.5" />
@@ -124,10 +150,14 @@ function MetricCard({
 export default function DashboardPage() {
   const { has } = usePermission();
   const { from: defaultFrom, to: defaultTo } = useMemo(getDefaultRange, []);
+  const today = useMemo(() => toDateInputValue(new Date()), []);
+  const monthStart = useMemo(() => getMonthStartValue(new Date()), []);
 
   const [fromDate, setFromDate] = useState(defaultFrom);
   const [toDate, setToDate] = useState(defaultTo);
   const [summary, setSummary] = useState<RevenueSummaryResponse | null>(null);
+  const [todaySummary, setTodaySummary] = useState<RevenueSummaryResponse | null>(null);
+  const [monthSummary, setMonthSummary] = useState<RevenueSummaryResponse | null>(null);
   const [bookings, setBookings] = useState<RoomBookingResponse[]>([]);
   const [roomTotal, setRoomTotal] = useState(0);
   const [roomNames, setRoomNames] = useState<Record<string, string>>({});
@@ -142,13 +172,18 @@ export default function DashboardPage() {
     setIsLoading(true);
     setErrorMessage("");
     try {
-      const [revenueData, bookingData, roomData] = await Promise.all([
-        getRevenueSummary(fromDate, toDate),
-        getRoomBookings(),
-        getAllRooms(0, 500).catch(() => ({ data: [], total: 0 })),
-      ]);
+      const [rangeRevenue, todayRevenue, monthRevenue, bookingData, roomData] =
+        await Promise.all([
+          getRevenueSummary(fromDate, toDate),
+          getRevenueSummary(today, today),
+          getRevenueSummary(monthStart, today),
+          getRoomBookings(),
+          getAllRooms(0, 500).catch(() => ({ data: [], total: 0 })),
+        ]);
 
-      setSummary(revenueData);
+      setSummary(rangeRevenue);
+      setTodaySummary(todayRevenue);
+      setMonthSummary(monthRevenue);
       setBookings(bookingData);
       setRoomTotal(roomData.total);
       setRoomNames(
@@ -165,151 +200,138 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [canViewRevenue, fromDate, toDate]);
+  }, [canViewRevenue, fromDate, monthStart, today, toDate]);
 
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
 
-  const today = toDateInputValue(new Date());
-  const pendingBookings = bookings.filter((booking) => booking.status === "PENDING");
-  const activeBookings = bookings.filter(
-    (booking) =>
-      booking.status === "PENDING" ||
-      booking.status === "DEPOSITED" ||
-      booking.status === "CHECKED_IN",
+  const checkedInBookings = bookings.filter(isCheckedIn);
+  const checkedInRoomIds = new Set(checkedInBookings.map((booking) => booking.roomId));
+  const checkInTodayBookings = bookings.filter((booking) =>
+    isReadyToCheckInToday(booking, today),
   );
-  const occupiedRoomIds = new Set(activeBookings.map((booking) => booking.roomId));
-  const availableRooms = Math.max(roomTotal - occupiedRoomIds.size, 0);
+  const checkOutTodayBookings = bookings.filter((booking) =>
+    isReadyToCheckOutToday(booking, today),
+  );
+  const cancelRequestedBookings = bookings.filter(
+    (booking) => booking.status === "CANCEL_REQUESTED",
+  );
+  const pendingPaymentBookings = bookings.filter((booking) => booking.status === "PENDING");
   const occupancyRate =
-    roomTotal > 0 ? Math.round((occupiedRoomIds.size / roomTotal) * 100) : 0;
-  const checkoutTodayCount = bookings.filter(
-    (booking) =>
-      booking.status === "DONE" &&
-      (isSameDay(booking.checkoutReality, today) || isSameDay(booking.checkout, today)),
-  ).length;
-  const urgentTaskCount =
-    pendingBookings.length + (summary?.checkedInBookingCount ?? 0) + checkoutTodayCount;
+    roomTotal > 0 ? Math.round((checkedInRoomIds.size / roomTotal) * 100) : 0;
+  const todayRevenue = todaySummary?.totalCollected ?? todaySummary?.todayCollected ?? 0;
+  const monthRevenue = monthSummary?.totalCollected ?? 0;
 
   const dailyRevenue = summary?.dailyRevenue ?? [];
   const maxDailyRevenue = Math.max(...dailyRevenue.map((item) => item.amount), 1);
 
-  const recentBookings = [...bookings]
-    .sort((a, b) => {
-      const aTime = new Date(a.checkinReality ?? a.checkin ?? "").getTime();
-      const bTime = new Date(b.checkinReality ?? b.checkin ?? "").getTime();
-      return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
-    })
-    .slice(0, 4);
+  const upcomingOperations = [
+    ...checkInTodayBookings.map((booking) => ({
+      id: `checkin-${booking.id}`,
+      time: getTimePart(booking.checkin),
+      title: "Sắp check-in",
+      room: roomNames[booking.roomId] ?? `Phòng ${booking.roomId.slice(0, 8)}`,
+      status: bookingStatusLabel(booking.status),
+      amount: booking.totalPrice,
+      tone: "bg-sky-100 text-sky-700",
+    })),
+    ...checkOutTodayBookings.map((booking) => ({
+      id: `checkout-${booking.id}`,
+      time: getTimePart(booking.checkout),
+      title: "Sắp check-out",
+      room: roomNames[booking.roomId] ?? `Phòng ${booking.roomId.slice(0, 8)}`,
+      status: bookingStatusLabel(booking.status),
+      amount: booking.totalPrice,
+      tone: "bg-emerald-100 text-emerald-700",
+    })),
+    ...cancelRequestedBookings.map((booking) => ({
+      id: `cancel-${booking.id}`,
+      time: getTimePart(booking.checkin) || getDatePart(booking.checkin),
+      title: "Chờ duyệt hủy",
+      room: roomNames[booking.roomId] ?? `Phòng ${booking.roomId.slice(0, 8)}`,
+      status: bookingStatusLabel(booking.status),
+      amount: booking.totalPrice,
+      tone: "bg-orange-100 text-orange-700",
+    })),
+  ].slice(0, 8);
 
   const metrics = [
     {
-      label: "Doanh thu hôm nay",
-      value: formatCompactCurrency(summary?.todayCollected ?? 0),
-      detail: `Tổng kỳ này ${formatCurrency(summary?.totalCollected ?? 0)}`,
-      icon: <CircleDollarSign className="h-5 w-5" />,
-      tone: "from-[#9b5c24] to-[#d9a25f]",
-    },
-    {
-      label: "Phòng còn trống",
-      value: availableRooms,
-      detail: `${occupiedRoomIds.size}/${roomTotal} phòng đang có booking hiệu lực`,
-      icon: <BedDouble className="h-5 w-5" />,
-      tone: "from-[#164e63] to-[#22d3ee]",
-    },
-    {
-      label: "Booking trong kỳ",
-      value: summary?.bookingCount ?? bookings.length,
-      detail: `${pendingBookings.length} booking chờ xác nhận`,
-      icon: <CalendarCheck className="h-5 w-5" />,
-      tone: "from-[#365314] to-[#84cc16]",
-    },
-    {
-      label: "Khách đang lưu trú",
-      value: summary?.checkedInBookingCount ?? 0,
-      detail: `${checkoutTodayCount} booking checkout hôm nay`,
+      label: "Phòng đang ở",
+      value: checkedInRoomIds.size,
+      detail: `${checkedInBookings.length} booking đang lưu trú`,
       icon: <Users className="h-5 w-5" />,
-      tone: "from-[#7c2d12] to-[#fb923c]",
-    },
-  ];
-
-  const operations = [
-    {
-      label: "Xác nhận booking",
-      value: pendingBookings.length,
-      status: "Các booking đang chờ xác nhận thanh toán.",
+      tone: "bg-[#2563eb]",
     },
     {
-      label: "Khách đang lưu trú",
-      value: summary?.checkedInBookingCount ?? 0,
-      status: "Theo trạng thái check-in thực tế.",
+      label: "Sắp check-in hôm nay",
+      value: checkInTodayBookings.length,
+      detail: "Booking đã xác nhận, còn chờ nhận phòng",
+      icon: <DoorOpen className="h-5 w-5" />,
+      tone: "bg-[#0f766e]",
     },
     {
-      label: "Checkout hôm nay",
-      value: checkoutTodayCount,
-      status: "Cần rà soát phòng và hóa đơn khi trả phòng.",
+      label: "Sắp check-out hôm nay",
+      value: checkOutTodayBookings.length,
+      detail: "Phòng đang ở có lịch trả trong ngày",
+      icon: <LogOut className="h-5 w-5" />,
+      tone: "bg-[#7c3aed]",
     },
     {
-      label: "Doanh thu dịch vụ",
-      value: formatCompactCurrency(summary?.serviceRevenue ?? 0),
-      status: "Tổng dịch vụ trong kỳ lọc hiện tại.",
+      label: "Booking chờ duyệt hủy",
+      value: cancelRequestedBookings.length,
+      detail: "Cần admin hoặc quản lý xử lý",
+      icon: <AlertTriangle className="h-5 w-5" />,
+      tone: "bg-[#ea580c]",
+    },
+    {
+      label: "Doanh thu hôm nay",
+      value: formatCompactCurrency(todayRevenue),
+      detail: `${todaySummary?.paymentCount ?? 0} thanh toán đã ghi nhận`,
+      icon: <CircleDollarSign className="h-5 w-5" />,
+      tone: "bg-[#9b5c24]",
+    },
+    {
+      label: "Doanh thu tháng này",
+      value: formatCompactCurrency(monthRevenue),
+      detail: `Từ ${monthStart} đến ${today}`,
+      icon: <ReceiptText className="h-5 w-5" />,
+      tone: "bg-[#365314]",
     },
   ];
 
   if (!canViewRevenue) {
     return (
-      <PermissionDenied message="Bạn không có quyền REVENUE_VIEW để xem dashboard doanh thu." />
+      <PermissionDenied message="Bạn không có quyền REVENUE_VIEW để xem dashboard vận hành." />
     );
   }
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-[2rem] border border-[#decdb9] bg-[#23170f] p-6 text-white shadow-[0_30px_80px_-50px_rgba(35,23,15,0.9)] lg:p-8 dark:border-[#3a2e24]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(232,201,144,0.35),transparent_28%),radial-gradient(circle_at_88%_0%,rgba(255,255,255,0.14),transparent_24%)]" />
-        <div className="relative grid gap-8 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
+      <section className="rounded-2xl border border-[#decdb9] bg-white/86 p-6 shadow-sm dark:border-[#3a2e24] dark:bg-white/[0.05]">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-xs font-bold tracking-[0.32em] text-[#e8c990] uppercase">
-              Daily command center
+            <p className="text-xs font-bold tracking-[0.22em] text-[#9b5c24] uppercase">
+              Dashboard vận hành
             </p>
-            <h2 className="mt-3 max-w-3xl font-serif text-5xl leading-[0.95] font-bold tracking-tight lg:text-7xl">
-              Điều hành khách sạn trong một màn hình.
+            <h2 className="mt-2 text-3xl font-black tracking-tight text-[#17213a] dark:text-white">
+              Theo dõi tình trạng khách sạn hôm nay
             </h2>
-            <p className="mt-5 max-w-2xl text-sm leading-6 text-[#eadbc4]">
-              Dashboard ưu tiên nghiệp vụ vận hành: doanh thu, booking cần xử lý, phòng
-              đang giữ chỗ, khách đang lưu trú và checkout trong ngày.
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#75695d] dark:text-[#b7a99a]">
+              Các chỉ số tập trung vào ca trực: phòng đang ở, lịch nhận/trả phòng,
+              booking chờ duyệt hủy và doanh thu đã ghi nhận.
             </p>
           </div>
-          <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.08] p-5 backdrop-blur">
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-[#e8c990] p-3 text-[#23170f]">
-                <Activity className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">Tình trạng hôm nay</p>
-                <p className="text-xs text-[#d9bf9a]">
-                  Dữ liệu tổng hợp từ booking, room và report service.
-                </p>
-              </div>
-            </div>
-            <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-2xl bg-white/[0.08] p-3">
-                <p className="text-2xl font-bold">{occupancyRate}%</p>
-                <p className="text-[11px] text-[#d9bf9a]">Công suất</p>
-              </div>
-              <div className="rounded-2xl bg-white/[0.08] p-3">
-                <p className="text-2xl font-bold">{summary?.paymentCount ?? 0}</p>
-                <p className="text-[11px] text-[#d9bf9a]">Thanh toán</p>
-              </div>
-              <div className="rounded-2xl bg-white/[0.08] p-3">
-                <p className="text-2xl font-bold">{urgentTaskCount}</p>
-                <p className="text-[11px] text-[#d9bf9a]">Việc cần xử lý</p>
-              </div>
-            </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatusPill label="Công suất" value={`${occupancyRate}%`} />
+            <StatusPill label="Phòng đang ở" value={`${checkedInRoomIds.size}/${roomTotal}`} />
+            <StatusPill label="Chờ thanh toán" value={pendingPaymentBookings.length} />
           </div>
         </div>
       </section>
 
-      <section className="rounded-[1.5rem] border border-[#decdb9] bg-white/72 p-4 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05]">
+      <section className="rounded-2xl border border-[#decdb9] bg-white/82 p-4 shadow-sm dark:border-[#3a2e24] dark:bg-white/[0.05]">
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
           <DatePicker label="Từ ngày" value={fromDate} onChange={setFromDate} />
           <DatePicker label="Đến ngày" value={toDate} onChange={setToDate} />
@@ -317,7 +339,7 @@ export default function DashboardPage() {
             type="button"
             onClick={() => void loadDashboard()}
             disabled={isLoading}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#9b5c24] px-5 text-sm font-black tracking-[0.12em] text-white uppercase shadow-lg transition hover:bg-[#7f4619] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#9b5c24] px-5 text-sm font-black tracking-[0.12em] text-white uppercase shadow-sm transition hover:bg-[#7f4619] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCcw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             Tải lại
@@ -330,51 +352,85 @@ export default function DashboardPage() {
         ) : null}
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {metrics.map((metric) => (
           <MetricCard key={metric.label} {...metric} />
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.25fr_0.8fr]">
-        <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-6 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05]">
-          <div className="flex items-center justify-between">
+      <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+        <div className="rounded-2xl border border-[#decdb9] bg-white/82 p-6 shadow-sm dark:border-[#3a2e24] dark:bg-white/[0.05]">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="font-serif text-3xl font-bold">Việc cần làm</h3>
-              <p className="text-sm text-[#75695d] dark:text-[#b7a99a]">
-                Các tác vụ ảnh hưởng trực tiếp tới vận hành.
+              <h3 className="text-2xl font-black text-[#17213a] dark:text-white">
+                Lịch vận hành hôm nay
+              </h3>
+              <p className="mt-1 text-sm text-[#75695d] dark:text-[#b7a99a]">
+                Check-in, check-out và yêu cầu hủy cần xử lý trong ca.
               </p>
             </div>
             <ClipboardCheck className="h-6 w-6 text-[#9b5c24] dark:text-[#d7a25f]" />
           </div>
+
           <div className="mt-5 space-y-3">
-            {operations.map((item) => (
-              <div
-                key={item.label}
-                className="rounded-2xl border border-[#eadfcd] bg-[#fbf7ef] p-4 dark:border-[#3a2e24] dark:bg-[#17130f]"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <p className="font-bold">{item.label}</p>
-                  <span className="rounded-full bg-[#23170f] px-3 py-1 text-sm font-black text-white dark:bg-[#e8c990] dark:text-[#23170f]">
-                    {item.value}
-                  </span>
+            {upcomingOperations.length > 0 ? (
+              upcomingOperations.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-[#eadfcd] bg-[#fbf7ef] p-4 dark:border-[#3a2e24] dark:bg-[#17130f]"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-black ${item.tone}`}
+                      >
+                        {item.title}
+                      </span>
+                      <p className="mt-3 font-black text-[#17213a] dark:text-white">
+                        {item.room}
+                      </p>
+                      <p className="mt-1 text-xs text-[#75695d] dark:text-[#b7a99a]">
+                        {item.status}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-black text-[#9b5c24] dark:text-[#d7a25f]">
+                        {item.time || "-"}
+                      </p>
+                      <p className="mt-2 text-xs font-semibold text-[#75695d] dark:text-[#b7a99a]">
+                        {formatCurrency(item.amount)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-[#75695d] dark:text-[#b7a99a]">
-                  {item.status}
-                </p>
-              </div>
-            ))}
+              ))
+            ) : (
+              <EmptyState text="Hôm nay chưa có lịch check-in, check-out hoặc yêu cầu hủy cần xử lý." />
+            )}
           </div>
         </div>
 
-        <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-6 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05]">
-          <div>
-            <h3 className="font-serif text-3xl font-bold">Doanh thu 7 ngày</h3>
-            <p className="text-sm text-[#75695d] dark:text-[#b7a99a]">
-              Dựa trên lịch sử thanh toán đã ghi nhận trong billing-service.
-            </p>
+        <div className="rounded-2xl border border-[#decdb9] bg-white/82 p-6 shadow-sm dark:border-[#3a2e24] dark:bg-white/[0.05]">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h3 className="text-2xl font-black text-[#17213a] dark:text-white">
+                Doanh thu theo bộ lọc
+              </h3>
+              <p className="mt-1 text-sm text-[#75695d] dark:text-[#b7a99a]">
+                Dùng để nhìn xu hướng trong khoảng ngày đang chọn.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[#fbf7ef] px-4 py-3 text-right dark:bg-[#17130f]">
+              <p className="text-xs font-bold text-[#75695d] dark:text-[#b7a99a]">
+                Tổng kỳ lọc
+              </p>
+              <p className="text-lg font-black text-[#17213a] dark:text-white">
+                {formatCurrency(summary?.totalCollected ?? 0)}
+              </p>
+            </div>
           </div>
-          <div className="mt-8 flex h-72 items-end gap-3 rounded-[1.5rem] border border-[#eadfcd] bg-[#fbf7ef] p-5 dark:border-[#3a2e24] dark:bg-[#17130f]">
+
+          <div className="mt-8 flex h-72 items-end gap-3 rounded-2xl border border-[#eadfcd] bg-[#fbf7ef] p-5 dark:border-[#3a2e24] dark:bg-[#17130f]">
             {dailyRevenue.length > 0 ? (
               dailyRevenue.map((item) => (
                 <div
@@ -383,7 +439,7 @@ export default function DashboardPage() {
                 >
                   <div
                     title={`${item.date}: ${formatCurrency(item.amount)}`}
-                    className="w-full rounded-t-2xl bg-gradient-to-t from-[#9b5c24] to-[#e8c990] shadow-[0_18px_35px_-28px_rgba(155,92,36,0.9)]"
+                    className="w-full rounded-t-2xl bg-[#9b5c24] shadow-sm"
                     style={{
                       height: `${Math.max((item.amount / maxDailyRevenue) * 100, 4)}%`,
                     }}
@@ -400,54 +456,78 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
-        <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-6 shadow-sm backdrop-blur dark:border-[#3a2e24] dark:bg-white/[0.05]">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[#eadfcd] p-3 text-[#9b5c24] dark:bg-[#2a211a] dark:text-[#d7a25f]">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-serif text-3xl font-bold">Hoạt động mới</h3>
-              <p className="text-sm text-[#75695d] dark:text-[#b7a99a]">
-                Booking gần nhất theo dữ liệu hiện có.
-              </p>
-            </div>
-          </div>
-          <div className="mt-6 space-y-4">
-            {recentBookings.length > 0 ? (
-              recentBookings.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="border-b border-[#eadfcd] pb-4 last:border-b-0 dark:border-[#3a2e24]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold">
-                        {roomNames[booking.roomId] ??
-                          `Phòng ${booking.roomId.slice(0, 8)}`}
-                      </p>
-                      <p className="text-sm text-[#75695d] dark:text-[#b7a99a]">
-                        {bookingStatusLabel(booking.status)}
-                      </p>
-                    </div>
-                    <span className="text-xs font-bold text-[#9b5c24] dark:text-[#d7a25f]">
-                      {getTimePart(booking.checkinReality ?? booking.checkin) ||
-                        getDatePart(booking.checkin)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm font-black">
-                    {formatCurrency(booking.totalPrice)}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p className="rounded-2xl border border-[#eadfcd] bg-[#fbf7ef] p-4 text-sm font-semibold text-[#75695d] dark:border-[#3a2e24] dark:bg-[#17130f] dark:text-[#b7a99a]">
-                Chưa có booking để hiển thị.
-              </p>
-            )}
-          </div>
-        </div>
       </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <OperationCard
+          icon={<CalendarCheck className="h-5 w-5" />}
+          label="Check-in hôm nay"
+          value={checkInTodayBookings.length}
+          detail="Booking đã thanh toán, cần lễ tân đón khách."
+        />
+        <OperationCard
+          icon={<CalendarClock className="h-5 w-5" />}
+          label="Check-out hôm nay"
+          value={checkOutTodayBookings.length}
+          detail="Cần rà soát dịch vụ phát sinh và hóa đơn."
+        />
+        <OperationCard
+          icon={<BedDouble className="h-5 w-5" />}
+          label="Phòng còn trống"
+          value={Math.max(roomTotal - checkedInRoomIds.size, 0)}
+          detail="Tính theo phòng đang có khách ở thực tế."
+        />
+      </section>
+    </div>
+  );
+}
+
+function StatusPill({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl border border-[#eadfcd] bg-[#fbf7ef] px-4 py-3 dark:border-[#3a2e24] dark:bg-[#17130f]">
+      <p className="text-xs font-bold text-[#75695d] dark:text-[#b7a99a]">{label}</p>
+      <p className="mt-1 text-xl font-black text-[#17213a] dark:text-white">{value}</p>
+    </div>
+  );
+}
+
+function OperationCard({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#decdb9] bg-white/82 p-5 shadow-sm dark:border-[#3a2e24] dark:bg-white/[0.05]">
+      <div className="flex items-start gap-3">
+        <div className="rounded-2xl bg-[#fff6df] p-3 text-[#9b5c24] dark:bg-[#2a211a] dark:text-[#d7a25f]">
+          {icon}
+        </div>
+        <div>
+          <p className="text-sm font-bold text-[#75695d] dark:text-[#b7a99a]">
+            {label}
+          </p>
+          <p className="mt-2 text-3xl font-black text-[#17213a] dark:text-white">
+            {value}
+          </p>
+          <p className="mt-2 text-xs font-semibold text-[#75695d] dark:text-[#b7a99a]">
+            {detail}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-[#decdb9] bg-[#fbf7ef] p-6 text-center text-sm font-semibold text-[#75695d] dark:border-[#3a2e24] dark:bg-[#17130f] dark:text-[#b7a99a]">
+      {text}
     </div>
   );
 }
