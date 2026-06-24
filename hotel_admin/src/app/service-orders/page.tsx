@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   CheckCircle2,
@@ -13,10 +13,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
+import { TextareaField, TextField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { QuickFilter, type QuickFilterOption } from "@/components/ui/quick-filter";
 import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
+import { formatMoney } from "@/lib/format";
 import { getRoomBookings, type RoomBookingResponse } from "@/services/booking-service";
 import { getCatalogServices, type ServiceResponse } from "@/services/room-service";
 import {
@@ -31,15 +33,15 @@ import {
 } from "@/services/service-order-service";
 
 const serviceOrderStatusOptions: QuickFilterOption<ServiceOrderDetailStatus | "ALL">[] = [
-  { value: "ALL", label: "Tất cả", desc: "Toàn bộ dịch vụ" },
-  { value: "WAITING", label: "Đang chờ", desc: "Cần phục vụ" },
-  { value: "SERVED", label: "Đã phục vụ", desc: "Đã hoàn tất" },
+  { value: "ALL", label: "Táº¥t cáº£", desc: "ToÃ n bá»™ dá»‹ch vá»¥" },
+  { value: "WAITING", label: "Äang chá»", desc: "Cáº§n phá»¥c vá»¥" },
+  { value: "SERVED", label: "ÄÃ£ phá»¥c vá»¥", desc: "ÄÃ£ hoÃ n táº¥t" },
 ];
 
 const serviceOrderSourceOptions: QuickFilterOption<ServiceOrderSource | "ALL">[] = [
-  { value: "ALL", label: "Tất cả", desc: "Mọi nguồn dịch vụ" },
-  { value: "INCLUDED", label: "Kèm phòng", desc: "Có trong loại phòng" },
-  { value: "EXTRA", label: "Gọi thêm", desc: "Tính thêm vào bill" },
+  { value: "ALL", label: "Táº¥t cáº£", desc: "Má»i nguá»“n dá»‹ch vá»¥" },
+  { value: "INCLUDED", label: "KÃ¨m phÃ²ng", desc: "CÃ³ trong loáº¡i phÃ²ng" },
+  { value: "EXTRA", label: "Gá»i thÃªm", desc: "TÃ­nh thÃªm vÃ o bill" },
 ];
 
 export default function ServiceOrdersPage() {
@@ -109,7 +111,7 @@ export default function ServiceOrdersPage() {
       setSelectedBookingId(targetBookingId);
     } catch {
       setMessage(
-        "Không tải được dữ liệu dịch vụ phòng. Kiểm tra billing-service, booking-service, catalog-service và quyền.",
+        "KhÃ´ng táº£i Ä‘Æ°á»£c dá»¯ liá»‡u dá»‹ch vá»¥ phÃ²ng. Kiá»ƒm tra billing-service, booking-service, catalog-service vÃ  quyá»n.",
       );
     } finally {
       setLoading(false);
@@ -141,11 +143,11 @@ export default function ServiceOrdersPage() {
       setServiceId("");
       setQuantity(1);
       setDescription("");
-      setMessage("Đã thêm dịch vụ phát sinh và cập nhật tổng tiền booking.");
+      setMessage("ÄÃ£ thÃªm dá»‹ch vá»¥ phÃ¡t sinh vÃ  cáº­p nháº­t tá»•ng tiá»n booking.");
       await loadData(selectedBookingId);
     } catch {
       setMessage(
-        "Không thể thêm dịch vụ. Booking phải có detail hợp lệ và tài khoản cần quyền SERVICE_ORDER_CREATE.",
+        "KhÃ´ng thá»ƒ thÃªm dá»‹ch vá»¥. Booking pháº£i cÃ³ detail há»£p lá»‡ vÃ  tÃ i khoáº£n cáº§n quyá»n SERVICE_ORDER_CREATE.",
       );
     } finally {
       setActionId(null);
@@ -163,7 +165,7 @@ export default function ServiceOrdersPage() {
         current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
       );
     } catch {
-      setMessage("Không thể đánh dấu đã phục vụ. Kiểm tra quyền SERVICE_ORDER_SERVE.");
+      setMessage("KhÃ´ng thá»ƒ Ä‘Ã¡nh dáº¥u Ä‘Ã£ phá»¥c vá»¥. Kiá»ƒm tra quyá»n SERVICE_ORDER_SERVE.");
     } finally {
       setActionId(null);
     }
@@ -177,9 +179,9 @@ export default function ServiceOrdersPage() {
     try {
       await deleteServiceOrderDetail(id);
       await loadData(selectedBookingId);
-      setMessage("Đã xóa dịch vụ phát sinh và cập nhật lại tổng tiền booking.");
+      setMessage("ÄÃ£ xÃ³a dá»‹ch vá»¥ phÃ¡t sinh vÃ  cáº­p nháº­t láº¡i tá»•ng tiá»n booking.");
     } catch {
-      setMessage("Không thể xóa dịch vụ phát sinh. Kiểm tra quyền SERVICE_ORDER_DELETE.");
+      setMessage("KhÃ´ng thá»ƒ xÃ³a dá»‹ch vá»¥ phÃ¡t sinh. Kiá»ƒm tra quyá»n SERVICE_ORDER_DELETE.");
     } finally {
       setActionId(null);
     }
@@ -205,7 +207,7 @@ export default function ServiceOrdersPage() {
 
   if (!canOpenPage) {
     return (
-      <PermissionDenied message="Bạn không có quyền BOOKING_VIEW để mở trang dịch vụ phát sinh." />
+      <PermissionDenied message="Báº¡n khÃ´ng cÃ³ quyá»n BOOKING_VIEW Ä‘á»ƒ má»Ÿ trang dá»‹ch vá»¥ phÃ¡t sinh." />
     );
   }
 
@@ -215,14 +217,14 @@ export default function ServiceOrdersPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-bold tracking-[0.2em] text-[#9b5c24] uppercase">
-              Vận hành lưu trú
+              Váº­n hÃ nh lÆ°u trÃº
             </p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">
-              Dịch vụ phòng
+              Dá»‹ch vá»¥ phÃ²ng
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-[#7c6f63]">
-              Theo dõi dịch vụ kèm phòng và dịch vụ khách gọi thêm. Chỉ dịch vụ gọi thêm
-              mới cộng vào tổng bill.
+              Theo dÃµi dá»‹ch vá»¥ kÃ¨m phÃ²ng vÃ  dá»‹ch vá»¥ khÃ¡ch gá»i thÃªm. Chá»‰ dá»‹ch vá»¥ gá»i thÃªm
+              má»›i cá»™ng vÃ o tá»•ng bill.
             </p>
           </div>
           <Button
@@ -232,7 +234,7 @@ export default function ServiceOrdersPage() {
             className="gap-2"
           >
             <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Tải lại
+            Táº£i láº¡i
           </Button>
         </div>
       </section>
@@ -244,8 +246,8 @@ export default function ServiceOrdersPage() {
       ) : null}
       {!canView ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
-          Token hiện tại chưa có quyền SERVICE_ORDER_VIEW. Restart identity-service rồi
-          đăng xuất và đăng nhập lại để dùng đầy đủ chức năng.
+          Token hiá»‡n táº¡i chÆ°a cÃ³ quyá»n SERVICE_ORDER_VIEW. Restart identity-service rá»“i
+          Ä‘Äƒng xuáº¥t vÃ  Ä‘Äƒng nháº­p láº¡i Ä‘á»ƒ dÃ¹ng Ä‘áº§y Ä‘á»§ chá»©c nÄƒng.
         </div>
       ) : null}
 
@@ -256,9 +258,9 @@ export default function ServiceOrdersPage() {
               <Utensils className="h-5 w-5" />
             </span>
             <div>
-              <h3 className="font-bold text-[#17213a]">Thêm dịch vụ</h3>
+              <h3 className="font-bold text-[#17213a]">ThÃªm dá»‹ch vá»¥</h3>
               <p className="text-sm text-[#7c6f63]">
-                Dịch vụ gọi thêm sẽ được tính tiền vào booking.
+                Dá»‹ch vá»¥ gá»i thÃªm sáº½ Ä‘Æ°á»£c tÃ­nh tiá»n vÃ o booking.
               </p>
             </div>
           </div>
@@ -272,14 +274,14 @@ export default function ServiceOrdersPage() {
                 value={selectedBookingId}
                 onValueChange={(value) => void handleBookingChange(value)}
                 className="mt-2"
-                placeholder="Chọn booking"
+                placeholder="Chá»n booking"
                 options={[
-                  { value: "", label: "-- Chọn booking --" },
+                  { value: "", label: "-- Chá»n booking --" },
                   ...bookings.map((booking) => ({
                     value: booking.id,
                     label: `${shortCode(booking.id)} - ${booking.status} - ${
                       booking.detailStatus ?? "N/A"
-                    } - Phòng ${booking.roomId}`,
+                    } - PhÃ²ng ${booking.roomId}`,
                   })),
                 ]}
               />
@@ -287,16 +289,16 @@ export default function ServiceOrdersPage() {
 
             <label className="block">
               <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
-                Dịch vụ
+                Dá»‹ch vá»¥
               </span>
               <Select
                 value={serviceId}
                 onValueChange={setServiceId}
                 disabled={services.length === 0}
                 className="mt-2"
-                placeholder="Chọn dịch vụ"
+                placeholder="Chá»n dá»‹ch vá»¥"
                 options={[
-                  { value: "", label: "-- Chọn dịch vụ --" },
+                  { value: "", label: "-- Chá»n dá»‹ch vá»¥ --" },
                   ...services
                     .filter((service) => !service.deleted)
                     .map((service) => ({
@@ -307,48 +309,37 @@ export default function ServiceOrdersPage() {
               />
             </label>
 
-            <label className="block">
-              <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
-                Số lượng
-              </span>
-              <Input
-                type="number"
-                min={1}
-                value={quantity}
-                onChange={(event) =>
-                  setQuantity(Math.max(1, Number(event.target.value) || 1))
-                }
-                className="mt-2"
-              />
-            </label>
+            <TextField
+              label="Sá»‘ lÆ°á»£ng"
+              type="number"
+              min={1}
+              value={quantity}
+              onValueChange={(value) => setQuantity(Math.max(1, Number(value) || 1))}
+              labelClassName="tracking-[0.16em]"
+            />
 
-            <label className="block">
-              <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
-                Ghi chú
-              </span>
-              <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                rows={3}
-                className="mt-2 w-full resize-none rounded-xl border border-[#decdb9] bg-white px-3 py-2 text-sm outline-none focus:border-[#c8792a]"
-                placeholder="Ví dụ: giao lên phòng sau 20 phút"
-              />
-            </label>
+            <TextareaField
+              label="Ghi chÃº"
+              value={description}
+              onValueChange={setDescription}
+              placeholder="VÃ­ dá»¥: giao lÃªn phÃ²ng sau 20 phÃºt"
+              labelClassName="tracking-[0.16em]"
+            />
 
             <div className="rounded-xl bg-[#fbf8f2] p-4 text-sm text-[#6f5f50]">
               <p>
-                Booking đang chọn:{" "}
-                <b>{selectedBooking ? shortCode(selectedBooking.id) : "Chưa chọn"}</b>
+                Booking Ä‘ang chá»n:{" "}
+                <b>{selectedBooking ? shortCode(selectedBooking.id) : "ChÆ°a chá»n"}</b>
               </p>
               <p>
-                Phòng: <b>{selectedBooking?.roomId ?? "Chưa chọn"}</b>
+                PhÃ²ng: <b>{selectedBooking?.roomId ?? "ChÆ°a chá»n"}</b>
               </p>
               <p>
-                Tổng dịch vụ hiện tại:{" "}
+                Tá»•ng dá»‹ch vá»¥ hiá»‡n táº¡i:{" "}
                 <b>{formatMoney(selectedBooking?.totalServicePrice ?? 0)}</b>
               </p>
               <p>
-                Tổng booking: <b>{formatMoney(selectedBooking?.totalPrice ?? 0)}</b>
+                Tá»•ng booking: <b>{formatMoney(selectedBooking?.totalPrice ?? 0)}</b>
               </p>
             </div>
 
@@ -363,7 +354,7 @@ export default function ServiceOrdersPage() {
               ) : (
                 <Plus className="h-4 w-4" />
               )}
-              Thêm dịch vụ
+              ThÃªm dá»‹ch vá»¥
             </Button>
           </div>
         </div>
@@ -371,9 +362,9 @@ export default function ServiceOrdersPage() {
         <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="font-bold text-[#17213a]">Danh sách dịch vụ cần phục vụ</h3>
+              <h3 className="font-bold text-[#17213a]">Danh sÃ¡ch dá»‹ch vá»¥ cáº§n phá»¥c vá»¥</h3>
               <p className="text-sm text-[#7c6f63]">
-                Dịch vụ kèm phòng được đồng bộ từ loại phòng.
+                Dá»‹ch vá»¥ kÃ¨m phÃ²ng Ä‘Æ°á»£c Ä‘á»“ng bá»™ tá»« loáº¡i phÃ²ng.
               </p>
             </div>
             <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
@@ -382,7 +373,7 @@ export default function ServiceOrdersPage() {
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Tìm dịch vụ..."
+                  placeholder="TÃ¬m dá»‹ch vá»¥..."
                   className="pl-9"
                 />
               </div>
@@ -391,7 +382,7 @@ export default function ServiceOrdersPage() {
 
           <div className="mt-5 grid gap-4 xl:grid-cols-2">
             <QuickFilter
-              title="Lọc trạng thái"
+              title="Lá»c tráº¡ng thÃ¡i"
               value={statusFilter}
               options={serviceOrderStatusOptions}
               onChange={setStatusFilter}
@@ -399,7 +390,7 @@ export default function ServiceOrdersPage() {
               className="bg-white/70 shadow-none"
             />
             <QuickFilter
-              title="Lọc nguồn dịch vụ"
+              title="Lá»c nguá»“n dá»‹ch vá»¥"
               value={sourceFilter}
               options={serviceOrderSourceOptions}
               onChange={setSourceFilter}
@@ -412,26 +403,26 @@ export default function ServiceOrdersPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-[#fbf8f2] text-xs tracking-[0.14em] text-[#6f5f50] uppercase">
                 <tr>
-                  <th className="px-4 py-3">Dịch vụ</th>
-                  <th className="px-4 py-3">Phòng</th>
-                  <th className="px-4 py-3">Nguồn</th>
+                  <th className="px-4 py-3">Dá»‹ch vá»¥</th>
+                  <th className="px-4 py-3">PhÃ²ng</th>
+                  <th className="px-4 py-3">Nguá»“n</th>
                   <th className="px-4 py-3">SL</th>
-                  <th className="px-4 py-3">Thành tiền</th>
-                  <th className="px-4 py-3">Trạng thái</th>
-                  <th className="px-4 py-3 text-right">Hành động</th>
+                  <th className="px-4 py-3">ThÃ nh tiá»n</th>
+                  <th className="px-4 py-3">Tráº¡ng thÃ¡i</th>
+                  <th className="px-4 py-3 text-right">HÃ nh Ä‘á»™ng</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-10 text-center text-[#7c6f63]">
-                      Đang tải...
+                      Äang táº£i...
                     </td>
                   </tr>
                 ) : filteredItems.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-10 text-center text-[#7c6f63]">
-                      Không có dịch vụ phòng phù hợp bộ lọc
+                      KhÃ´ng cÃ³ dá»‹ch vá»¥ phÃ²ng phÃ¹ há»£p bá»™ lá»c
                     </td>
                   </tr>
                 ) : (
@@ -446,7 +437,7 @@ export default function ServiceOrdersPage() {
                             {item.serviceName || service?.name || item.serviceId}
                           </div>
                           <div className="text-xs text-[#8a7967]">
-                            {item.description || "Không có ghi chú"}
+                            {item.description || "KhÃ´ng cÃ³ ghi chÃº"}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -468,20 +459,20 @@ export default function ServiceOrdersPage() {
                                 : "bg-[#fff6df] text-[#9b5c24]"
                             }`}
                           >
-                            {source === "INCLUDED" ? "Kèm phòng" : "Gọi thêm"}
+                            {source === "INCLUDED" ? "KÃ¨m phÃ²ng" : "Gá»i thÃªm"}
                           </span>
                         </td>
                         <td className="px-4 py-3">{item.quantity}</td>
                         <td className="px-4 py-3 font-semibold">
                           {item.chargeable === false
-                            ? "Miễn phí"
+                            ? "Miá»…n phÃ­"
                             : formatMoney(item.totalPrice || item.price * item.quantity)}
                         </td>
                         <td className="px-4 py-3">
                           <span
                             className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.status === "SERVED" ? "bg-emerald-50 text-emerald-700" : "bg-[#fff6df] text-[#9b5c24]"}`}
                           >
-                            {item.status === "SERVED" ? "Đã phục vụ" : "Đang chờ"}
+                            {item.status === "SERVED" ? "ÄÃ£ phá»¥c vá»¥" : "Äang chá»"}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -498,7 +489,7 @@ export default function ServiceOrdersPage() {
                                 ) : (
                                   <CheckCircle2 className="h-3.5 w-3.5" />
                                 )}
-                                Phục vụ
+                                Phá»¥c vá»¥
                               </button>
                             ) : null}
                             {canDelete ? (
@@ -509,7 +500,7 @@ export default function ServiceOrdersPage() {
                                 className="inline-flex h-9 items-center gap-1 rounded-full border border-red-200 px-3 text-xs font-bold text-red-700 disabled:opacity-50"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
-                                Xóa
+                                XÃ³a
                               </button>
                             ) : null}
                           </div>
@@ -532,6 +523,4 @@ function shortCode(value?: string) {
   return value.length > 8 ? value.slice(-8).toUpperCase() : value.toUpperCase();
 }
 
-function formatMoney(value: number) {
-  return `${Number(value || 0).toLocaleString("vi-VN")}đ`;
-}
+

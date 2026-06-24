@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   Plus,
@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
@@ -29,13 +30,13 @@ import {
 import { useAuthStore } from "@/store/auth-store";
 
 const staffRoleOptions: Array<{ value: StaffRoleName; label: string; desc: string }> = [
-  { value: "ADMIN", label: "Admin", desc: "Toàn quyền hệ thống" },
-  { value: "MANAGER", label: "Manager", desc: "Quản lý vận hành" },
-  { value: "RECEPTIONIST", label: "Receptionist", desc: "Lễ tân" },
+  { value: "ADMIN", label: "Admin", desc: "ToÃ n quyá»n há»‡ thá»‘ng" },
+  { value: "MANAGER", label: "Manager", desc: "Quáº£n lÃ½ váº­n hÃ nh" },
+  { value: "RECEPTIONIST", label: "Receptionist", desc: "Lá»… tÃ¢n" },
   {
     value: "CUSTOMER_SUPPORT",
     label: "Customer Support",
-    desc: "Chăm sóc khách hàng",
+    desc: "ChÄƒm sÃ³c khÃ¡ch hÃ ng",
   },
 ];
 
@@ -49,9 +50,9 @@ const initialAccountForm = {
 };
 
 const statusOptions: Array<{ value: StaffAccountStatus | "ALL"; label: string }> = [
-  { value: "ALL", label: "Tất cả trạng thái" },
-  { value: "ACTIVE", label: "Đang hoạt động" },
-  { value: "UNACTIVE", label: "Đã khóa" },
+  { value: "ALL", label: "Táº¥t cáº£ tráº¡ng thÃ¡i" },
+  { value: "ACTIVE", label: "Äang hoáº¡t Ä‘á»™ng" },
+  { value: "UNACTIVE", label: "ÄÃ£ khÃ³a" },
 ];
 
 export default function UsersPage() {
@@ -128,7 +129,7 @@ export default function UsersPage() {
       setSelectedRoleName(nextStaff?.roleNames?.[0] ?? "RECEPTIONIST");
     } catch {
       setMessage(
-        "Không thể tải danh sách nhân viên hoặc quyền. Kiểm tra identity-service và quyền PERMISSION_MANAGE.",
+        "KhÃ´ng thá»ƒ táº£i danh sÃ¡ch nhÃ¢n viÃªn hoáº·c quyá»n. Kiá»ƒm tra identity-service vÃ  quyá»n PERMISSION_MANAGE.",
       );
     } finally {
       setLoading(false);
@@ -172,11 +173,11 @@ export default function UsersPage() {
       setSelectedDirectPermissions(updated.directPermissions);
       setSelectedRoleName(updated.roleNames?.[0] ?? selectedRoleName);
       setMessage(
-        `Đã cập nhật quyền cho ${updated.fullName}. Nhân viên cần đăng nhập lại để token nhận quyền mới.`,
+        `ÄÃ£ cáº­p nháº­t quyá»n cho ${updated.fullName}. NhÃ¢n viÃªn cáº§n Ä‘Äƒng nháº­p láº¡i Ä‘á»ƒ token nháº­n quyá»n má»›i.`,
       );
     } catch {
       setMessage(
-        "Không thể lưu quyền nhân viên. Kiểm tra quyền PERMISSION_MANAGE và dữ liệu quyền.",
+        "KhÃ´ng thá»ƒ lÆ°u quyá»n nhÃ¢n viÃªn. Kiá»ƒm tra quyá»n PERMISSION_MANAGE vÃ  dá»¯ liá»‡u quyá»n.",
       );
     } finally {
       setSaving(false);
@@ -186,7 +187,7 @@ export default function UsersPage() {
   async function handleCreateAccount() {
     if (isActionBusy) return;
     if (!accountForm.username.trim() || !accountForm.password.trim()) {
-      setMessage("Vui lòng nhập username và mật khẩu.");
+      setMessage("Vui lÃ²ng nháº­p username vÃ  máº­t kháº©u.");
       return;
     }
 
@@ -204,12 +205,12 @@ export default function UsersPage() {
       setCreateOpen(false);
       setAccountForm(initialAccountForm);
       setMessage(
-        `Đã tạo tài khoản ${created.username} với role ${created.roleNames[0]}.`,
+        `ÄÃ£ táº¡o tÃ i khoáº£n ${created.username} vá»›i role ${created.roleNames[0]}.`,
       );
       await loadData(created.accountId);
     } catch {
       setMessage(
-        "Không thể tạo tài khoản. Kiểm tra username/email đã tồn tại hoặc quyền PERMISSION_MANAGE.",
+        "KhÃ´ng thá»ƒ táº¡o tÃ i khoáº£n. Kiá»ƒm tra username/email Ä‘Ã£ tá»“n táº¡i hoáº·c quyá»n PERMISSION_MANAGE.",
       );
     } finally {
       setSaving(false);
@@ -230,11 +231,11 @@ export default function UsersPage() {
       );
       setMessage(
         nextStatus === "ACTIVE"
-          ? `Đã mở khóa tài khoản ${updated.username}.`
-          : `Đã khóa tài khoản ${updated.username}.`,
+          ? `ÄÃ£ má»Ÿ khÃ³a tÃ i khoáº£n ${updated.username}.`
+          : `ÄÃ£ khÃ³a tÃ i khoáº£n ${updated.username}.`,
       );
     } catch {
-      setMessage("Không thể cập nhật trạng thái tài khoản.");
+      setMessage("KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i tÃ i khoáº£n.");
     } finally {
       setSaving(false);
     }
@@ -243,7 +244,7 @@ export default function UsersPage() {
   async function handleResetPassword() {
     if (!selectedStaff || isActionBusy) return;
     if (!resetPasswordValue.trim()) {
-      setMessage("Vui lòng nhập mật khẩu mới.");
+      setMessage("Vui lÃ²ng nháº­p máº­t kháº©u má»›i.");
       return;
     }
 
@@ -252,9 +253,9 @@ export default function UsersPage() {
     try {
       await resetStaffPassword(selectedStaff.accountId, resetPasswordValue);
       setResetPasswordValue("");
-      setMessage(`Đã reset mật khẩu cho ${selectedStaff.username}.`);
+      setMessage(`ÄÃ£ reset máº­t kháº©u cho ${selectedStaff.username}.`);
     } catch {
-      setMessage("Không thể reset mật khẩu tài khoản.");
+      setMessage("KhÃ´ng thá»ƒ reset máº­t kháº©u tÃ i khoáº£n.");
     } finally {
       setSaving(false);
     }
@@ -263,8 +264,8 @@ export default function UsersPage() {
   if (!canManagePermissions) {
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
-        Tài khoản hiện tại không có quyền PERMISSION_MANAGE để quản lý phân quyền nhân
-        viên.
+        TÃ i khoáº£n hiá»‡n táº¡i khÃ´ng cÃ³ quyá»n PERMISSION_MANAGE Ä‘á»ƒ quáº£n lÃ½ phÃ¢n quyá»n nhÃ¢n
+        viÃªn.
       </div>
     );
   }
@@ -275,14 +276,14 @@ export default function UsersPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-bold tracking-[0.2em] text-[#9b5c24] uppercase">
-              Phân quyền
+              PhÃ¢n quyá»n
             </p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">
-              Nhân viên & quyền chức năng
+              NhÃ¢n viÃªn & quyá»n chá»©c nÄƒng
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-[#7c6f63]">
-              Tạo tài khoản nội bộ và gán role theo vị trí. Quyền riêng ở đây sẽ cộng thêm
-              cho từng nhân viên cụ thể.
+              Táº¡o tÃ i khoáº£n ná»™i bá»™ vÃ  gÃ¡n role theo vá»‹ trÃ­. Quyá»n riÃªng á»Ÿ Ä‘Ã¢y sáº½ cá»™ng thÃªm
+              cho tá»«ng nhÃ¢n viÃªn cá»¥ thá»ƒ.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -296,7 +297,7 @@ export default function UsersPage() {
               className="gap-2"
             >
               <Plus className="h-4 w-4" />
-              Tạo tài khoản
+              Táº¡o tÃ i khoáº£n
             </Button>
             <Button
               type="button"
@@ -305,7 +306,7 @@ export default function UsersPage() {
               className="gap-2"
             >
               <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Tải lại
+              Táº£i láº¡i
             </Button>
           </div>
         </div>
@@ -322,10 +323,10 @@ export default function UsersPage() {
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
               <h3 className="text-lg font-bold text-[#17213a]">
-                Tạo tài khoản nhân viên
+                Táº¡o tÃ i khoáº£n nhÃ¢n viÃªn
               </h3>
               <p className="text-sm text-[#7c6f63]">
-                Chọn role theo vị trí để hệ thống tự gán bộ quyền mặc định.
+                Chá»n role theo vá»‹ trÃ­ Ä‘á»ƒ há»‡ thá»‘ng tá»± gÃ¡n bá»™ quyá»n máº·c Ä‘á»‹nh.
               </p>
             </div>
             <Button
@@ -334,45 +335,34 @@ export default function UsersPage() {
               disabled={saving}
               variant="outline"
             >
-              Đóng
+              ÄÃ³ng
             </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Username">
-              <Input
-                value={accountForm.username}
-                onChange={(event) =>
-                  setAccountForm((prev) => ({
-                    ...prev,
-                    username: event.target.value,
-                  }))
-                }
-                placeholder="receptionist2"
-              />
-            </Field>
-            <Field label="Mật khẩu">
-              <Input
-                type="password"
-                value={accountForm.password}
-                onChange={(event) =>
-                  setAccountForm((prev) => ({
-                    ...prev,
-                    password: event.target.value,
-                  }))
-                }
-                placeholder="Mật khẩu đăng nhập"
-              />
-            </Field>
-            <Field label="Email">
-              <Input
-                value={accountForm.email}
-                onChange={(event) =>
-                  setAccountForm((prev) => ({ ...prev, email: event.target.value }))
-                }
-                placeholder="staff@hotelcontinental.local"
-              />
-            </Field>
+            <TextField
+              label="Username"
+              value={accountForm.username}
+              onValueChange={(username) =>
+                setAccountForm((prev) => ({ ...prev, username }))
+              }
+              placeholder="receptionist2"
+            />
+            <TextField
+              label="Mật khẩu"
+              type="password"
+              value={accountForm.password}
+              onValueChange={(password) =>
+                setAccountForm((prev) => ({ ...prev, password }))
+              }
+              placeholder="Mật khẩu đăng nhập"
+            />
+            <TextField
+              label="Email"
+              value={accountForm.email}
+              onValueChange={(email) => setAccountForm((prev) => ({ ...prev, email }))}
+              placeholder="staff@hotelcontinental.local"
+            />
             <Field label="Role">
               <Select
                 value={accountForm.roleName}
@@ -385,30 +375,22 @@ export default function UsersPage() {
                 }))}
               />
             </Field>
-            <Field label="Tên">
-              <Input
-                value={accountForm.firstName}
-                onChange={(event) =>
-                  setAccountForm((prev) => ({
-                    ...prev,
-                    firstName: event.target.value,
-                  }))
-                }
-                placeholder="Front Desk"
-              />
-            </Field>
-            <Field label="Họ">
-              <Input
-                value={accountForm.lastName}
-                onChange={(event) =>
-                  setAccountForm((prev) => ({
-                    ...prev,
-                    lastName: event.target.value,
-                  }))
-                }
-                placeholder="Receptionist"
-              />
-            </Field>
+            <TextField
+              label="Tên"
+              value={accountForm.firstName}
+              onValueChange={(firstName) =>
+                setAccountForm((prev) => ({ ...prev, firstName }))
+              }
+              placeholder="Front Desk"
+            />
+            <TextField
+              label="Họ"
+              value={accountForm.lastName}
+              onValueChange={(lastName) =>
+                setAccountForm((prev) => ({ ...prev, lastName }))
+              }
+              placeholder="Receptionist"
+            />
           </div>
 
           <div className="mt-5 flex justify-end">
@@ -419,7 +401,7 @@ export default function UsersPage() {
               className="gap-2"
             >
               <Plus className="h-4 w-4" />
-              Tạo tài khoản
+              Táº¡o tÃ i khoáº£n
             </Button>
           </div>
         </div>
@@ -428,17 +410,17 @@ export default function UsersPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <InfoCard
           icon={<UserRound className="h-4 w-4" />}
-          title="Nhân viên"
+          title="NhÃ¢n viÃªn"
           value={staffAccounts.length.toString()}
         />
         <InfoCard
           icon={<Shield className="h-4 w-4" />}
-          title="Tổng quyền"
+          title="Tá»•ng quyá»n"
           value={allPermissions.length.toString()}
         />
         <InfoCard
           icon={<ShieldCheck className="h-4 w-4" />}
-          title="Quyền riêng đang chọn"
+          title="Quyá»n riÃªng Ä‘ang chá»n"
           value={selectedDirectPermissions.length.toString()}
         />
       </div>
@@ -451,7 +433,7 @@ export default function UsersPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="pl-9"
-              placeholder="Tìm nhân viên..."
+              placeholder="TÃ¬m nhÃ¢n viÃªn..."
             />
           </div>
 
@@ -460,7 +442,7 @@ export default function UsersPage() {
               value={roleFilter}
               onValueChange={setRoleFilter}
               options={[
-                { value: "ALL", label: "Tất cả role" },
+                { value: "ALL", label: "Táº¥t cáº£ role" },
                 ...staffRoleOptions.map((role) => ({
                   value: role.value,
                   label: role.label,
@@ -476,11 +458,11 @@ export default function UsersPage() {
 
           <div className="mt-4 space-y-2">
             {loading ? (
-              <p className="py-8 text-center text-sm text-[#7c6f63]">Đang tải...</p>
+              <p className="py-8 text-center text-sm text-[#7c6f63]">Äang táº£i...</p>
             ) : null}
             {!loading && filteredStaff.length === 0 ? (
               <p className="py-8 text-center text-sm text-[#7c6f63]">
-                Chưa có nhân viên staff.
+                ChÆ°a cÃ³ nhÃ¢n viÃªn staff.
               </p>
             ) : null}
             {filteredStaff.map((staff) => (
@@ -497,7 +479,7 @@ export default function UsersPage() {
               >
                 <span className="block font-semibold">{staff.fullName}</span>
                 <span className="mt-1 block text-xs opacity-75">
-                  {staff.username} · {staff.email ?? "Chưa có email"}
+                  {staff.username} Â· {staff.email ?? "ChÆ°a cÃ³ email"}
                 </span>
                 <span className="mt-2 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-bold text-[#8a5724]">
                   {formatRoleName(staff.roleNames?.[0])}
@@ -519,7 +501,7 @@ export default function UsersPage() {
         <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
           {!selectedStaff ? (
             <p className="py-12 text-center text-sm text-[#7c6f63]">
-              Chọn một nhân viên để phân quyền.
+              Chá»n má»™t nhÃ¢n viÃªn Ä‘á»ƒ phÃ¢n quyá»n.
             </p>
           ) : (
             <div className="space-y-6">
@@ -529,7 +511,7 @@ export default function UsersPage() {
                     {selectedStaff.fullName}
                   </h3>
                   <p className="mt-1 text-sm text-[#7c6f63]">
-                    {selectedStaff.username} · {selectedStaff.email ?? "Chưa có email"}
+                    {selectedStaff.username} Â· {selectedStaff.email ?? "ChÆ°a cÃ³ email"}
                   </p>
                 </div>
                 <Button
@@ -539,14 +521,14 @@ export default function UsersPage() {
                   className="gap-2"
                 >
                   <Save className="h-4 w-4" />
-                  Lưu quyền riêng
+                  LÆ°u quyá»n riÃªng
                 </Button>
               </div>
 
               <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
                 <div className="rounded-2xl border border-[#decdb9] bg-[#fbf6ed] p-4">
                   <p className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                    Trạng thái tài khoản
+                    Tráº¡ng thÃ¡i tÃ i khoáº£n
                   </p>
                   <p
                     className={`mt-2 inline-flex rounded-full px-3 py-1 text-sm font-bold ${
@@ -569,18 +551,18 @@ export default function UsersPage() {
                       : "border-red-200 text-red-700 hover:bg-red-50"
                   }
                 >
-                  {selectedStaff.accountStatus === "UNACTIVE" ? "Mở khóa" : "Khóa"}
+                  {selectedStaff.accountStatus === "UNACTIVE" ? "Má»Ÿ khÃ³a" : "KhÃ³a"}
                 </Button>
               </div>
 
               <div className="rounded-2xl border border-[#decdb9] bg-white p-4">
                 <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-                  <Field label="Reset mật khẩu">
+                  <Field label="Reset máº­t kháº©u">
                     <Input
                       type="password"
                       value={resetPasswordValue}
                       onChange={(event) => setResetPasswordValue(event.target.value)}
-                      placeholder="Nhập mật khẩu mới"
+                      placeholder="Nháº­p máº­t kháº©u má»›i"
                     />
                   </Field>
                   <Button
@@ -597,9 +579,9 @@ export default function UsersPage() {
               <div className="rounded-2xl border border-[#decdb9] bg-[#fbf6ed] p-4">
                 <div className="grid gap-4 md:grid-cols-[260px_1fr] md:items-center">
                   <div>
-                    <h4 className="font-bold text-[#17213a]">Role theo vị trí</h4>
+                    <h4 className="font-bold text-[#17213a]">Role theo vá»‹ trÃ­</h4>
                     <p className="mt-1 text-sm text-[#7c6f63]">
-                      Đổi role sẽ thay bộ quyền mặc định sau khi lưu.
+                      Äá»•i role sáº½ thay bá»™ quyá»n máº·c Ä‘á»‹nh sau khi lÆ°u.
                     </p>
                   </div>
                   <Select
@@ -615,15 +597,15 @@ export default function UsersPage() {
               </div>
 
               <PermissionGroup
-                title={`Quyền mặc định từ role ${formatRoleName(selectedStaff.roleNames?.[0])}`}
-                description="Các quyền này đến từ cấu hình role mặc định, không chỉnh riêng tại đây."
+                title={`Quyá»n máº·c Ä‘á»‹nh tá»« role ${formatRoleName(selectedStaff.roleNames?.[0])}`}
+                description="CÃ¡c quyá»n nÃ y Ä‘áº¿n tá»« cáº¥u hÃ¬nh role máº·c Ä‘á»‹nh, khÃ´ng chá»‰nh riÃªng táº¡i Ä‘Ã¢y."
                 items={selectedStaff.rolePermissions}
                 tone="muted"
               />
 
               <EditablePermissionGroup
-                title="Quyền riêng đã gắn cho nhân viên"
-                description="Các quyền này cộng thêm vào role khi nhân viên đăng nhập."
+                title="Quyá»n riÃªng Ä‘Ã£ gáº¯n cho nhÃ¢n viÃªn"
+                description="CÃ¡c quyá»n nÃ y cá»™ng thÃªm vÃ o role khi nhÃ¢n viÃªn Ä‘Äƒng nháº­p."
                 items={selectedDirectPermissions}
                 checked
                 disabled={isActionBusy}
@@ -631,8 +613,8 @@ export default function UsersPage() {
               />
 
               <EditablePermissionGroup
-                title="Quyền chưa được gắn"
-                description="Tick vào quyền để thêm cho nhân viên này."
+                title="Quyá»n chÆ°a Ä‘Æ°á»£c gáº¯n"
+                description="Tick vÃ o quyá»n Ä‘á»ƒ thÃªm cho nhÃ¢n viÃªn nÃ y."
                 items={availableToAdd.map((permission) => permission.name)}
                 checked={false}
                 disabled={isActionBusy}
@@ -647,11 +629,11 @@ export default function UsersPage() {
 }
 
 function formatRoleName(roleName?: StaffRoleName) {
-  return staffRoleOptions.find((role) => role.value === roleName)?.label ?? "Chưa gán";
+  return staffRoleOptions.find((role) => role.value === roleName)?.label ?? "ChÆ°a gÃ¡n";
 }
 
 function formatAccountStatus(status?: StaffAccountStatus) {
-  return status === "UNACTIVE" ? "Đã khóa" : "Đang hoạt động";
+  return status === "UNACTIVE" ? "ÄÃ£ khÃ³a" : "Äang hoáº¡t Ä‘á»™ng";
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -701,7 +683,7 @@ function PermissionGroup({
       <p className="mt-1 text-sm text-[#7c6f63]">{description}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {items.length === 0 ? (
-          <span className="text-sm text-[#9f8a77]">Không có quyền.</span>
+          <span className="text-sm text-[#9f8a77]">KhÃ´ng cÃ³ quyá»n.</span>
         ) : null}
         {items.map((item) => (
           <span
@@ -737,7 +719,7 @@ function EditablePermissionGroup({
       <p className="mt-1 text-sm text-[#7c6f63]">{description}</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {items.length === 0 ? (
-          <span className="text-sm text-[#9f8a77]">Không có quyền.</span>
+          <span className="text-sm text-[#9f8a77]">KhÃ´ng cÃ³ quyá»n.</span>
         ) : null}
         {items.map((item) => (
           <label
@@ -758,3 +740,4 @@ function EditablePermissionGroup({
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Pencil, Plus, RefreshCcw, Search, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -6,11 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TextareaField, TextField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { QuickFilter, type QuickFilterOption } from "@/components/ui/quick-filter";
 import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
+import { formatMoney } from "@/lib/format";
 import {
   type CatalogServicePayload,
   createCatalogService,
@@ -23,17 +24,17 @@ import {
 type ServiceStatusFilter = "ALL" | "AVAILABLE" | "UNAVAILABLE" | "MAINTENANCE" | "DELETED";
 
 const statusOptions: QuickFilterOption<ServiceStatusFilter>[] = [
-  { value: "ALL", label: "Tất cả", desc: "Toàn bộ dịch vụ gốc" },
-  { value: "AVAILABLE", label: "Hoạt động", desc: "Đang bán được" },
-  { value: "UNAVAILABLE", label: "Tạm ngưng", desc: "Không cho bán" },
-  { value: "MAINTENANCE", label: "Bảo trì", desc: "Đang xử lý" },
-  { value: "DELETED", label: "Đã xóa", desc: "Ẩn khỏi luồng bán" },
+  { value: "ALL", label: "Táº¥t cáº£", desc: "ToÃ n bá»™ dá»‹ch vá»¥ gá»‘c" },
+  { value: "AVAILABLE", label: "Hoáº¡t Ä‘á»™ng", desc: "Äang bÃ¡n Ä‘Æ°á»£c" },
+  { value: "UNAVAILABLE", label: "Táº¡m ngÆ°ng", desc: "KhÃ´ng cho bÃ¡n" },
+  { value: "MAINTENANCE", label: "Báº£o trÃ¬", desc: "Äang xá»­ lÃ½" },
+  { value: "DELETED", label: "ÄÃ£ xÃ³a", desc: "áº¨n khá»i luá»“ng bÃ¡n" },
 ];
 
 const statusLabel: Record<string, string> = {
-  AVAILABLE: "Hoạt động",
-  UNAVAILABLE: "Tạm ngưng",
-  MAINTENANCE: "Bảo trì",
+  AVAILABLE: "Hoáº¡t Ä‘á»™ng",
+  UNAVAILABLE: "Táº¡m ngÆ°ng",
+  MAINTENANCE: "Báº£o trÃ¬",
 };
 
 const initialForm: CatalogServicePayload = {
@@ -71,7 +72,7 @@ export default function AdminServicesPage() {
       const { data } = await getCatalogServices(0, 1000);
       setServices(data);
     } catch {
-      setError("Không thể tải danh sách dịch vụ. Kiểm tra catalog-service và quyền tài khoản.");
+      setError("KhÃ´ng thá»ƒ táº£i danh sÃ¡ch dá»‹ch vá»¥. Kiá»ƒm tra catalog-service vÃ  quyá»n tÃ i khoáº£n.");
     } finally {
       setIsLoading(false);
     }
@@ -123,11 +124,11 @@ export default function AdminServicesPage() {
     const name = form.name.trim();
     const price = Number(form.price) || 0;
     if (!name) {
-      setError("Vui lòng nhập tên dịch vụ.");
+      setError("Vui lÃ²ng nháº­p tÃªn dá»‹ch vá»¥.");
       return;
     }
     if (price < 0) {
-      setError("Giá dịch vụ không được âm.");
+      setError("GiÃ¡ dá»‹ch vá»¥ khÃ´ng Ä‘Æ°á»£c Ã¢m.");
       return;
     }
 
@@ -148,17 +149,17 @@ export default function AdminServicesPage() {
         setServices((items) =>
           items.map((item) => (item.id === updated.id ? updated : item)),
         );
-        setMessage("Đã cập nhật dịch vụ gốc.");
+        setMessage("ÄÃ£ cáº­p nháº­t dá»‹ch vá»¥ gá»‘c.");
       } else {
         const created = await createCatalogService(payload);
         setServices((items) => [created, ...items]);
-        setMessage("Đã tạo dịch vụ gốc. Có thể đem gán vào loại phòng hoặc thêm vào booking.");
+        setMessage("ÄÃ£ táº¡o dá»‹ch vá»¥ gá»‘c. CÃ³ thá»ƒ Ä‘em gÃ¡n vÃ o loáº¡i phÃ²ng hoáº·c thÃªm vÃ o booking.");
       }
       setModalOpen(false);
       setEditingService(null);
       setForm(initialForm);
     } catch {
-      setError("Không thể lưu dịch vụ. Kiểm tra dữ liệu và catalog-service.");
+      setError("KhÃ´ng thá»ƒ lÆ°u dá»‹ch vá»¥. Kiá»ƒm tra dá»¯ liá»‡u vÃ  catalog-service.");
     } finally {
       setIsSaving(false);
     }
@@ -175,10 +176,10 @@ export default function AdminServicesPage() {
           item.id === deleteTarget.id ? { ...item, deleted: true } : item,
         ),
       );
-      setMessage(`Đã xóa dịch vụ "${deleteTarget.name}".`);
+      setMessage(`ÄÃ£ xÃ³a dá»‹ch vá»¥ "${deleteTarget.name}".`);
       setDeleteTarget(null);
     } catch {
-      setError("Không thể xóa dịch vụ này.");
+      setError("KhÃ´ng thá»ƒ xÃ³a dá»‹ch vá»¥ nÃ y.");
     } finally {
       setIsSaving(false);
     }
@@ -186,7 +187,7 @@ export default function AdminServicesPage() {
 
   if (!canView) {
     return (
-      <PermissionDenied message="Bạn không có quyền SERVICE_VIEW để xem danh sách dịch vụ." />
+      <PermissionDenied message="Báº¡n khÃ´ng cÃ³ quyá»n SERVICE_VIEW Ä‘á»ƒ xem danh sÃ¡ch dá»‹ch vá»¥." />
     );
   }
 
@@ -196,14 +197,14 @@ export default function AdminServicesPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-bold tracking-[0.22em] text-[#9b5c24] uppercase">
-              Quản lý dịch vụ gốc
+              Quáº£n lÃ½ dá»‹ch vá»¥ gá»‘c
             </p>
             <h2 className="mt-2 text-3xl font-black tracking-tight text-[#17213a]">
-              Danh sách dịch vụ
+              Danh sÃ¡ch dá»‹ch vá»¥
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-[#75695d]">
-              Tạo dịch vụ riêng biệt trước, sau đó mới đem gán vào loại phòng hoặc thêm
-              vào booking phát sinh.
+              Táº¡o dá»‹ch vá»¥ riÃªng biá»‡t trÆ°á»›c, sau Ä‘Ã³ má»›i Ä‘em gÃ¡n vÃ o loáº¡i phÃ²ng hoáº·c thÃªm
+              vÃ o booking phÃ¡t sinh.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -215,12 +216,12 @@ export default function AdminServicesPage() {
               className="gap-2"
             >
               <RefreshCcw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-              Tải lại
+              Táº£i láº¡i
             </Button>
             {canCreate ? (
               <Button type="button" onClick={openCreateModal} className="gap-2">
                 <Plus className="h-4 w-4" />
-                Thêm dịch vụ
+                ThÃªm dá»‹ch vá»¥
               </Button>
             ) : null}
           </div>
@@ -245,12 +246,12 @@ export default function AdminServicesPage() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Tìm theo tên, mô tả, mã dịch vụ..."
+              placeholder="TÃ¬m theo tÃªn, mÃ´ táº£, mÃ£ dá»‹ch vá»¥..."
               className="pl-10"
             />
           </div>
           <QuickFilter
-            title="Lọc nhanh"
+            title="Lá»c nhanh"
             value={status}
             onChange={setStatus}
             options={statusOptions}
@@ -264,24 +265,24 @@ export default function AdminServicesPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-[#fbf6ed] text-xs font-bold tracking-[0.14em] text-[#75695d] uppercase">
               <tr>
-                <th className="px-5 py-4">Dịch vụ</th>
-                <th className="px-5 py-4">Giá</th>
-                <th className="px-5 py-4">Trạng thái</th>
-                <th className="px-5 py-4">Mã</th>
-                <th className="px-5 py-4 text-right">Hành động</th>
+                <th className="px-5 py-4">Dá»‹ch vá»¥</th>
+                <th className="px-5 py-4">GiÃ¡</th>
+                <th className="px-5 py-4">Tráº¡ng thÃ¡i</th>
+                <th className="px-5 py-4">MÃ£</th>
+                <th className="px-5 py-4 text-right">HÃ nh Ä‘á»™ng</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#eee3d5]">
               {isLoading ? (
                 <tr>
                   <td colSpan={5} className="px-5 py-10 text-center font-semibold text-[#75695d]">
-                    Đang tải danh sách dịch vụ...
+                    Äang táº£i danh sÃ¡ch dá»‹ch vá»¥...
                   </td>
                 </tr>
               ) : filteredServices.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-5 py-10 text-center font-semibold text-[#75695d]">
-                    Chưa có dịch vụ phù hợp.
+                    ChÆ°a cÃ³ dá»‹ch vá»¥ phÃ¹ há»£p.
                   </td>
                 </tr>
               ) : (
@@ -306,7 +307,7 @@ export default function AdminServicesPage() {
                         <div className="min-w-0">
                           <p className="font-black text-[#17213a]">{service.name}</p>
                           <p className="mt-1 max-w-xl truncate text-xs text-[#75695d]">
-                            {service.description || "Không có mô tả"}
+                            {service.description || "KhÃ´ng cÃ³ mÃ´ táº£"}
                           </p>
                         </div>
                       </div>
@@ -327,7 +328,7 @@ export default function AdminServicesPage() {
                         }`}
                       >
                         {service.deleted
-                          ? "Đã xóa"
+                          ? "ÄÃ£ xÃ³a"
                           : statusLabel[service.status ?? ""] ?? service.status}
                       </span>
                     </td>
@@ -344,7 +345,7 @@ export default function AdminServicesPage() {
                           className="h-9 gap-2"
                         >
                           <Pencil className="h-4 w-4" />
-                          Sửa
+                          Sá»­a
                         </Button>
                         {!service.deleted ? (
                           <Button
@@ -355,7 +356,7 @@ export default function AdminServicesPage() {
                             className="h-9 gap-2 border-red-200 text-red-700 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />
-                            Xóa
+                            XÃ³a
                           </Button>
                         ) : null}
                       </div>
@@ -372,69 +373,54 @@ export default function AdminServicesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
           <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="text-xl font-black text-[#17213a]">
-              {editingService ? "Sửa dịch vụ" : "Thêm dịch vụ"}
+              {editingService ? "Sá»­a dá»‹ch vá»¥" : "ThÃªm dá»‹ch vá»¥"}
             </h3>
             <p className="mt-1 text-sm text-[#75695d]">
-              Giá và trạng thái ở đây là nguồn gốc để tính khi thêm dịch vụ vào booking.
+              GiÃ¡ vÃ  tráº¡ng thÃ¡i á»Ÿ Ä‘Ã¢y lÃ  nguá»“n gá»‘c Ä‘á»ƒ tÃ­nh khi thÃªm dá»‹ch vá»¥ vÃ o booking.
             </p>
 
             <div className="mt-5 space-y-4">
-              <div>
-                <Label>Tên dịch vụ</Label>
-                <Input
-                  value={form.name}
-                  onChange={(event) => setForm({ ...form, name: event.target.value })}
-                  placeholder="Ví dụ: Massage thư giãn 60 phút"
-                  className="mt-1"
-                />
-              </div>
+              <TextField
+                label="TÃªn dá»‹ch vá»¥"
+                value={form.name}
+                onValueChange={(name) => setForm({ ...form, name })}
+                placeholder="VÃ­ dá»¥: Massage thÆ° giÃ£n 60 phÃºt"
+              />
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label>Giá</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={form.price}
-                    onChange={(event) =>
-                      setForm({ ...form, price: Number(event.target.value) || 0 })
-                    }
-                    className="mt-1"
-                  />
-                </div>
+                <TextField
+                  label="GiÃ¡"
+                  type="number"
+                  min="0"
+                  value={form.price}
+                  onValueChange={(price) =>
+                    setForm({ ...form, price: Number(price) || 0 })
+                  }
+                />
                 <Select
-                  label="Trạng thái"
+                  label="Tráº¡ng thÃ¡i"
                   value={form.status ?? "AVAILABLE"}
                   onValueChange={(value) => setForm({ ...form, status: value })}
                   options={[
-                    { value: "AVAILABLE", label: "Hoạt động" },
-                    { value: "UNAVAILABLE", label: "Tạm ngưng" },
-                    { value: "MAINTENANCE", label: "Bảo trì" },
+                    { value: "AVAILABLE", label: "Hoáº¡t Ä‘á»™ng" },
+                    { value: "UNAVAILABLE", label: "Táº¡m ngÆ°ng" },
+                    { value: "MAINTENANCE", label: "Báº£o trÃ¬" },
                   ]}
                 />
               </div>
 
-              <div>
-                <Label>Ảnh</Label>
-                <Input
-                  value={form.image ?? ""}
-                  onChange={(event) => setForm({ ...form, image: event.target.value })}
-                  placeholder="URL ảnh dịch vụ"
-                  className="mt-1"
-                />
-              </div>
+              <TextField
+                label="áº¢nh"
+                value={form.image ?? ""}
+                onValueChange={(image) => setForm({ ...form, image })}
+                placeholder="URL áº£nh dá»‹ch vá»¥"
+              />
 
-              <div>
-                <Label>Mô tả</Label>
-                <textarea
-                  value={form.description ?? ""}
-                  onChange={(event) =>
-                    setForm({ ...form, description: event.target.value })
-                  }
-                  rows={3}
-                  className="mt-1 w-full rounded-xl border border-[#decdb9] bg-white px-3 py-2 text-sm text-[#17213a] outline-none focus:border-[#9b5c24] focus:ring-2 focus:ring-[#9b5c24]/15"
-                />
-              </div>
+              <TextareaField
+                label="MÃ´ táº£"
+                value={form.description ?? ""}
+                onValueChange={(description) => setForm({ ...form, description })}
+              />
             </div>
 
             <div className="mt-6 flex gap-3">
@@ -445,7 +431,7 @@ export default function AdminServicesPage() {
                 disabled={isSaving}
                 className="flex-1"
               >
-                Hủy
+                Há»§y
               </Button>
               <Button
                 type="button"
@@ -453,7 +439,7 @@ export default function AdminServicesPage() {
                 disabled={isSaving}
                 className="flex-1"
               >
-                Lưu
+                LÆ°u
               </Button>
             </div>
           </div>
@@ -462,8 +448,8 @@ export default function AdminServicesPage() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Xóa dịch vụ"
-        description={`Bạn chắc chắn muốn xóa dịch vụ "${deleteTarget?.name ?? ""}"? Dịch vụ sẽ bị ẩn khỏi luồng bán mới.`}
+        title="XÃ³a dá»‹ch vá»¥"
+        description={`Báº¡n cháº¯c cháº¯n muá»‘n xÃ³a dá»‹ch vá»¥ "${deleteTarget?.name ?? ""}"? Dá»‹ch vá»¥ sáº½ bá»‹ áº©n khá»i luá»“ng bÃ¡n má»›i.`}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void handleDelete()}
       />
@@ -471,7 +457,4 @@ export default function AdminServicesPage() {
   );
 }
 
-function formatMoney(value?: number) {
-  if (value == null || !Number.isFinite(value)) return "-";
-  return `${new Intl.NumberFormat("vi-VN").format(value)} đ`;
-}
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   ArrowLeft,
@@ -16,9 +16,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TextField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
+import { formatMoney } from "@/lib/format";
 import {
   checkInRoomBooking,
   getRoomBooking,
@@ -40,20 +42,20 @@ const emptyGuest: GuestForm = {
 };
 
 const bookingStatusLabel: Record<string, string> = {
-  PENDING: "Chờ thanh toán",
-  DEPOSITED: "Đã xác nhận thanh toán",
-  CANCEL_REQUESTED: "Yêu cầu hủy",
-  CHECKED_IN: "Đang lưu trú",
-  CANCEL: "Đã hủy",
-  DONE: "Đã trả phòng",
+  PENDING: "Chá» thanh toÃ¡n",
+  DEPOSITED: "ÄÃ£ xÃ¡c nháº­n thanh toÃ¡n",
+  CANCEL_REQUESTED: "YÃªu cáº§u há»§y",
+  CHECKED_IN: "Äang lÆ°u trÃº",
+  CANCEL: "ÄÃ£ há»§y",
+  DONE: "ÄÃ£ tráº£ phÃ²ng",
 };
 
 const detailStatusLabel: Record<string, string> = {
-  BOOKED: "Đã giữ phòng",
-  CHECKED_IN: "Đã nhận phòng",
-  CHECKED_OUT: "Đã trả phòng",
-  CANCELED: "Đã hủy",
-  NO_SHOW: "Không đến",
+  BOOKED: "ÄÃ£ giá»¯ phÃ²ng",
+  CHECKED_IN: "ÄÃ£ nháº­n phÃ²ng",
+  CHECKED_OUT: "ÄÃ£ tráº£ phÃ²ng",
+  CANCELED: "ÄÃ£ há»§y",
+  NO_SHOW: "KhÃ´ng Ä‘áº¿n",
 };
 
 export default function BookingCheckInPage() {
@@ -95,7 +97,7 @@ export default function BookingCheckInPage() {
       }
     } catch {
       setMessage(
-        "Không thể tải booking. Kiểm tra booking-service và quyền BOOKING_VIEW.",
+        "KhÃ´ng thá»ƒ táº£i booking. Kiá»ƒm tra booking-service vÃ  quyá»n BOOKING_VIEW.",
       );
     } finally {
       setLoading(false);
@@ -138,7 +140,7 @@ export default function BookingCheckInPage() {
     if (!booking || submitting) return;
     if (!validateGuests()) {
       setMessage(
-        "Vui lòng nhập đủ họ tên, CCCD/CMND, giới tính và ngày sinh của khách lưu trú.",
+        "Vui lÃ²ng nháº­p Ä‘á»§ há» tÃªn, CCCD/CMND, giá»›i tÃ­nh vÃ  ngÃ y sinh cá»§a khÃ¡ch lÆ°u trÃº.",
       );
       return;
     }
@@ -158,11 +160,11 @@ export default function BookingCheckInPage() {
       const updated = await checkInRoomBooking(booking.id);
       await ensureIncludedServiceOrderDetails(booking.id).catch(() => null);
       setBooking(updated);
-      setMessage("Đã lưu đăng ký lưu trú và check-in thành công.");
+      setMessage("ÄÃ£ lÆ°u Ä‘Äƒng kÃ½ lÆ°u trÃº vÃ  check-in thÃ nh cÃ´ng.");
       window.setTimeout(() => router.push("/bookings"), 700);
     } catch {
       setMessage(
-        "Không thể check-in. Kiểm tra trạng thái booking, dữ liệu đăng ký lưu trú và quyền BOOKING_CHECKIN.",
+        "KhÃ´ng thá»ƒ check-in. Kiá»ƒm tra tráº¡ng thÃ¡i booking, dá»¯ liá»‡u Ä‘Äƒng kÃ½ lÆ°u trÃº vÃ  quyá»n BOOKING_CHECKIN.",
       );
     } finally {
       setSubmitting(false);
@@ -171,14 +173,14 @@ export default function BookingCheckInPage() {
 
   if (!canCheckIn) {
     return (
-      <PermissionDenied message="Bạn không có quyền BOOKING_CHECKIN để thực hiện check-in." />
+      <PermissionDenied message="Báº¡n khÃ´ng cÃ³ quyá»n BOOKING_CHECKIN Ä‘á»ƒ thá»±c hiá»‡n check-in." />
     );
   }
 
   const readyToCheckIn =
     booking?.status === "DEPOSITED" && booking?.detailStatus === "BOOKED";
-  const customerName = formatCustomerName(customer) || "Chưa tải được tên khách";
-  const roomName = room?.name || booking?.roomId || "Chưa tải được tên phòng";
+  const customerName = formatCustomerName(customer) || "ChÆ°a táº£i Ä‘Æ°á»£c tÃªn khÃ¡ch";
+  const roomName = room?.name || booking?.roomId || "ChÆ°a táº£i Ä‘Æ°á»£c tÃªn phÃ²ng";
 
   return (
     <div className="space-y-6">
@@ -188,19 +190,19 @@ export default function BookingCheckInPage() {
         className="inline-flex items-center gap-2 text-sm font-semibold text-[#17213a] hover:text-[#9b5c24]"
       >
         <ArrowLeft className="h-4 w-4" />
-        Quay lại danh sách đặt phòng
+        Quay láº¡i danh sÃ¡ch Ä‘áº·t phÃ²ng
       </button>
 
       <section className="rounded-2xl border border-[#decdb9] bg-white/85 p-6 shadow-sm">
         <p className="text-sm font-bold tracking-[0.22em] text-[#9b5c24] uppercase">
-          Tiếp nhận khách
+          Tiáº¿p nháº­n khÃ¡ch
         </p>
         <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">
           Check-in booking
         </h2>
         <p className="mt-2 max-w-3xl text-sm text-[#7c6f63]">
-          Nhập thông tin đăng ký lưu trú trước khi chuyển booking sang trạng thái khách
-          đang ở.
+          Nháº­p thÃ´ng tin Ä‘Äƒng kÃ½ lÆ°u trÃº trÆ°á»›c khi chuyá»ƒn booking sang tráº¡ng thÃ¡i khÃ¡ch
+          Ä‘ang á»Ÿ.
         </p>
       </section>
 
@@ -212,7 +214,7 @@ export default function BookingCheckInPage() {
 
       {loading ? (
         <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-10 text-center text-[#7c6f63]">
-          Đang tải booking...
+          Äang táº£i booking...
         </div>
       ) : booking ? (
         <>
@@ -220,25 +222,25 @@ export default function BookingCheckInPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <InfoCard
                 icon={<CalendarDays className="h-5 w-5" />}
-                label="Mã booking"
+                label="MÃ£ booking"
                 value={shortCode(booking.id)}
                 sub={booking.id}
               />
               <InfoCard
                 icon={<UserRound className="h-5 w-5" />}
-                label="Khách hàng"
+                label="KhÃ¡ch hÃ ng"
                 value={customerName}
                 sub={customer?.email || customer?.username}
               />
               <InfoCard
                 icon={<BedDouble className="h-5 w-5" />}
-                label="Phòng"
+                label="PhÃ²ng"
                 value={roomName}
                 sub={room?.roomTypes?.name}
               />
               <InfoCard
                 icon={<CheckCircle2 className="h-5 w-5" />}
-                label="Trạng thái"
+                label="Tráº¡ng thÃ¡i"
                 value={`${formatBookingStatus(booking.status)} / ${formatDetailStatus(booking.detailStatus)}`}
               />
             </div>
@@ -246,7 +248,7 @@ export default function BookingCheckInPage() {
             <div className="mt-6 grid gap-4 rounded-2xl border border-[#eee3d5] bg-[#fbf6ed] p-5 md:grid-cols-2">
               <div>
                 <p className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
-                  Nhận phòng dự kiến
+                  Nháº­n phÃ²ng dá»± kiáº¿n
                 </p>
                 <p className="mt-2 text-lg font-semibold text-[#17213a]">
                   {formatDateTime(booking.checkin)}
@@ -254,7 +256,7 @@ export default function BookingCheckInPage() {
               </div>
               <div>
                 <p className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
-                  Trả phòng dự kiến
+                  Tráº£ phÃ²ng dá»± kiáº¿n
                 </p>
                 <p className="mt-2 text-lg font-semibold text-[#17213a]">
                   {formatDateTime(booking.checkout)}
@@ -266,9 +268,9 @@ export default function BookingCheckInPage() {
           <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-[#17213a]">Đăng ký lưu trú</h3>
+                <h3 className="text-xl font-semibold text-[#17213a]">ÄÄƒng kÃ½ lÆ°u trÃº</h3>
                 <p className="mt-2 text-sm text-[#7c6f63]">
-                  Mỗi khách lưu trú cần có thông tin giấy tờ để lưu vào bảng
+                  Má»—i khÃ¡ch lÆ°u trÃº cáº§n cÃ³ thÃ´ng tin giáº¥y tá» Ä‘á»ƒ lÆ°u vÃ o báº£ng
                   residence_registration.
                 </p>
               </div>
@@ -280,7 +282,7 @@ export default function BookingCheckInPage() {
                 className="gap-2"
               >
                 <Plus className="h-4 w-4" />
-                Thêm khách
+                ThÃªm khÃ¡ch
               </Button>
             </div>
 
@@ -292,7 +294,7 @@ export default function BookingCheckInPage() {
                 >
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <p className="font-semibold text-[#17213a]">
-                      Khách lưu trú {index + 1}
+                      KhÃ¡ch lÆ°u trÃº {index + 1}
                     </p>
                     <Button
                       type="button"
@@ -303,40 +305,28 @@ export default function BookingCheckInPage() {
                       className="gap-2"
                     >
                       <Trash2 className="h-4 w-4" />
-                      Xóa
+                      XÃ³a
                     </Button>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
+                    <TextField
+                      label="Há» vÃ  tÃªn"
+                      value={guest.fullName}
+                      onValueChange={(fullName) => updateGuest(index, { fullName })}
+                      placeholder="VÃ­ dá»¥: Táº¡ VÄƒn Long"
+                    />
+                    <TextField
+                      label="CCCD / CMND"
+                      value={guest.identityNumber}
+                      onValueChange={(identityNumber) =>
+                        updateGuest(index, { identityNumber })
+                      }
+                      placeholder="Nháº­p sá»‘ cÄƒn cÆ°á»›c"
+                    />
                     <label className="block">
                       <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                        Họ và tên
-                      </span>
-                      <Input
-                        value={guest.fullName}
-                        onChange={(event) =>
-                          updateGuest(index, { fullName: event.target.value })
-                        }
-                        placeholder="Ví dụ: Tạ Văn Long"
-                        className="mt-2"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                        CCCD / CMND
-                      </span>
-                      <Input
-                        value={guest.identityNumber}
-                        onChange={(event) =>
-                          updateGuest(index, { identityNumber: event.target.value })
-                        }
-                        placeholder="Nhập số căn cước"
-                        className="mt-2"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                        Giới tính
+                        Giá»›i tÃ­nh
                       </span>
                       <Select
                         value={guest.gender}
@@ -344,19 +334,20 @@ export default function BookingCheckInPage() {
                         className="mt-2"
                         options={[
                           { value: "MALE", label: "Nam" },
-                          { value: "FEMALE", label: "Nữ" },
-                          { value: "OTHER", label: "Khác" },
+                          { value: "FEMALE", label: "Ná»¯" },
+                          { value: "OTHER", label: "KhÃ¡c" },
                         ]}
                       />
                     </label>
                     <label className="block">
                       <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                        Ngày sinh
+                        NgÃ y sinh
                       </span>
-                      <DateOfBirthPicker
+                      <DatePicker
                         value={guest.dateOfBirth}
                         onChange={(dateOfBirth) => updateGuest(index, { dateOfBirth })}
                         disabled={submitting}
+                        className="mt-2"
                       />
                     </label>
                   </div>
@@ -366,28 +357,28 @@ export default function BookingCheckInPage() {
           </section>
 
           <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
-            <h3 className="text-xl font-semibold text-[#17213a]">Xác nhận check-in</h3>
+            <h3 className="text-xl font-semibold text-[#17213a]">XÃ¡c nháº­n check-in</h3>
             <div className="mt-5 space-y-3 rounded-2xl bg-[#fbf6ed] p-4 text-sm text-[#5f5144]">
               <div className="flex justify-between gap-4">
-                <span>Tổng tiền</span>
+                <span>Tá»•ng tiá»n</span>
                 <strong className="text-[#17213a]">
                   {formatMoney(booking.totalPrice)}
                 </strong>
               </div>
               <div className="flex justify-between gap-4">
-                <span>Tiền phòng</span>
+                <span>Tiá»n phÃ²ng</span>
                 <span>{formatMoney(booking.totalRoomPrice)}</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span>Dịch vụ phát sinh</span>
+                <span>Dá»‹ch vá»¥ phÃ¡t sinh</span>
                 <span>{formatMoney(booking.totalServicePrice)}</span>
               </div>
             </div>
 
             {!readyToCheckIn ? (
               <div className="mt-5 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
-                Booking này chưa sẵn sàng check-in. Cần trạng thái đã xác nhận thanh toán
-                và phòng còn được giữ.
+                Booking nÃ y chÆ°a sáºµn sÃ ng check-in. Cáº§n tráº¡ng thÃ¡i Ä‘Ã£ xÃ¡c nháº­n thanh toÃ¡n
+                vÃ  phÃ²ng cÃ²n Ä‘Æ°á»£c giá»¯.
               </div>
             ) : null}
 
@@ -400,7 +391,7 @@ export default function BookingCheckInPage() {
                 className="gap-2"
               >
                 <RefreshCcw className="h-4 w-4" />
-                Tải lại
+                Táº£i láº¡i
               </Button>
               <Button
                 type="button"
@@ -413,14 +404,14 @@ export default function BookingCheckInPage() {
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
-                Lưu đăng ký và check-in
+                LÆ°u Ä‘Äƒng kÃ½ vÃ  check-in
               </Button>
             </div>
           </section>
         </>
       ) : (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700">
-          Không tìm thấy booking.
+          KhÃ´ng tÃ¬m tháº¥y booking.
         </div>
       )}
     </div>
@@ -485,76 +476,4 @@ function formatDateTime(value?: string) {
   }).format(new Date(value));
 }
 
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value || 0);
-}
 
-function DateOfBirthPicker({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) {
-  const [year = "", month = "", day = ""] = value ? value.split("-") : [];
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 91 }, (_, index) =>
-    String(currentYear - 10 - index),
-  );
-  const days = Array.from({ length: 31 }, (_, index) =>
-    String(index + 1).padStart(2, "0"),
-  );
-  const months = Array.from({ length: 12 }, (_, index) =>
-    String(index + 1).padStart(2, "0"),
-  );
-
-  function updateDate(part: "day" | "month" | "year", nextValue: string) {
-    const nextDay = part === "day" ? nextValue : day;
-    const nextMonth = part === "month" ? nextValue : month;
-    const nextYear = part === "year" ? nextValue : year;
-    onChange(
-      nextDay && nextMonth && nextYear ? `${nextYear}-${nextMonth}-${nextDay}` : "",
-    );
-  }
-
-  return (
-    <div className="mt-2 grid grid-cols-[1fr_1fr_1.2fr] gap-2">
-      <Select
-        value={day}
-        onValueChange={(value) => updateDate("day", value)}
-        disabled={disabled}
-        placeholder="Ngày"
-        options={[
-          { value: "", label: "Ngày" },
-          ...days.map((item) => ({ value: item, label: item })),
-        ]}
-      />
-      <Select
-        value={month}
-        onValueChange={(value) => updateDate("month", value)}
-        disabled={disabled}
-        placeholder="Tháng"
-        options={[
-          { value: "", label: "Tháng" },
-          ...months.map((item) => ({ value: item, label: item })),
-        ]}
-      />
-      <Select
-        value={year}
-        onValueChange={(value) => updateDate("year", value)}
-        disabled={disabled}
-        placeholder="Năm"
-        options={[
-          { value: "", label: "Năm" },
-          ...years.map((item) => ({ value: item, label: item })),
-        ]}
-      />
-    </div>
-  );
-}

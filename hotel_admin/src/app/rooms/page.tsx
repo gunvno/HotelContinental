@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { BedDouble, CheckCircle2, Hotel, Layers3, Plus, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { MetricCard } from "@/components/ui/metric-card";
 import { Pagination } from "@/components/ui/pagination";
 import { usePermission } from "@/hooks/use-permission";
 import { getRoomBookings, type RoomBookingResponse } from "@/services/booking-service";
@@ -91,7 +92,7 @@ export default function RoomsPage() {
     } catch (loadError) {
       console.error(loadError);
       setError(
-        "Không tải được dữ liệu phòng. Kiểm tra gateway, room-service và token ADMIN.",
+        "KhÃ´ng táº£i Ä‘Æ°á»£c dá»¯ liá»‡u phÃ²ng. Kiá»ƒm tra gateway, room-service vÃ  token ADMIN.",
       );
     } finally {
       setIsLoading(false);
@@ -108,11 +109,11 @@ export default function RoomsPage() {
               Room inventory
             </p>
             <h2 className="mt-3 font-serif text-5xl leading-none font-bold tracking-tight lg:text-7xl">
-              Kho phòng
+              Kho phÃ²ng
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-[#eadbc4]">
-              Trang này chỉ quản lý phòng vật lý. Muốn thêm phòng mới thì chuyển sang
-              trang tạo riêng để không làm rối danh sách.
+              Trang nÃ y chá»‰ quáº£n lÃ½ phÃ²ng váº­t lÃ½. Muá»‘n thÃªm phÃ²ng má»›i thÃ¬ chuyá»ƒn sang
+              trang táº¡o riÃªng Ä‘á»ƒ khÃ´ng lÃ m rá»‘i danh sÃ¡ch.
             </p>
           </div>
           <Button
@@ -122,7 +123,7 @@ export default function RoomsPage() {
             className="border-white/15 bg-white/10 text-white hover:bg-white/15"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
-            Làm mới
+            LÃ m má»›i
           </Button>
         </div>
       </section>
@@ -130,22 +131,22 @@ export default function RoomsPage() {
       <section className="grid gap-4 md:grid-cols-4">
         <MetricCard
           icon={<Hotel className="h-5 w-5" />}
-          label="Tòa nhà"
+          label="TÃ²a nhÃ "
           value={String(buildings.length)}
         />
         <MetricCard
           icon={<Layers3 className="h-5 w-5" />}
-          label="Tầng"
+          label="Táº§ng"
           value={String(floors.length)}
         />
         <MetricCard
           icon={<CheckCircle2 className="h-5 w-5" />}
-          label="Sẵn sàng bán"
+          label="Sáºµn sÃ ng bÃ¡n"
           value={String(availableRooms)}
         />
         <MetricCard
           icon={<BedDouble className="h-5 w-5" />}
-          label="Tổng phòng"
+          label="Tá»•ng phÃ²ng"
           value={String(totalRooms)}
         />
       </section>
@@ -202,7 +203,7 @@ function RoomTableView({
   if (isLoading) {
     return (
       <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-10 text-center font-bold text-[#75695d]">
-        Đang tải danh sách phòng...
+        Äang táº£i danh sÃ¡ch phÃ²ng...
       </div>
     );
   }
@@ -212,21 +213,21 @@ function RoomTableView({
       <div className="flex flex-col gap-3 border-b border-[#eadfcd] px-6 py-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-black tracking-[0.28em] text-[#9b5c24] uppercase">
-            Danh sách phòng
+            Danh sÃ¡ch phÃ²ng
           </p>
           <h3 className="mt-2 font-serif text-3xl font-bold text-[#211a14]">
-            Phòng vật lý
+            PhÃ²ng váº­t lÃ½
           </h3>
           <p className="mt-1 text-sm text-[#75695d]">
-            Hiển thị {rooms.length} / {total} phòng. Bấm vào một dòng để xem chi tiết hoặc
-            sửa ảnh.
+            Hiá»ƒn thá»‹ {rooms.length} / {total} phÃ²ng. Báº¥m vÃ o má»™t dÃ²ng Ä‘á»ƒ xem chi tiáº¿t hoáº·c
+            sá»­a áº£nh.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {canCreate ? (
             <Button type="button" onClick={onCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              Thêm phòng
+              ThÃªm phÃ²ng
             </Button>
           ) : null}
           <div className="rounded-full border border-[#eadfcd] bg-[#fffaf2] px-4 py-2 text-sm font-black text-[#9b5c24]">
@@ -239,14 +240,14 @@ function RoomTableView({
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#eadfcd] text-xs tracking-[0.18em] text-[#9b8c7d] uppercase">
-              <th className="px-6 py-4 font-black">Phòng</th>
-              <th className="px-4 py-4 font-black">Tòa nhà</th>
-              <th className="px-4 py-4 font-black">Tầng</th>
-              <th className="px-4 py-4 font-black">Loại phòng</th>
-              <th className="px-4 py-4 font-black">Diện tích</th>
-              <th className="px-4 py-4 font-black">Giá ngày</th>
-              <th className="px-4 py-4 font-black">Giá giờ</th>
-              <th className="px-4 py-4 font-black">Lịch đặt</th>
+              <th className="px-6 py-4 font-black">PhÃ²ng</th>
+              <th className="px-4 py-4 font-black">TÃ²a nhÃ </th>
+              <th className="px-4 py-4 font-black">Táº§ng</th>
+              <th className="px-4 py-4 font-black">Loáº¡i phÃ²ng</th>
+              <th className="px-4 py-4 font-black">Diá»‡n tÃ­ch</th>
+              <th className="px-4 py-4 font-black">GiÃ¡ ngÃ y</th>
+              <th className="px-4 py-4 font-black">GiÃ¡ giá»</th>
+              <th className="px-4 py-4 font-black">Lá»‹ch Ä‘áº·t</th>
             </tr>
           </thead>
           <tbody>
@@ -256,7 +257,7 @@ function RoomTableView({
                   colSpan={8}
                   className="px-6 py-12 text-center text-sm font-bold text-[#75695d]"
                 >
-                  Chưa có phòng. Bấm “Thêm phòng” để tạo phòng vật lý đầu tiên.
+                  ChÆ°a cÃ³ phÃ²ng. Báº¥m â€œThÃªm phÃ²ngâ€ Ä‘á»ƒ táº¡o phÃ²ng váº­t lÃ½ Ä‘áº§u tiÃªn.
                 </td>
               </tr>
             ) : (
@@ -289,7 +290,7 @@ function RoomTableView({
                         <div>
                           <p className="font-black text-[#211a14]">{room.name}</p>
                           <p className="mt-1 line-clamp-1 max-w-[220px] text-xs text-[#75695d]">
-                            {room.description || "Chưa có mô tả"}
+                            {room.description || "ChÆ°a cÃ³ mÃ´ táº£"}
                           </p>
                         </div>
                       </div>
@@ -299,7 +300,7 @@ function RoomTableView({
                     </td>
                     <td className="px-4 py-4 text-[#4d4035]">{location.floorName}</td>
                     <td className="px-4 py-4 font-semibold text-[#211a14]">
-                      {room.roomTypes?.name || "Chưa gán"}
+                      {room.roomTypes?.name || "ChÆ°a gÃ¡n"}
                     </td>
                     <td className="px-4 py-4 text-[#4d4035]">{room.roomSize || "-"}</td>
                     <td className="px-4 py-4 font-black text-[#9b5c24]">
@@ -330,7 +331,7 @@ function RoomTableView({
         page={page}
         pageSize={ROOM_PAGE_SIZE}
         total={total}
-        itemLabel="phòng"
+        itemLabel="phÃ²ng"
         onPageChange={onPageChange}
       />
     </section>
@@ -346,8 +347,8 @@ function resolveRoomLocationParts(
   const building = buildings.find((item) => item.id === floor?.buildingId);
 
   return {
-    buildingName: building?.name || "Chưa gán",
-    floorName: floor ? `Tầng ${floor.floorNumber}` : "Chưa gán",
+    buildingName: building?.name || "ChÆ°a gÃ¡n",
+    floorName: floor ? `Táº§ng ${floor.floorNumber}` : "ChÆ°a gÃ¡n",
   };
 }
 
@@ -366,8 +367,8 @@ function buildRoomSchedules(
             room.id,
             {
               kind: "MAINTENANCE",
-              label: "Bảo trì",
-              description: "Phòng đang bảo trì, không mở bán theo mọi khung giờ.",
+              label: "Báº£o trÃ¬",
+              description: "PhÃ²ng Ä‘ang báº£o trÃ¬, khÃ´ng má»Ÿ bÃ¡n theo má»i khung giá».",
             },
           ];
         }
@@ -395,8 +396,8 @@ function buildRoomSchedules(
             room.id,
             {
               kind: "BUSY_NOW",
-              label: "Đang có khách",
-              description: `Đến ${formatDateTime(current.booking.checkout)}.`,
+              label: "Äang cÃ³ khÃ¡ch",
+              description: `Äáº¿n ${formatDateTime(current.booking.checkout)}.`,
             },
           ];
         }
@@ -407,7 +408,7 @@ function buildRoomSchedules(
             room.id,
             {
               kind: "UPCOMING",
-              label: "Có lịch sắp tới",
+              label: "CÃ³ lá»‹ch sáº¯p tá»›i",
               description: `${formatDateTime(next.booking.checkin)} -> ${formatDateTime(
                 next.booking.checkout,
               )}.`,
@@ -423,8 +424,8 @@ function buildRoomSchedules(
 function freeSchedule(): RoomSchedule {
   return {
     kind: "FREE",
-    label: "Trống theo lịch",
-    description: "Không có booking chặn ở hiện tại hoặc tương lai gần.",
+    label: "Trá»‘ng theo lá»‹ch",
+    description: "KhÃ´ng cÃ³ booking cháº·n á»Ÿ hiá»‡n táº¡i hoáº·c tÆ°Æ¡ng lai gáº§n.",
   };
 }
 
@@ -452,26 +453,6 @@ function getScheduleClassName(kind: RoomScheduleKind) {
     case "MAINTENANCE":
       return "bg-red-50 text-red-700";
   }
-}
-
-function MetricCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[1.5rem] border border-[#decdb9] bg-white/72 p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm font-bold text-[#75695d]">{label}</p>
-        <div className="rounded-2xl bg-[#eadfcd] p-3 text-[#9b5c24]">{icon}</div>
-      </div>
-      <p className="mt-4 text-3xl font-black tracking-tight">{value}</p>
-    </div>
-  );
 }
 
 function Alert({ children }: { children: React.ReactNode }) {
@@ -505,3 +486,4 @@ function formatCurrency(value: number | string) {
     maximumFractionDigits: 0,
   }).format(numericValue);
 }
+

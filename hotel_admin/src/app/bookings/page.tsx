@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   BadgeDollarSign,
@@ -17,8 +17,10 @@ import { useEffect, useMemo, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MetricCard } from "@/components/ui/metric-card";
 import { QuickFilter, type QuickFilterOption } from "@/components/ui/quick-filter";
 import { usePermission } from "@/hooks/use-permission";
+import { formatMoney } from "@/lib/format";
 import {
   getLatestPaymentRequestByBooking,
   mockPaymentRequestPaid,
@@ -40,12 +42,12 @@ type DisplayStatus =
   | "CANCELLED";
 
 const statusLabel: Record<DisplayStatus, string> = {
-  PENDING: "Chờ xác nhận",
-  CONFIRMED: "Đã xác nhận",
-  CANCEL_REQUESTED: "Yêu cầu hủy",
-  CHECKED_IN: "Đang ở",
-  CHECKED_OUT: "Đã trả phòng",
-  CANCELLED: "Đã hủy",
+  PENDING: "Chá» xÃ¡c nháº­n",
+  CONFIRMED: "ÄÃ£ xÃ¡c nháº­n",
+  CANCEL_REQUESTED: "YÃªu cáº§u há»§y",
+  CHECKED_IN: "Äang á»Ÿ",
+  CHECKED_OUT: "ÄÃ£ tráº£ phÃ²ng",
+  CANCELLED: "ÄÃ£ há»§y",
 };
 
 export default function BookingsPage() {
@@ -80,7 +82,7 @@ export default function BookingsPage() {
       setRoomNames(Object.fromEntries(roomData.data.map((room) => [room.id, room.name])));
     } catch {
       setMessage(
-        "Không thể tải danh sách đặt phòng. Kiểm tra booking-service, gateway và quyền BOOKING_VIEW.",
+        "KhÃ´ng thá»ƒ táº£i danh sÃ¡ch Ä‘áº·t phÃ²ng. Kiá»ƒm tra booking-service, gateway vÃ  quyá»n BOOKING_VIEW.",
       );
     } finally {
       setLoading(false);
@@ -129,10 +131,10 @@ export default function BookingsPage() {
       setBookings((items) =>
         items.map((item) => (item.id === updated.id ? updated : item)),
       );
-      setMessage(`Đã check-out booking ${shortCode(updated.id)}.`);
+      setMessage(`ÄÃ£ check-out booking ${shortCode(updated.id)}.`);
     } catch {
       setMessage(
-        "Không thể check-out booking này. Chỉ booking đang ở mới được trả phòng.",
+        "KhÃ´ng thá»ƒ check-out booking nÃ y. Chá»‰ booking Ä‘ang á»Ÿ má»›i Ä‘Æ°á»£c tráº£ phÃ²ng.",
       );
     } finally {
       setActionId(null);
@@ -148,10 +150,10 @@ export default function BookingsPage() {
       await mockPaymentRequestPaid(paymentRequest.id);
       setActionId(null);
       await loadData();
-      setMessage(`Đã xác nhận chuyển khoản cho booking ${shortCode(booking.id)}.`);
+      setMessage(`ÄÃ£ xÃ¡c nháº­n chuyá»ƒn khoáº£n cho booking ${shortCode(booking.id)}.`);
     } catch {
       setMessage(
-        "Không thể xác nhận chuyển khoản. Kiểm tra payment request, billing-service và quyền PAYMENT_CONFIRM.",
+        "KhÃ´ng thá»ƒ xÃ¡c nháº­n chuyá»ƒn khoáº£n. Kiá»ƒm tra payment request, billing-service vÃ  quyá»n PAYMENT_CONFIRM.",
       );
     } finally {
       setActionId(null);
@@ -168,11 +170,11 @@ export default function BookingsPage() {
         items.map((item) => (item.id === updated.id ? updated : item)),
       );
       setMessage(
-        `Đã duyệt hủy booking ${shortCode(updated.id)}. Vui lòng xử lý hoàn tiền thủ công nếu có.`,
+        `ÄÃ£ duyá»‡t há»§y booking ${shortCode(updated.id)}. Vui lÃ²ng xá»­ lÃ½ hoÃ n tiá»n thá»§ cÃ´ng náº¿u cÃ³.`,
       );
     } catch {
       setMessage(
-        "Không thể duyệt hủy booking này. Kiểm tra trạng thái booking và quyền BOOKING_CANCEL.",
+        "KhÃ´ng thá»ƒ duyá»‡t há»§y booking nÃ y. Kiá»ƒm tra tráº¡ng thÃ¡i booking vÃ  quyá»n BOOKING_CANCEL.",
       );
     } finally {
       setActionId(null);
@@ -181,7 +183,7 @@ export default function BookingsPage() {
 
   if (!canViewBookings) {
     return (
-      <PermissionDenied message="Bạn không có quyền BOOKING_VIEW để xem danh sách đặt phòng." />
+      <PermissionDenied message="Báº¡n khÃ´ng cÃ³ quyá»n BOOKING_VIEW Ä‘á»ƒ xem danh sÃ¡ch Ä‘áº·t phÃ²ng." />
     );
   }
 
@@ -191,14 +193,14 @@ export default function BookingsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-bold tracking-[0.2em] text-[#9b5c24] uppercase">
-              Quản lý đặt phòng
+              Quáº£n lÃ½ Ä‘áº·t phÃ²ng
             </p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">
               Check-in / Check-out
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-[#7c6f63]">
-              Theo dõi trạng thái đặt phòng và xử lý khách nhận phòng, trả phòng từ dữ
-              liệu booking thật.
+              Theo dÃµi tráº¡ng thÃ¡i Ä‘áº·t phÃ²ng vÃ  xá»­ lÃ½ khÃ¡ch nháº­n phÃ²ng, tráº£ phÃ²ng tá»« dá»¯
+              liá»‡u booking tháº­t.
             </p>
           </div>
           <Button
@@ -208,37 +210,37 @@ export default function BookingsPage() {
             className="gap-2"
           >
             <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Tải lại
+            Táº£i láº¡i
           </Button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          title="Tổng booking"
+          title="Tá»•ng booking"
           value={bookings.length.toString()}
           icon={<CalendarDays className="h-4 w-4" />}
-          sub="Từ hệ thống booking"
+          sub="Tá»« há»‡ thá»‘ng booking"
         />
         <MetricCard
-          title="Đang ở"
+          title="Äang á»Ÿ"
           value={checkedInCount.toString()}
           icon={<BedDouble className="h-4 w-4" />}
-          sub={`${checkOutSoonCount} phòng sắp checkout`}
+          sub={`${checkOutSoonCount} phÃ²ng sáº¯p checkout`}
         />
         <MetricCard
           title="Doanh thu booking"
           value={formatCompactMoney(totalRevenue)}
           icon={<BadgeDollarSign className="h-4 w-4" />}
-          sub="Tổng giá trị booking"
+          sub="Tá»•ng giÃ¡ trá»‹ booking"
         />
         <MetricCard
-          title="Chờ xử lý"
+          title="Chá» xá»­ lÃ½"
           value={bookings
             .filter((booking) => getDisplayStatus(booking) === "PENDING")
             .length.toString()}
           icon={<UserRound className="h-4 w-4" />}
-          sub="Chưa xác nhận tiền cọc"
+          sub="ChÆ°a xÃ¡c nháº­n tiá»n cá»c"
         />
       </div>
 
@@ -255,10 +257,10 @@ export default function BookingsPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 className="text-lg font-semibold text-[#17213a]">
-                Danh sách đặt phòng
+                Danh sÃ¡ch Ä‘áº·t phÃ²ng
               </h3>
               <p className="text-sm text-[#7c6f63]">
-                Tìm kiếm, lọc trạng thái và thao tác nhanh.
+                TÃ¬m kiáº¿m, lá»c tráº¡ng thÃ¡i vÃ  thao tÃ¡c nhanh.
               </p>
             </div>
             <div className="flex flex-col gap-3 md:flex-row">
@@ -267,7 +269,7 @@ export default function BookingsPage() {
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Tìm theo mã, khách, phòng..."
+                  placeholder="TÃ¬m theo mÃ£, khÃ¡ch, phÃ²ng..."
                   className="pl-9"
                 />
               </div>
@@ -278,13 +280,13 @@ export default function BookingsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#decdb9] text-left text-[#7c6f63]">
-                  <th className="py-3 pr-4 font-medium">Mã</th>
-                  <th className="py-3 pr-4 font-medium">Khách</th>
-                  <th className="py-3 pr-4 font-medium">Phòng</th>
-                  <th className="py-3 pr-4 font-medium">Nhận / Trả</th>
-                  <th className="py-3 pr-4 font-medium">Tổng tiền</th>
-                  <th className="py-3 pr-4 font-medium">Trạng thái</th>
-                  <th className="py-3 pr-4 font-medium">Hành động</th>
+                  <th className="py-3 pr-4 font-medium">MÃ£</th>
+                  <th className="py-3 pr-4 font-medium">KhÃ¡ch</th>
+                  <th className="py-3 pr-4 font-medium">PhÃ²ng</th>
+                  <th className="py-3 pr-4 font-medium">Nháº­n / Tráº£</th>
+                  <th className="py-3 pr-4 font-medium">Tá»•ng tiá»n</th>
+                  <th className="py-3 pr-4 font-medium">Tráº¡ng thÃ¡i</th>
+                  <th className="py-3 pr-4 font-medium">HÃ nh Ä‘á»™ng</th>
                 </tr>
               </thead>
               <tbody>
@@ -306,16 +308,16 @@ export default function BookingsPage() {
                       <td className="py-4 pr-4 text-[#5f5144]">
                         <div>{formatDateTime(booking.checkin)}</div>
                         <div className="text-xs text-[#9f8a77]">
-                          → {formatDateTime(booking.checkout)}
+                          â†’ {formatDateTime(booking.checkout)}
                         </div>
                         {booking.checkinReality ? (
                           <div className="mt-1 text-xs text-green-700">
-                            Thực nhận: {formatDateTime(booking.checkinReality)}
+                            Thá»±c nháº­n: {formatDateTime(booking.checkinReality)}
                           </div>
                         ) : null}
                         {booking.checkoutReality ? (
                           <div className="text-xs text-slate-600">
-                            Thực trả: {formatDateTime(booking.checkoutReality)}
+                            Thá»±c tráº£: {formatDateTime(booking.checkoutReality)}
                           </div>
                         ) : null}
                       </td>
@@ -342,7 +344,7 @@ export default function BookingsPage() {
                             className="gap-2"
                           >
                             <CreditCard className="h-4 w-4" />
-                            Xác nhận CK
+                            XÃ¡c nháº­n CK
                           </Button>
                         ) : displayStatus === "CONFIRMED" ? (
                           <Button
@@ -370,7 +372,7 @@ export default function BookingsPage() {
                             className="gap-2 bg-[#8a5724] hover:bg-[#70451c]"
                           >
                             <CheckCircle2 className="h-4 w-4" />
-                            Duyệt hủy
+                            Duyá»‡t há»§y
                           </Button>
                         ) : displayStatus === "CHECKED_IN" ? (
                           <Button
@@ -388,7 +390,7 @@ export default function BookingsPage() {
                           </Button>
                         ) : (
                           <span className="text-xs text-[#9f8a77]">
-                            Không có thao tác
+                            KhÃ´ng cÃ³ thao tÃ¡c
                           </span>
                         )}
                       </td>
@@ -399,11 +401,11 @@ export default function BookingsPage() {
             </table>
             {!loading && filtered.length === 0 ? (
               <div className="py-10 text-center text-[#7c6f63]">
-                Không tìm thấy booking nào phù hợp.
+                KhÃ´ng tÃ¬m tháº¥y booking nÃ o phÃ¹ há»£p.
               </div>
             ) : null}
             {loading ? (
-              <div className="py-10 text-center text-[#7c6f63]">Đang tải booking...</div>
+              <div className="py-10 text-center text-[#7c6f63]">Äang táº£i booking...</div>
             ) : null}
           </div>
         </div>
@@ -412,39 +414,16 @@ export default function BookingsPage() {
   );
 }
 
-function MetricCard({
-  title,
-  value,
-  sub,
-  icon,
-}: {
-  title: string;
-  value: string;
-  sub: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-[#7c6f63]">{title}</p>
-        <div className="rounded-full bg-[#fff6df] p-2 text-[#9b5c24]">{icon}</div>
-      </div>
-      <div className="mt-4 text-3xl font-bold text-[#17213a]">{value}</div>
-      <p className="mt-1 text-xs text-[#7c6f63]">{sub}</p>
-    </div>
-  );
-}
-
 type StatusFilter = DisplayStatus | "ALL";
 
 const statusButtons: QuickFilterOption<StatusFilter>[] = [
-  { value: "ALL", label: "Tất cả", desc: "Xem toàn bộ booking" },
-  { value: "PENDING", label: "Chờ xác nhận", desc: "Chưa ghi nhận cọc" },
-  { value: "CONFIRMED", label: "Đã xác nhận", desc: "Sẵn sàng check-in" },
-  { value: "CANCEL_REQUESTED", label: "Yêu cầu hủy", desc: "Chờ duyệt hủy" },
-  { value: "CHECKED_IN", label: "Đang ở", desc: "Khách đang lưu trú" },
-  { value: "CHECKED_OUT", label: "Đã trả phòng", desc: "Hoàn tất" },
-  { value: "CANCELLED", label: "Đã hủy", desc: "Booking bị hủy" },
+  { value: "ALL", label: "Táº¥t cáº£", desc: "Xem toÃ n bá»™ booking" },
+  { value: "PENDING", label: "Chá» xÃ¡c nháº­n", desc: "ChÆ°a ghi nháº­n cá»c" },
+  { value: "CONFIRMED", label: "ÄÃ£ xÃ¡c nháº­n", desc: "Sáºµn sÃ ng check-in" },
+  { value: "CANCEL_REQUESTED", label: "YÃªu cáº§u há»§y", desc: "Chá» duyá»‡t há»§y" },
+  { value: "CHECKED_IN", label: "Äang á»Ÿ", desc: "KhÃ¡ch Ä‘ang lÆ°u trÃº" },
+  { value: "CHECKED_OUT", label: "ÄÃ£ tráº£ phÃ²ng", desc: "HoÃ n táº¥t" },
+  { value: "CANCELLED", label: "ÄÃ£ há»§y", desc: "Booking bá»‹ há»§y" },
 ];
 
 function getDisplayStatus(booking: RoomBookingResponse): DisplayStatus {
@@ -502,17 +481,11 @@ function formatDateTime(value?: string) {
   }).format(new Date(value));
 }
 
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value || 0);
-}
-
 function formatCompactMoney(value: number) {
   if (value >= 1_000_000) {
     return `${Math.round(value / 1_000_000)}M`;
   }
   return formatMoney(value);
 }
+
+
