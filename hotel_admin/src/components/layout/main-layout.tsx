@@ -2,14 +2,15 @@
 
 import {
   BedDouble,
+  Brush,
   Building2,
   CalendarCheck,
   ChartColumnIncreasing,
   ChevronRight,
+  ClipboardCheck,
   ClipboardList,
   DoorOpen,
   FileText,
-  Grid3X3,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -18,6 +19,7 @@ import {
   ShieldCheck,
   Sparkles,
   TicketPercent,
+  UserCheck,
   Users,
   Utensils,
   X,
@@ -36,88 +38,122 @@ const primaryNav = [
     href: "/",
     icon: LayoutDashboard,
     requiredPermission: "ADMIN_PORTAL_ACCESS",
+    allowedRoles: ["ROLE_MANAGER"],
+  },
+  {
+    label: "Bảng vận hành",
+    href: "/operations",
+    icon: ClipboardCheck,
+    requiredPermission: "ROLE_MANAGER",
+    allowedRoles: ["ROLE_MANAGER"],
   },
   {
     label: "Tòa nhà & tầng",
     href: "/buildings",
     icon: Building2,
     requiredPermission: "BUILDING_SETUP",
+    allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
-  { label: "Phòng", href: "/rooms", icon: BedDouble, requiredPermission: "ROOM_VIEW" },
+  {
+    label: "Phòng",
+    href: "/rooms",
+    icon: BedDouble,
+    requiredPermission: "ROOM_VIEW",
+    allowedRoles: ["ROLE_MANAGER", "ROLE_RECEPTIONIST"],
+  },
+  {
+    label: "Dọn phòng",
+    href: "/housekeeping",
+    icon: Brush,
+    requiredPermission: "ROOM_HOUSEKEEPING_UPDATE",
+    allowedRoles: ["ROLE_MANAGER", "ROLE_HOUSEKEEPING"],
+  },
   {
     label: "Đặt phòng",
     href: "/bookings",
     icon: CalendarCheck,
     requiredPermission: "BOOKING_VIEW",
+    allowedRoles: ["ROLE_MANAGER", "ROLE_RECEPTIONIST"],
   },
   {
     label: "Doanh thu",
     href: "/revenue",
     icon: ChartColumnIncreasing,
     requiredPermission: "REVENUE_VIEW",
+    allowedRoles: ["ROLE_MANAGER"],
   },
   {
     label: "Dịch vụ phát sinh",
     href: "/service-orders",
     icon: Utensils,
-    requiredPermission: "BOOKING_VIEW",
+    requiredPermission: "SERVICE_ORDER_VIEW",
+    allowedRoles: ["ROLE_MANAGER", "ROLE_RECEPTIONIST", "ROLE_HOUSEKEEPING"],
+  },
+  {
+    label: "Ca làm việc",
+    href: "/staff-activity",
+    icon: UserCheck,
+    requiredPermission: "STAFF_ATTENDANCE_UPDATE",
+    allowedRoles: ["ROLE_MANAGER", "ROLE_RECEPTIONIST", "ROLE_HOUSEKEEPING", "ROLE_CUSTOMER_SUPPORT"],
   },
   {
     label: "Tin nhắn",
     href: "/chats",
     icon: MessageCircle,
     requiredPermission: "CHAT_STAFF_VIEW",
+    allowedRoles: ["ROLE_CUSTOMER_SUPPORT"],
   },
   {
     label: "Nhân viên & quyền",
     href: "/users",
     icon: Users,
     requiredPermission: "PERMISSION_MANAGE",
+    allowedRoles: ["ROLE_ADMIN"],
   },
 ];
 
 const catalogNav = [
   {
-    label: "Tổng quan danh mục",
-    href: "/admin",
-    icon: Grid3X3,
-    requiredPermission: "ROOM_TYPE_VIEW",
-  },
-  {
     label: "Loại phòng",
     href: "/admin/room-types",
     icon: DoorOpen,
     requiredPermission: "ROOM_TYPE_VIEW",
+    allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
   {
     label: "Cơ sở vật chất",
     href: "/admin/amenities",
     icon: Sparkles,
     requiredPermission: "AMENITY_VIEW",
+    allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
   {
     label: "Dịch vụ",
     href: "/admin/services",
     icon: Utensils,
     requiredPermission: "SERVICE_VIEW",
+    allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
   {
     label: "Gắn cơ sở vật chất theo loại",
     href: "/admin/amenity-rooms",
     icon: ClipboardList,
     requiredPermission: "AMENITY_ROOM_VIEW",
+    allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
   {
     label: "Gắn dịch vụ bổ sung theo loại",
     href: "/admin/room-type-services",
     icon: ShieldCheck,
     requiredPermission: "ROOM_TYPE_SERVICE_VIEW",
+    allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
   {
     label: "Hệ số giá phòng",
     href: "/admin/room-rate-rules",
     icon: TicketPercent,
     requiredPermission: "ROOM_RATE_RULE_VIEW",
+    allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
 ];
 
@@ -127,12 +163,14 @@ const promotionNav = [
     href: "/admin/vouchers",
     icon: TicketPercent,
     requiredPermission: "VOUCHER_VIEW",
+    allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
   {
     label: "Chính sách",
     href: "/admin/policies",
     icon: FileText,
     requiredPermission: "POLICY_VIEW",
+    allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
 ];
 
@@ -142,6 +180,7 @@ const systemNav = [
     href: "/settings",
     icon: Settings,
     requiredPermission: "SETTINGS_VIEW",
+    allowedRoles: ["ROLE_ADMIN"],
   },
 ];
 
@@ -335,6 +374,7 @@ type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   requiredPermission?: string;
+  allowedRoles?: string[];
 };
 
 function NavGroup({
@@ -351,7 +391,10 @@ function NavGroup({
   onNavigate: () => void;
 }) {
   const visibleItems = items.filter(
-    (item) => !item.requiredPermission || permissions.includes(item.requiredPermission),
+    (item) =>
+      (!item.requiredPermission || permissions.includes(item.requiredPermission)) &&
+      (!item.allowedRoles?.length ||
+        item.allowedRoles.some((role) => permissions.includes(role))),
   );
   if (visibleItems.length === 0) return null;
 
@@ -364,7 +407,7 @@ function NavGroup({
         {visibleItems.map((item) => {
           const Icon = item.icon;
           const active =
-            item.href === "/" || item.href === "/admin"
+            item.href === "/"
               ? pathname === item.href
               : pathname.startsWith(item.href);
           return (
@@ -392,8 +435,9 @@ function NavGroup({
 
 function getPathTitle(pathname: string) {
   if (pathname === "/") return "Bảng điều khiển";
+  if (pathname.startsWith("/operations")) return "Bảng công việc vận hành";
   if (pathname.startsWith("/rooms")) return "Quản lý phòng";
-  if (pathname === "/admin") return "Danh mục vận hành";
+  if (pathname.startsWith("/housekeeping")) return "Dọn phòng";
   if (pathname.startsWith("/admin/room-types")) return "Loại phòng";
   if (pathname.startsWith("/admin/amenities")) return "Cơ sở vật chất";
   if (pathname.startsWith("/admin/services")) return "Quản lý dịch vụ";
@@ -406,6 +450,7 @@ function getPathTitle(pathname: string) {
   if (pathname.startsWith("/admin/policies")) return "Quản lý chính sách";
   if (pathname.startsWith("/bookings")) return "Đặt phòng";
   if (pathname.startsWith("/service-orders")) return "Dịch vụ phát sinh";
+  if (pathname.startsWith("/staff-activity")) return "Lịch sử nhân viên";
   if (pathname.startsWith("/chats")) return "Tin nhắn hỗ trợ";
   if (pathname.startsWith("/users")) return "Nhân viên & quyền";
   if (pathname.startsWith("/settings")) return "Cài đặt";

@@ -2,10 +2,13 @@ import { http } from "@/lib/http";
 import type { ApiResponse } from "@/types/api-types";
 
 export type PaymentRequestStatus = "PENDING" | "PAID" | "EXPIRED" | "FAILED";
+export type PaymentRequestPurpose = "ROOM_BOOKING" | "SERVICE_ORDER";
 
 export type PaymentRequestResponse = {
   id: string;
   roomBookingId: string;
+  purpose?: PaymentRequestPurpose;
+  serviceOrderId?: string;
   amount: number;
   transferContent: string;
   status: PaymentRequestStatus;

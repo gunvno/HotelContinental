@@ -1,1 +1,0 @@
-package com.hotelcontinental.feedback_service.repository.httpclient;

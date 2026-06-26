@@ -7,9 +7,10 @@ import {
   RefreshCcw,
   Search,
   Trash2,
+  UserCheck,
   Utensils,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
@@ -17,41 +18,42 @@ import { TextareaField, TextField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { QuickFilter, type QuickFilterOption } from "@/components/ui/quick-filter";
 import { Select } from "@/components/ui/select";
+import { ToastBridge } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import { formatMoney } from "@/lib/format";
 import { getRoomBookings, type RoomBookingResponse } from "@/services/booking-service";
 import { getCatalogServices, type ServiceResponse } from "@/services/room-service";
 import {
+  assignServiceOrder,
+  approveServiceOrder,
   createServiceOrderDetail,
-  deleteServiceOrderDetail,
   ensureIncludedServiceOrderDetails,
   getServiceOrderDetails,
   markServiceOrderServed,
+  rejectServiceOrder,
   type ServiceOrderDetailResponse,
+  type ServiceOrderApprovalStatus,
   type ServiceOrderDetailStatus,
-  type ServiceOrderSource,
+  type ServiceOrderPaymentStatus,
 } from "@/services/service-order-service";
 
-const serviceOrderStatusOptions: QuickFilterOption<ServiceOrderDetailStatus | "ALL">[] = [
-  { value: "ALL", label: "Táº¥t cáº£", desc: "ToÃ n bá»™ dá»‹ch vá»¥" },
-  { value: "WAITING", label: "Äang chá»", desc: "Cáº§n phá»¥c vá»¥" },
-  { value: "SERVED", label: "ÄÃ£ phá»¥c vá»¥", desc: "ÄÃ£ hoÃ n táº¥t" },
-];
-
-const serviceOrderSourceOptions: QuickFilterOption<ServiceOrderSource | "ALL">[] = [
-  { value: "ALL", label: "Táº¥t cáº£", desc: "Má»i nguá»“n dá»‹ch vá»¥" },
-  { value: "INCLUDED", label: "KÃ¨m phÃ²ng", desc: "CÃ³ trong loáº¡i phÃ²ng" },
-  { value: "EXTRA", label: "Gá»i thÃªm", desc: "TÃ­nh thÃªm vÃ o bill" },
+const serviceOrderStatusOptions: QuickFilterOption<ServiceOrderDetailStatus>[] = [
+  { value: "WAITING", label: "Chưa phục vụ", desc: "Cần xử lý" },
+  { value: "SERVED", label: "Đã phục vụ", desc: "Đã hoàn tất" },
 ];
 
 export default function ServiceOrdersPage() {
   const permission = usePermission();
-  const canOpenPage = permission.hasAny("SERVICE_ORDER_VIEW", "BOOKING_VIEW");
+  const canOpenPage = permission.has("SERVICE_ORDER_VIEW");
   const canView = permission.has("SERVICE_ORDER_VIEW");
-  const canCreate = permission.has("SERVICE_ORDER_CREATE");
+  const isAdmin = permission.has("ROLE_ADMIN");
+  const isManager = permission.has("ROLE_MANAGER");
+  const isReceptionist = permission.has("ROLE_RECEPTIONIST");
+  const isHousekeeping = permission.has("ROLE_HOUSEKEEPING");
+  const canCreate = permission.has("SERVICE_ORDER_CREATE") && (isManager || isReceptionist);
   const canSyncIncluded = permission.has("SERVICE_ORDER_INCLUDED_SYNC");
-  const canServe = permission.has("SERVICE_ORDER_SERVE");
-  const canDelete = permission.has("SERVICE_ORDER_DELETE");
+  const canServe = permission.has("SERVICE_ORDER_SERVE") && isHousekeeping;
+  const canManageApproval = permission.has("SERVICE_ORDER_DELETE") && isManager;
 
   const [bookings, setBookings] = useState<RoomBookingResponse[]>([]);
   const [services, setServices] = useState<ServiceResponse[]>([]);
@@ -61,13 +63,11 @@ export default function ServiceOrdersPage() {
   const [quantity, setQuantity] = useState(1);
   const [description, setDescription] = useState("");
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ServiceOrderDetailStatus | "ALL">(
-    "ALL",
-  );
-  const [sourceFilter, setSourceFilter] = useState<ServiceOrderSource | "ALL">("ALL");
+  const [statusFilter, setStatusFilter] = useState<ServiceOrderDetailStatus>("WAITING");
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const initialLoadRef = useRef(false);
 
   const serviceMap = useMemo(
     () => new Map(services.map((service) => [service.id, service])),
@@ -111,7 +111,7 @@ export default function ServiceOrdersPage() {
       setSelectedBookingId(targetBookingId);
     } catch {
       setMessage(
-        "KhÃ´ng táº£i Ä‘Æ°á»£c dá»¯ liá»‡u dá»‹ch vá»¥ phÃ²ng. Kiá»ƒm tra billing-service, booking-service, catalog-service vÃ  quyá»n.",
+        "Không tải được dữ liệu dịch vụ phòng. Kiểm tra billing-service, booking-service, catalog-service và quyền.",
       );
     } finally {
       setLoading(false);
@@ -120,6 +120,8 @@ export default function ServiceOrdersPage() {
 
   useEffect(() => {
     if (!canOpenPage) return;
+    if (initialLoadRef.current) return;
+    initialLoadRef.current = true;
     void loadData("");
   }, [canOpenPage]);
 
@@ -143,11 +145,11 @@ export default function ServiceOrdersPage() {
       setServiceId("");
       setQuantity(1);
       setDescription("");
-      setMessage("ÄÃ£ thÃªm dá»‹ch vá»¥ phÃ¡t sinh vÃ  cáº­p nháº­t tá»•ng tiá»n booking.");
+      setMessage("Đã thêm dịch vụ phát sinh và cập nhật tổng tiền booking.");
       await loadData(selectedBookingId);
     } catch {
       setMessage(
-        "KhÃ´ng thá»ƒ thÃªm dá»‹ch vá»¥. Booking pháº£i cÃ³ detail há»£p lá»‡ vÃ  tÃ i khoáº£n cáº§n quyá»n SERVICE_ORDER_CREATE.",
+        "Không thể thêm dịch vụ. Booking phải có detail hợp lệ và tài khoản cần quyền SERVICE_ORDER_CREATE.",
       );
     } finally {
       setActionId(null);
@@ -165,23 +167,61 @@ export default function ServiceOrdersPage() {
         current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
       );
     } catch {
-      setMessage("KhÃ´ng thá»ƒ Ä‘Ã¡nh dáº¥u Ä‘Ã£ phá»¥c vá»¥. Kiá»ƒm tra quyá»n SERVICE_ORDER_SERVE.");
+      setMessage("Chỉ nhân viên phục vụ phòng mới được đánh dấu đã phục vụ.");
     } finally {
       setActionId(null);
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!canDelete || isBusy) return;
+  async function handleAssign(id: string) {
+    if (!canServe || isBusy) return;
 
     setActionId(id);
     setMessage(null);
     try {
-      await deleteServiceOrderDetail(id);
-      await loadData(selectedBookingId);
-      setMessage("ÄÃ£ xÃ³a dá»‹ch vá»¥ phÃ¡t sinh vÃ  cáº­p nháº­t láº¡i tá»•ng tiá»n booking.");
+      const updated = await assignServiceOrder(id);
+      setItems((current) =>
+        current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+      );
+      setMessage("Đã nhận việc phục vụ dịch vụ.");
     } catch {
-      setMessage("KhÃ´ng thá»ƒ xÃ³a dá»‹ch vá»¥ phÃ¡t sinh. Kiá»ƒm tra quyá»n SERVICE_ORDER_DELETE.");
+      setMessage("Chỉ nhân viên phục vụ phòng mới được nhận việc dịch vụ.");
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleApprove(id: string) {
+    if (!canManageApproval || isBusy) return;
+
+    setActionId(id);
+    setMessage(null);
+    try {
+      const updated = await approveServiceOrder(id);
+      setItems((current) =>
+        current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+      );
+      setMessage("Đã duyệt yêu cầu dịch vụ.");
+    } catch {
+      setMessage("Không thể duyệt yêu cầu dịch vụ. Chỉ quản lý có quyền duyệt.");
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleReject(id: string) {
+    if (!canManageApproval || isBusy) return;
+
+    setActionId(id);
+    setMessage(null);
+    try {
+      const updated = await rejectServiceOrder(id);
+      setItems((current) =>
+        current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+      );
+      setMessage("Đã từ chối yêu cầu dịch vụ.");
+    } catch {
+      setMessage("Không thể từ chối yêu cầu dịch vụ. Chỉ quản lý có quyền từ chối.");
     } finally {
       setActionId(null);
     }
@@ -191,23 +231,22 @@ export default function ServiceOrdersPage() {
     const normalized = query.trim().toLowerCase();
 
     return items.filter((item) => {
-      const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
-      if (!matchesStatus) return false;
-      const source = item.source ?? "EXTRA";
-      const matchesSource = sourceFilter === "ALL" || source === sourceFilter;
-      if (!matchesSource) return false;
+      const paymentStatus = item.paymentStatus ?? "POST_TO_ROOM";
+      if (paymentStatus === "PENDING_PAYMENT") return false;
+      if (item.status !== statusFilter) return false;
+      const approvalStatus = item.approvalStatus ?? "NOT_REQUIRED";
       if (!normalized) return true;
 
       const service = serviceMap.get(item.serviceId);
-      return `${service?.name ?? item.serviceName ?? ""} ${item.description ?? ""} ${item.serviceId} ${item.roomName ?? ""} ${item.roomId ?? ""}`
+      return `${service?.name ?? item.serviceName ?? ""} ${item.description ?? ""} ${item.serviceId} ${item.roomName ?? ""} ${item.roomId ?? ""} ${approvalStatus} ${paymentStatus}`
         .toLowerCase()
         .includes(normalized);
     });
-  }, [items, query, serviceMap, sourceFilter, statusFilter]);
+  }, [items, query, serviceMap, statusFilter]);
 
   if (!canOpenPage) {
     return (
-      <PermissionDenied message="Báº¡n khÃ´ng cÃ³ quyá»n BOOKING_VIEW Ä‘á»ƒ má»Ÿ trang dá»‹ch vá»¥ phÃ¡t sinh." />
+      <PermissionDenied message="Bạn không có quyền SERVICE_ORDER_VIEW để mở trang dịch vụ phát sinh." />
     );
   }
 
@@ -217,14 +256,14 @@ export default function ServiceOrdersPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-bold tracking-[0.2em] text-[#9b5c24] uppercase">
-              Váº­n hÃ nh lÆ°u trÃº
+              Vận hành lưu trú
             </p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">
-              Dá»‹ch vá»¥ phÃ²ng
+              Dịch vụ phòng
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-[#7c6f63]">
-              Theo dÃµi dá»‹ch vá»¥ kÃ¨m phÃ²ng vÃ  dá»‹ch vá»¥ khÃ¡ch gá»i thÃªm. Chá»‰ dá»‹ch vá»¥ gá»i thÃªm
-              má»›i cá»™ng vÃ o tá»•ng bill.
+              Theo dõi dịch vụ kèm phòng và dịch vụ khách gọi thêm. Chỉ dịch vụ gọi thêm
+              mới cộng vào tổng bill.
             </p>
           </div>
           <Button
@@ -234,39 +273,81 @@ export default function ServiceOrdersPage() {
             className="gap-2"
           >
             <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Táº£i láº¡i
+            Tải lại
           </Button>
         </div>
       </section>
 
       {message ? (
-        <div className="rounded-xl bg-[#fff6df] p-3 text-sm font-semibold text-[#8a5724]">
-          {message}
-        </div>
+        <ToastBridge success={message} onClearSuccess={() => setMessage(null)} />
       ) : null}
       {!canView ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
-          Token hiá»‡n táº¡i chÆ°a cÃ³ quyá»n SERVICE_ORDER_VIEW. Restart identity-service rá»“i
-          Ä‘Äƒng xuáº¥t vÃ  Ä‘Äƒng nháº­p láº¡i Ä‘á»ƒ dÃ¹ng Ä‘áº§y Ä‘á»§ chá»©c nÄƒng.
-        </div>
+        <ToastBridge
+          error="Token hiện tại chưa có quyền SERVICE_ORDER_VIEW. Restart identity-service rồi đăng xuất và đăng nhập lại để dùng đầy đủ chức năng."
+        />
       ) : null}
 
-      <section className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
+      <section
+        className={`grid gap-5 ${
+          canCreate ? "xl:grid-cols-[420px_minmax(0,1fr)]" : "xl:grid-cols-1"
+        }`}
+      >
+        {canCreate ? (
         <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#9b5c24] text-white">
               <Utensils className="h-5 w-5" />
             </span>
             <div>
-              <h3 className="font-bold text-[#17213a]">ThÃªm dá»‹ch vá»¥</h3>
+              <h3 className="font-bold text-[#17213a]">Thêm dịch vụ</h3>
               <p className="text-sm text-[#7c6f63]">
-                Dá»‹ch vá»¥ gá»i thÃªm sáº½ Ä‘Æ°á»£c tÃ­nh tiá»n vÃ o booking.
+                Dịch vụ gọi thêm sẽ được tính tiền vào booking.
               </p>
             </div>
           </div>
 
           <div className="mt-5 space-y-4">
-            <label className="block">
+            <div>
+              <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
+                Booking
+              </span>
+              <div className="mt-2 max-h-[260px] space-y-2 overflow-y-auto pr-1">
+                {bookings.map((booking) => {
+                  const selected = booking.id === selectedBookingId;
+                  return (
+                    <button
+                      key={booking.id}
+                      type="button"
+                      onClick={() => void handleBookingChange(booking.id)}
+                      className={`w-full rounded-2xl border p-3 text-left transition ${
+                        selected
+                          ? "border-[#a46522] bg-[#fff6df] shadow-sm"
+                          : "border-[#ead8c4] bg-white hover:border-[#c8792a]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-black text-[#17213a]">{shortCode(booking.id)}</p>
+                          <p className="mt-1 text-xs font-semibold text-[#7c6f63]">
+                            Phòng {shortRoomId(booking.roomId)}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                          {bookingStatusLabel(booking.status)}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid gap-1 text-xs text-[#7c6f63]">
+                        <p>{formatBookingDateRange(booking.checkin, booking.checkout)}</p>
+                        <p className="font-bold text-[#8a5724]">
+                          Tổng: {formatMoney(booking.totalPrice ?? 0)}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="hidden">
               <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
                 Booking
               </span>
@@ -274,14 +355,14 @@ export default function ServiceOrdersPage() {
                 value={selectedBookingId}
                 onValueChange={(value) => void handleBookingChange(value)}
                 className="mt-2"
-                placeholder="Chá»n booking"
+                placeholder="Chọn booking"
                 options={[
-                  { value: "", label: "-- Chá»n booking --" },
+                  { value: "", label: "-- Chọn booking --" },
                   ...bookings.map((booking) => ({
                     value: booking.id,
                     label: `${shortCode(booking.id)} - ${booking.status} - ${
                       booking.detailStatus ?? "N/A"
-                    } - PhÃ²ng ${booking.roomId}`,
+                    } - Phòng ${booking.roomId}`,
                   })),
                 ]}
               />
@@ -289,16 +370,16 @@ export default function ServiceOrdersPage() {
 
             <label className="block">
               <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
-                Dá»‹ch vá»¥
+                Dịch vụ
               </span>
               <Select
                 value={serviceId}
                 onValueChange={setServiceId}
                 disabled={services.length === 0}
                 className="mt-2"
-                placeholder="Chá»n dá»‹ch vá»¥"
+                placeholder="Chọn dịch vụ"
                 options={[
-                  { value: "", label: "-- Chá»n dá»‹ch vá»¥ --" },
+                  { value: "", label: "-- Chọn dịch vụ --" },
                   ...services
                     .filter((service) => !service.deleted)
                     .map((service) => ({
@@ -310,7 +391,7 @@ export default function ServiceOrdersPage() {
             </label>
 
             <TextField
-              label="Sá»‘ lÆ°á»£ng"
+              label="Số lượng"
               type="number"
               min={1}
               value={quantity}
@@ -319,27 +400,27 @@ export default function ServiceOrdersPage() {
             />
 
             <TextareaField
-              label="Ghi chÃº"
+              label="Ghi chú"
               value={description}
               onValueChange={setDescription}
-              placeholder="VÃ­ dá»¥: giao lÃªn phÃ²ng sau 20 phÃºt"
+              placeholder="Ví dụ: giao lên phòng sau 20 phút"
               labelClassName="tracking-[0.16em]"
             />
 
             <div className="rounded-xl bg-[#fbf8f2] p-4 text-sm text-[#6f5f50]">
               <p>
-                Booking Ä‘ang chá»n:{" "}
-                <b>{selectedBooking ? shortCode(selectedBooking.id) : "ChÆ°a chá»n"}</b>
+                Booking đang chọn:{" "}
+                <b>{selectedBooking ? shortCode(selectedBooking.id) : "Chưa chọn"}</b>
               </p>
               <p>
-                PhÃ²ng: <b>{selectedBooking?.roomId ?? "ChÆ°a chá»n"}</b>
+                Phòng: <b>{selectedBooking?.roomId ?? "Chưa chọn"}</b>
               </p>
               <p>
-                Tá»•ng dá»‹ch vá»¥ hiá»‡n táº¡i:{" "}
+                Tổng dịch vụ hiện tại:{" "}
                 <b>{formatMoney(selectedBooking?.totalServicePrice ?? 0)}</b>
               </p>
               <p>
-                Tá»•ng booking: <b>{formatMoney(selectedBooking?.totalPrice ?? 0)}</b>
+                Tổng booking: <b>{formatMoney(selectedBooking?.totalPrice ?? 0)}</b>
               </p>
             </div>
 
@@ -354,17 +435,18 @@ export default function ServiceOrdersPage() {
               ) : (
                 <Plus className="h-4 w-4" />
               )}
-              ThÃªm dá»‹ch vá»¥
+              Thêm dịch vụ
             </Button>
           </div>
         </div>
+        ) : null}
 
         <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-5 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="font-bold text-[#17213a]">Danh sÃ¡ch dá»‹ch vá»¥ cáº§n phá»¥c vá»¥</h3>
+              <h3 className="font-bold text-[#17213a]">Danh sách dịch vụ cần phục vụ</h3>
               <p className="text-sm text-[#7c6f63]">
-                Dá»‹ch vá»¥ kÃ¨m phÃ²ng Ä‘Æ°á»£c Ä‘á»“ng bá»™ tá»« loáº¡i phÃ²ng.
+                Dịch vụ kèm phòng được đồng bộ từ loại phòng.
               </p>
             </div>
             <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
@@ -373,28 +455,20 @@ export default function ServiceOrdersPage() {
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="TÃ¬m dá»‹ch vá»¥..."
+                  placeholder="Tìm dịch vụ..."
                   className="pl-9"
                 />
               </div>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <div className="mt-5">
             <QuickFilter
-              title="Lá»c tráº¡ng thÃ¡i"
+              title="Trạng thái phục vụ"
               value={statusFilter}
               options={serviceOrderStatusOptions}
               onChange={setStatusFilter}
-              columnsClassName="sm:grid-cols-3"
-              className="bg-white/70 shadow-none"
-            />
-            <QuickFilter
-              title="Lá»c nguá»“n dá»‹ch vá»¥"
-              value={sourceFilter}
-              options={serviceOrderSourceOptions}
-              onChange={setSourceFilter}
-              columnsClassName="sm:grid-cols-3"
+              columnsClassName="grid-cols-2"
               className="bg-white/70 shadow-none"
             />
           </div>
@@ -403,26 +477,29 @@ export default function ServiceOrdersPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-[#fbf8f2] text-xs tracking-[0.14em] text-[#6f5f50] uppercase">
                 <tr>
-                  <th className="px-4 py-3">Dá»‹ch vá»¥</th>
-                  <th className="px-4 py-3">PhÃ²ng</th>
-                  <th className="px-4 py-3">Nguá»“n</th>
+                  <th className="px-4 py-3">Dịch vụ</th>
+                  <th className="px-4 py-3">Phòng</th>
+                  <th className="px-4 py-3">Nguồn</th>
                   <th className="px-4 py-3">SL</th>
-                  <th className="px-4 py-3">ThÃ nh tiá»n</th>
-                  <th className="px-4 py-3">Tráº¡ng thÃ¡i</th>
-                  <th className="px-4 py-3 text-right">HÃ nh Ä‘á»™ng</th>
+                  <th className="px-4 py-3">Thành tiền</th>
+                  <th className="px-4 py-3">Phân công</th>
+                  <th className="px-4 py-3">Trạng thái</th>
+                  <th className="px-4 py-3">Duyệt</th>
+                  <th className="px-4 py-3">Thanh toán</th>
+                  <th className="px-4 py-3 text-right">Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-[#7c6f63]">
-                      Äang táº£i...
+                    <td colSpan={10} className="px-4 py-10 text-center text-[#7c6f63]">
+                      Đang tải...
                     </td>
                   </tr>
                 ) : filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-[#7c6f63]">
-                      KhÃ´ng cÃ³ dá»‹ch vá»¥ phÃ²ng phÃ¹ há»£p bá»™ lá»c
+                    <td colSpan={10} className="px-4 py-10 text-center text-[#7c6f63]">
+                      Không có dịch vụ phòng phù hợp bộ lọc
                     </td>
                   </tr>
                 ) : (
@@ -437,7 +514,7 @@ export default function ServiceOrdersPage() {
                             {item.serviceName || service?.name || item.serviceId}
                           </div>
                           <div className="text-xs text-[#8a7967]">
-                            {item.description || "KhÃ´ng cÃ³ ghi chÃº"}
+                            {item.description || "Không có ghi chú"}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -459,49 +536,104 @@ export default function ServiceOrdersPage() {
                                 : "bg-[#fff6df] text-[#9b5c24]"
                             }`}
                           >
-                            {source === "INCLUDED" ? "KÃ¨m phÃ²ng" : "Gá»i thÃªm"}
+                            {source === "INCLUDED" ? "Kèm phòng" : "Gọi thêm"}
                           </span>
                         </td>
                         <td className="px-4 py-3">{item.quantity}</td>
                         <td className="px-4 py-3 font-semibold">
                           {item.chargeable === false
-                            ? "Miá»…n phÃ­"
+                            ? "Miễn phí"
                             : formatMoney(item.totalPrice || item.price * item.quantity)}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-[#6f5f50]">
+                          <p>
+                            <span className="font-bold">Nhân viên:</span>{" "}
+                            {item.assignedTo
+                              ? `${item.assignedTo} - ${formatTaskTime(item.assignedTime)}`
+                              : "Chưa có"}
+                          </p>
+                          <p className="mt-1">
+                            <span className="font-bold">Hoàn thành:</span>{" "}
+                            {item.servedBy
+                              ? `${item.servedBy} - ${formatTaskTime(item.servedTime)}`
+                              : "Chưa có"}
+                          </p>
                         </td>
                         <td className="px-4 py-3">
                           <span
                             className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.status === "SERVED" ? "bg-emerald-50 text-emerald-700" : "bg-[#fff6df] text-[#9b5c24]"}`}
                           >
-                            {item.status === "SERVED" ? "ÄÃ£ phá»¥c vá»¥" : "Äang chá»"}
+                            {item.status === "SERVED" ? "Đã phục vụ" : "Đang chờ"}
                           </span>
                         </td>
                         <td className="px-4 py-3">
+                          <ApprovalBadge status={item.approvalStatus ?? "NOT_REQUIRED"} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <PaymentBadge status={item.paymentStatus ?? "POST_TO_ROOM"} />
+                          {item.paymentTime ? (
+                            <p className="mt-1 text-xs text-[#8a7967]">
+                              {new Date(item.paymentTime).toLocaleString("vi-VN")}
+                            </p>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">
-                            {item.status !== "SERVED" ? (
-                              <button
-                                type="button"
-                                onClick={() => void handleServe(item.id)}
-                                disabled={!canServe || isBusy}
-                                className="inline-flex h-9 items-center gap-1 rounded-full border border-emerald-200 px-3 text-xs font-bold text-emerald-700 disabled:opacity-50"
-                              >
-                                {busy ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
+                            {item.approvalStatus === "PENDING" && canManageApproval ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleApprove(item.id)}
+                                  disabled={!canManageApproval || isBusy}
+                                  className="inline-flex h-9 items-center gap-1 rounded-full border border-emerald-200 px-3 text-xs font-bold text-emerald-700 disabled:opacity-50"
+                                >
                                   <CheckCircle2 className="h-3.5 w-3.5" />
-                                )}
-                                Phá»¥c vá»¥
-                              </button>
-                            ) : null}
-                            {canDelete ? (
-                              <button
-                                type="button"
-                                onClick={() => void handleDelete(item.id)}
-                                disabled={isBusy}
-                                className="inline-flex h-9 items-center gap-1 rounded-full border border-red-200 px-3 text-xs font-bold text-red-700 disabled:opacity-50"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                XÃ³a
-                              </button>
+                                  Duyệt
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleReject(item.id)}
+                                  disabled={!canManageApproval || isBusy}
+                                  className="inline-flex h-9 items-center gap-1 rounded-full border border-red-200 px-3 text-xs font-bold text-red-700 disabled:opacity-50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Từ chối
+                                </button>
+                              </>
+                            ) : canServe &&
+                              item.status !== "SERVED" &&
+                              item.approvalStatus !== "PENDING" &&
+                              item.approvalStatus !== "REJECTED" ? (
+                              <>
+                                {!item.assignedTo ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleAssign(item.id)}
+                                    disabled={!canServe || isBusy}
+                                    className="inline-flex h-9 items-center gap-1 rounded-full border border-sky-200 px-3 text-xs font-bold text-sky-700 disabled:opacity-50"
+                                  >
+                                    {busy ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <UserCheck className="h-3.5 w-3.5" />
+                                    )}
+                                    Nhận
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => void handleServe(item.id)}
+                                  disabled={!canServe || isBusy}
+                                  className="inline-flex h-9 items-center gap-1 rounded-full border border-emerald-200 px-3 text-xs font-bold text-emerald-700 disabled:opacity-50"
+                                >
+                                  {busy ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                  )}
+                                  Phục vụ
+                                </button>
+                              </>
                             ) : null}
                           </div>
                         </td>
@@ -518,9 +650,103 @@ export default function ServiceOrdersPage() {
   );
 }
 
+function ApprovalBadge({ status }: { status: ServiceOrderApprovalStatus }) {
+  const config: Record<ServiceOrderApprovalStatus, { label: string; className: string }> = {
+    NOT_REQUIRED: {
+      label: "Không cần duyệt",
+      className: "bg-slate-100 text-slate-700",
+    },
+    PENDING: {
+      label: "Chờ duyệt",
+      className: "bg-amber-50 text-amber-700",
+    },
+    APPROVED: {
+      label: "Đã duyệt",
+      className: "bg-emerald-50 text-emerald-700",
+    },
+    REJECTED: {
+      label: "Từ chối",
+      className: "bg-red-50 text-red-700",
+    },
+  };
+  const item = config[status] ?? config.NOT_REQUIRED;
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.className}`}>
+      {item.label}
+    </span>
+  );
+}
+
+function PaymentBadge({ status }: { status: ServiceOrderPaymentStatus }) {
+  const config: Record<ServiceOrderPaymentStatus, { label: string; className: string }> = {
+    POST_TO_ROOM: {
+      label: "Thu checkout",
+      className: "bg-[#fff6df] text-[#9b5c24]",
+    },
+    PENDING_PAYMENT: {
+      label: "Chờ PayOS",
+      className: "bg-sky-50 text-sky-700",
+    },
+    PAID: {
+      label: "Đã thanh toán",
+      className: "bg-emerald-50 text-emerald-700",
+    },
+  };
+  const item = config[status] ?? config.POST_TO_ROOM;
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.className}`}>
+      {item.label}
+    </span>
+  );
+}
+
+function formatTaskTime(value?: string) {
+  if (!value) return "Chưa có";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("vi-VN");
+}
+
 function shortCode(value?: string) {
   if (!value) return "N/A";
   return value.length > 8 ? value.slice(-8).toUpperCase() : value.toUpperCase();
 }
 
+function shortRoomId(value?: string) {
+  if (!value) return "N/A";
+  return value.length > 10 ? `${value.slice(0, 8)}...` : value;
+}
 
+function bookingStatusLabel(status?: RoomBookingResponse["status"]) {
+  switch (status) {
+    case "CHECKED_IN":
+      return "Đang lưu trú";
+    case "DEPOSITED":
+      return "Đã thanh toán";
+    case "CANCEL_REQUESTED":
+      return "Chờ duyệt hủy";
+    case "DONE":
+      return "Đã trả phòng";
+    case "CANCEL":
+      return "Đã hủy";
+    default:
+      return "Chờ thanh toán";
+  }
+}
+
+function formatBookingDateRange(checkin?: string, checkout?: string) {
+  return `${formatBookingDateTime(checkin)} -> ${formatBookingDateTime(checkout)}`;
+}
+
+function formatBookingDateTime(value?: string) {
+  if (!value) return "Chưa có";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

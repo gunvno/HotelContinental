@@ -1,6 +1,5 @@
-﻿"use client";
+"use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -39,81 +38,13 @@ import {
 } from "@/services/room-service";
 
 export default function AdminPage() {
-  const permission = usePermission();
-  const sections = [
-    {
-      title: "Loại Phòng",
-      description: "Quản lý danh sách loại phòng và thông tin số lượng.",
-      href: "/admin/room-types",
-      requiredPermission: "ROOM_TYPE_VIEW",
-    },
-    {
-      title: "Cơ Sở Vật Chất",
-      description: "Quản lý các cơ sở vật chất của khách sạn.",
-      href: "/admin/amenities",
-      requiredPermission: "AMENITY_VIEW",
-    },
-    {
-      title: "Cơ Sở Vật Chất Theo Loại",
-      description: "Bảng trung gian gán cơ sở vật chất và số lượng cho từng loại phòng.",
-      href: "/admin/amenity-rooms",
-      requiredPermission: "AMENITY_ROOM_VIEW",
-    },
-    {
-      title: "Dịch Vụ",
-      description: "Quản lý dịch vụ gốc: thêm, sửa, xóa, đổi giá và trạng thái hoạt động.",
-      href: "/admin/services",
-      requiredPermission: "SERVICE_VIEW",
-    },
-    {
-      title: "Dịch Vụ Bổ Sung Theo Loại Phòng",
-      description: "Bảng trung gian gán mã dịch vụ và số lượng cho từng loại phòng.",
-      href: "/admin/room-type-services",
-      requiredPermission: "ROOM_TYPE_SERVICE_VIEW",
-    },
-  ];
-  const visibleSections = sections.filter((section) =>
-    permission.has(section.requiredPermission),
-  );
+  const router = useRouter();
 
-  if (visibleSections.length === 0) {
-    return <PermissionDenied message="Bạn không có quyền xem nhóm danh mục nào." />;
-  }
+  useEffect(() => {
+    router.replace("/admin/room-types");
+  }, [router]);
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8 dark:bg-gray-950">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Quản Lý Danh Mục
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-300">
-            Chọn từng mục quản lý riêng thay vì hiển thị tất cả trên một trang.
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {visibleSections.map((section) => (
-            <Link
-              key={section.href}
-              href={section.href}
-              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-blue-400 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
-            >
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {section.title}
-              </h2>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                {section.description}
-              </p>
-              <p className="mt-4 text-sm font-medium text-blue-600 dark:text-blue-400">
-                Mở mục này
-              </p>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
 
 const PAGE_SIZE = 10;

@@ -1,0 +1,298 @@
+﻿services:
+  redis:
+    image: redis:7-alpine
+    container_name: hotel-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - hotel-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: hotel-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - hotel-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: hotel-kafka
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_started
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - hotel-network
+
+  identity-service:
+    build:
+      context: ./backend/identity-service
+    container_name: hotel-identity-service
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/identity_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APP_SERVICES_PROFILE: http://room-service:8081/profile
+    networks:
+      - hotel-network
+
+  room-service:
+    build:
+      context: ./backend/room-service
+    container_name: hotel-room-service
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/room_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    networks:
+      - hotel-network
+
+  notification-service:
+    build:
+      context: ./backend/notification-service
+    container_name: hotel-notification-service
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    networks:
+      - hotel-network
+
+  catalog-service:
+    build:
+      context: ./backend/catalog-service
+    container_name: hotel-catalog-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/catalog_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  booking-service:
+    build:
+      context: ./backend/booking-service
+    container_name: hotel-booking-service
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/booking_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APP_INTERNAL_SECRET: ${APP_INTERNAL_SECRET:-dev-internal-secret}
+    networks:
+      - hotel-network
+
+  billing-service:
+    build:
+      context: ./backend/billing-service
+    container_name: hotel-billing-service
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_started
+      booking-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      room-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/billing_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APP_SERVICES_IDENTITY: http://identity-service:8080/identity
+      APP_SERVICES_BOOKING: http://booking-service:8084/booking
+      APP_SERVICES_CATALOG: http://catalog-service:8083/catalog
+      APP_SERVICES_ROOM: http://room-service:8081/room
+      APP_INTERNAL_SECRET: ${APP_INTERNAL_SECRET:-dev-internal-secret}
+      PAYOS_ENABLED: ${PAYOS_ENABLED:-false}
+      PAYOS_BASE_URL: ${PAYOS_BASE_URL:-https://api-merchant.payos.vn}
+      PAYOS_CLIENT_ID: ${PAYOS_CLIENT_ID:-}
+      PAYOS_API_KEY: ${PAYOS_API_KEY:-}
+      PAYOS_CHECKSUM_KEY: ${PAYOS_CHECKSUM_KEY:-}
+      PAYOS_RETURN_URL: ${PAYOS_RETURN_URL:-http://localhost:3000/payment/success}
+      PAYOS_CANCEL_URL: ${PAYOS_CANCEL_URL:-http://localhost:3000/payment}
+    networks:
+      - hotel-network
+
+  promotion-service:
+    build:
+      context: ./backend/promotion-service
+    container_name: hotel-promotion-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/promotion_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  feedback-service:
+    build:
+      context: ./backend/feedback-service
+    container_name: hotel-feedback-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/feedback_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  content-service:
+    build:
+      context: ./backend/content-service
+    container_name: hotel-content-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/content_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+    networks:
+      - hotel-network
+
+  report-service:
+    build:
+      context: ./backend/report-service
+    container_name: hotel-report-service
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_started
+      booking-service:
+        condition: service_started
+      billing-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/report_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APP_SERVICES_BOOKING: http://booking-service:8084/booking
+      APP_SERVICES_BILLING: http://billing-service:8085/billing
+    networks:
+      - hotel-network
+
+  chat-service:
+    build:
+      context: ./backend/chat-service
+    container_name: hotel-chat-service
+    restart: unless-stopped
+    depends_on:
+      identity-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/chat_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      APP_IDENTITY_SERVICE_URL: http://identity-service:8080/identity
+    networks:
+      - hotel-network
+
+  ai-assistant-service:
+    build:
+      context: ./backend/ai-assistant-service
+    container_name: hotel-ai-assistant-service
+    restart: unless-stopped
+    depends_on:
+      room-service:
+        condition: service_started
+      booking-service:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/ai_assistant_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      APP_ROOM_SERVICE_URL: http://room-service:8081/room
+      APP_BOOKING_SERVICE_URL: http://booking-service:8084/booking
+    networks:
+      - hotel-network
+
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+    container_name: hotel-api-gateway
+    restart: unless-stopped
+    depends_on:
+      identity-service:
+        condition: service_started
+      room-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      booking-service:
+        condition: service_started
+      billing-service:
+        condition: service_started
+      promotion-service:
+        condition: service_started
+      feedback-service:
+        condition: service_started
+      content-service:
+        condition: service_started
+      report-service:
+        condition: service_started
+      chat-service:
+        condition: service_started
+      ai-assistant-service:
+        condition: service_started
+    environment:
+      IDENTITY_SERVICE_URI: http://identity-service:8080
+      ROOM_SERVICE_URI: http://room-service:8081
+      NOTIFICATION_SERVICE_URI: http://notification-service:8082
+      CATALOG_SERVICE_URI: http://catalog-service:8083
+      BOOKING_SERVICE_URI: http://booking-service:8084
+      BILLING_SERVICE_URI: http://billing-service:8085
+      PROMOTION_SERVICE_URI: http://promotion-service:8086
+      FEEDBACK_SERVICE_URI: http://feedback-service:8087
+      CONTENT_SERVICE_URI: http://content-service:8088
+      REPORT_SERVICE_URI: http://report-service:8089
+      CHAT_SERVICE_URI: http://chat-service:8090
+      AI_ASSISTANT_SERVICE_URI: http://ai-assistant-service:8091
+    ports:
+      - "${GATEWAY_PORT:-8888}:8888"
+    networks:
+      - hotel-network
+
+networks:
+  hotel-network:
+    driver: bridge
+
+

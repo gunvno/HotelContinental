@@ -42,6 +42,9 @@ public class DataInitializer implements ApplicationRunner {
     private static final String SUPPORT_USERNAME = "support";
     private static final String SUPPORT_PASSWORD = "support";
     private static final String SUPPORT_EMAIL = "support@hotelcontinental.local";
+    private static final String HOUSEKEEPING_USERNAME = "housekeeping";
+    private static final String HOUSEKEEPING_PASSWORD = "housekeeping";
+    private static final String HOUSEKEEPING_EMAIL = "housekeeping@hotelcontinental.local";
     private static final String CUSTOMER_USERNAME = "customer";
     private static final String CUSTOMER_PASSWORD = "customer";
     private static final String CUSTOMER_EMAIL = "customer@hotelcontinental.local";
@@ -61,6 +64,7 @@ public class DataInitializer implements ApplicationRunner {
                 Role.MANAGER,
                 Role.RECEPTIONIST,
                 Role.CUSTOMER_SUPPORT,
+                Role.HOUSEKEEPING,
                 Role.CUSTOMER
         };
         for (Role role : requiredRoles) {
@@ -99,6 +103,14 @@ public class DataInitializer implements ApplicationRunner {
                 "Customer",
                 "Support",
                 Role.CUSTOMER_SUPPORT
+        );
+        ensureDefaultAccount(
+                HOUSEKEEPING_USERNAME,
+                HOUSEKEEPING_PASSWORD,
+                HOUSEKEEPING_EMAIL,
+                "Room",
+                "Attendant",
+                Role.HOUSEKEEPING
         );
         ensureDefaultAccount(
                 CUSTOMER_USERNAME,
@@ -165,6 +177,7 @@ public class DataInitializer implements ApplicationRunner {
         assignPermissions(Role.MANAGER, rolePermissionProperties.getManagerPermission());
         assignPermissions(Role.RECEPTIONIST, rolePermissionProperties.getReceptionistPermission());
         assignPermissions(Role.CUSTOMER_SUPPORT, rolePermissionProperties.getCustomerSupportPermission());
+        assignPermissions(Role.HOUSEKEEPING, rolePermissionProperties.getHousekeepingPermission());
         assignPermissions(Role.CUSTOMER, rolePermissionProperties.getCustomerPermission());
     }
 

@@ -7,16 +7,13 @@ import com.hotelcontinental.room_service.entity.AmenityRooms;
 import com.hotelcontinental.room_service.exception.AppException;
 import com.hotelcontinental.room_service.exception.ErrorCode;
 import com.hotelcontinental.room_service.repository.AmenitiesRoomsRepository;
-import com.hotelcontinental.room_service.repository.httpclient.IdentityClient;
+import com.hotelcontinental.room_service.security.CurrentUserProvider;
 import com.hotelcontinental.room_service.service.interfaces.AmenityRoomService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -27,19 +24,13 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
     @Autowired
     private AmenitiesRoomsRepository amenityRoomsRepository;
     @Autowired
-    private IdentityClient identityClient;
+    private CurrentUserProvider currentUserProvider;
 
     @PreAuthorize("hasAuthority('AMENITY_ROOM_CREATE')")
     @Transactional
     @Override
     public AmenityRoomResponse createAmenityRoom(AmenityRoomCreationRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        String createdBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+        String createdBy = currentUserProvider.getUsername();
 
         AmenityRooms amenityRoom = AmenityRooms.builder()
             .amenityId(request.getAmenityId())
@@ -70,13 +61,7 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
     @Transactional
     @Override
     public AmenityRoomResponse updateAmenityRoom(String id, AmenityRoomUpdateRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+        String modifiedBy = currentUserProvider.getUsername();
 
         AmenityRooms amenityRoom = amenityRoomsRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
@@ -98,13 +83,7 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
     @Transactional
     @Override
     public void deleteAmenityRoom(String id) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        String deletedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+        String deletedBy = currentUserProvider.getUsername();
 
         AmenityRooms amenityRoom = amenityRoomsRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
@@ -120,13 +99,7 @@ public class AmenityRoomServiceImpl implements AmenityRoomService {
     @Transactional
     @Override
     public void restoreAmenityRoom(String id) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+        String modifiedBy = currentUserProvider.getUsername();
 
         AmenityRooms amenityRoom = amenityRoomsRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));

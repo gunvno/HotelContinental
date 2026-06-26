@@ -62,6 +62,19 @@ function getAmenityIcon(iconType: string) {
   }
 }
 
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
 export default function RoomDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -73,8 +86,8 @@ export default function RoomDetailPage() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const checkIn = searchParams.get("checkIn") || "2026-06-15";
-  const checkOut = searchParams.get("checkOut") || "2026-06-18";
+  const checkIn = searchParams.get("checkIn") || toDateInputValue(new Date());
+  const checkOut = searchParams.get("checkOut") || toDateInputValue(addDays(new Date(), 2));
   const guests = Number(searchParams.get("guests") || 2);
   const stayType = searchParams.get("stayType") || "night";
   const checkInTime = searchParams.get("checkInTime") || "14:00";

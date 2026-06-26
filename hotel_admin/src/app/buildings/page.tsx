@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Building2, Layers3, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -9,6 +9,7 @@ import { TextField } from "@/components/ui/form-field";
 import { Label } from "@/components/ui/label";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Select } from "@/components/ui/select";
+import { ToastBridge } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import {
   type BuildingResponse,
@@ -111,7 +112,7 @@ export default function BuildingsPage() {
     } catch (loadError) {
       console.error(loadError);
       setError(
-        "KhÃ´ng táº£i Ä‘Æ°á»£c danh sÃ¡ch tÃ²a nhÃ . Kiá»ƒm tra gateway, room-service vÃ  token ADMIN.",
+        "Không tải được danh sách tòa nhà. Kiểm tra gateway, room-service và token ADMIN.",
       );
     } finally {
       setIsLoading(false);
@@ -138,7 +139,7 @@ export default function BuildingsPage() {
       !form.defaultRoomTypeId ||
       !form.defaultRoomSize.trim()
     ) {
-      setError("Vui lÃ²ng nháº­p tÃªn tÃ²a, loáº¡i phÃ²ng máº·c Ä‘á»‹nh vÃ  diá»‡n tÃ­ch máº·c Ä‘á»‹nh.");
+      setError("Vui lòng nhập tên tòa, loại phòng mặc định và diện tích mặc định.");
       return;
     }
     if (
@@ -146,11 +147,11 @@ export default function BuildingsPage() {
       !Number.isFinite(floorEnd) ||
       floorStart > floorEnd
     ) {
-      setError("Khoáº£ng táº§ng khÃ´ng há»£p lá»‡.");
+      setError("Khoảng tầng không hợp lệ.");
       return;
     }
     if (!Number.isFinite(roomsPerFloor) || roomsPerFloor <= 0) {
-      setError("Sá»‘ phÃ²ng má»—i táº§ng pháº£i lá»›n hÆ¡n 0.");
+      setError("Số phòng mỗi tầng phải lớn hơn 0.");
       return;
     }
     if (
@@ -159,7 +160,7 @@ export default function BuildingsPage() {
       !Number.isFinite(defaultPricePerHour) ||
       defaultPricePerHour <= 0
     ) {
-      setError("GiÃ¡ máº·c Ä‘á»‹nh pháº£i lÃ  sá»‘ lá»›n hÆ¡n 0.");
+      setError("Giá mặc định phải là số lớn hơn 0.");
       return;
     }
 
@@ -184,14 +185,14 @@ export default function BuildingsPage() {
       });
 
       setMessage(
-        `ÄÃ£ táº¡o ${result.createdFloorCount} táº§ng vÃ  ${result.createdRoomCount} phÃ²ng cho ${result.building.name}.`,
+        `Đã tạo ${result.createdFloorCount} tầng và ${result.createdRoomCount} phòng cho ${result.building.name}.`,
       );
       setForm({ ...defaultFormState, defaultRoomTypeId: roomTypes[0]?.id || "" });
       await loadData();
     } catch (submitError) {
       console.error(submitError);
       setError(
-        "KhÃ´ng thá»ƒ khá»Ÿi táº¡o tÃ²a nhÃ . Kiá»ƒm tra dá»¯ liá»‡u, token ADMIN vÃ  room-service.",
+        "Không thể khởi tạo tòa nhà. Kiểm tra dữ liệu, token ADMIN và room-service.",
       );
     } finally {
       setIsSubmitting(false);
@@ -200,7 +201,7 @@ export default function BuildingsPage() {
 
   if (!canSetupBuilding) {
     return (
-      <PermissionDenied message="Báº¡n khÃ´ng cÃ³ quyá»n BUILDING_SETUP Ä‘á»ƒ quáº£n lÃ½ tÃ²a nhÃ  vÃ  táº§ng." />
+      <PermissionDenied message="Bạn không có quyền BUILDING_SETUP để quản lý tòa nhà và tầng." />
     );
   }
 
@@ -214,11 +215,11 @@ export default function BuildingsPage() {
               Hotel structure
             </p>
             <h2 className="mt-3 font-serif text-5xl leading-none font-bold tracking-tight lg:text-7xl">
-              TÃ²a nhÃ  & táº§ng
+              Tòa nhà & tầng
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-[#eadbc4]">
-              ÄÃ¢y lÃ  nÆ¡i setup cáº¥u trÃºc váº­t lÃ½ cá»§a khÃ¡ch sáº¡n. Sau khi táº¡o tÃ²a vÃ  táº§ng,
-              trang PhÃ²ng sáº½ chá»‰ dÃ¹ng Ä‘á»ƒ quáº£n lÃ½ tá»«ng phÃ²ng cá»¥ thá»ƒ.
+              Đây là nơi setup cấu trúc vật lý của khách sạn. Sau khi tạo tòa và tầng,
+              trang Phòng sẽ chỉ dùng để quản lý từng phòng cụ thể.
             </p>
           </div>
           <Button
@@ -228,24 +229,24 @@ export default function BuildingsPage() {
             className="border-white/15 bg-white/10 text-white hover:bg-white/15"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
-            LÃ m má»›i
+            Làm mới
           </Button>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         <MetricCard
-          label="Tá»•ng tÃ²a nhÃ "
+          label="Tổng tòa nhà"
           value={String(buildings.length)}
           icon={<Building2 className="h-5 w-5" />}
         />
         <MetricCard
-          label="Tá»•ng táº§ng"
+          label="Tổng tầng"
           value={String(totalFloors)}
           icon={<Layers3 className="h-5 w-5" />}
         />
         <MetricCard
-          label="Loáº¡i phÃ²ng máº·c Ä‘á»‹nh"
+          label="Loại phòng mặc định"
           value={String(roomTypes.length)}
           icon={<Plus className="h-5 w-5" />}
         />
@@ -304,60 +305,60 @@ function BuildingSetupForm({
       className="rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm"
     >
       <p className="text-xs font-black tracking-[0.28em] text-[#9b5c24] uppercase">
-        Khá»Ÿi táº¡o ban Ä‘áº§u
+        Khởi tạo ban đầu
       </p>
       <h3 className="mt-2 font-serif text-4xl font-bold">
-        Táº¡o tÃ²a, táº§ng vÃ  phÃ²ng hÃ ng loáº¡t
+        Tạo tòa, tầng và phòng hàng loạt
       </h3>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <TextField
-          label="TÃªn tÃ²a nhÃ  *"
+          label="Tên tòa nhà *"
           value={form.buildingName}
           onValueChange={(value) => onChange("buildingName", value)}
           placeholder="Continental Tower A"
         />
-        <Field label="Loáº¡i phÃ²ng máº·c Ä‘á»‹nh *">
+        <Field label="Loại phòng mặc định *">
           <Select
             value={form.defaultRoomTypeId}
             onValueChange={(value) => onChange("defaultRoomTypeId", value)}
-            placeholder="Chá»n loáº¡i phÃ²ng"
+            placeholder="Chọn loại phòng"
             disabled={roomTypes.length === 0}
             options={
               roomTypes.length === 0
-                ? [{ value: "", label: "ChÆ°a cÃ³ loáº¡i phÃ²ng" }]
+                ? [{ value: "", label: "Chưa có loại phòng" }]
                 : roomTypes.map((roomType) => ({
                     value: roomType.id,
-                    label: `${roomType.name} Â· tá»‘i Ä‘a ${roomType.maximumOccupancy} khÃ¡ch`,
+                    label: `${roomType.name} · tối đa ${roomType.maximumOccupancy} khách`,
                   }))
             }
           />
         </Field>
         <TextField
-          label="Táº§ng báº¯t Ä‘áº§u *"
+          label="Tầng bắt đầu *"
           value={form.floorStart}
           onValueChange={(value) => onChange("floorStart", value.replace(/[^\d-]/g, ""))}
           inputMode="numeric"
         />
         <TextField
-          label="Táº§ng káº¿t thÃºc *"
+          label="Tầng kết thúc *"
           value={form.floorEnd}
           onValueChange={(value) => onChange("floorEnd", value.replace(/[^\d-]/g, ""))}
           inputMode="numeric"
         />
         <TextField
-          label="Sá»‘ phÃ²ng má»—i táº§ng *"
+          label="Số phòng mỗi tầng *"
           value={form.roomsPerFloor}
           onValueChange={(value) => onChange("roomsPerFloor", value.replace(/[^\d]/g, ""))}
           inputMode="numeric"
         />
         <TextField
-          label="Máº«u sá»‘ phÃ²ng *"
+          label="Mẫu số phòng *"
           value={form.roomNumberPattern}
           onValueChange={(value) => onChange("roomNumberPattern", value)}
           placeholder="{floor}{room:02}"
         />
         <TextField
-          label="GiÃ¡ ngÃ y máº·c Ä‘á»‹nh *"
+          label="Giá ngày mặc định *"
           value={form.defaultPricePerDay}
           onValueChange={(value) =>
             onChange("defaultPricePerDay", value.replace(/[^\d]/g, ""))
@@ -365,7 +366,7 @@ function BuildingSetupForm({
           inputMode="numeric"
         />
         <TextField
-          label="GiÃ¡ giá» máº·c Ä‘á»‹nh *"
+          label="Giá giờ mặc định *"
           value={form.defaultPricePerHour}
           onValueChange={(value) =>
             onChange("defaultPricePerHour", value.replace(/[^\d]/g, ""))
@@ -373,47 +374,47 @@ function BuildingSetupForm({
           inputMode="numeric"
         />
         <TextField
-          label="Diá»‡n tÃ­ch máº·c Ä‘á»‹nh *"
+          label="Diện tích mặc định *"
           value={form.defaultRoomSize}
           onValueChange={(value) => onChange("defaultRoomSize", value)}
           placeholder="32m2"
         />
         <TextField
-          label="PhÃ²ng bá» qua"
+          label="Phòng bỏ qua"
           value={form.skipRoomNumbers}
           onValueChange={(value) => onChange("skipRoomNumbers", value)}
           placeholder="404, 413, 1414"
         />
         <div className="md:col-span-2">
           <TextField
-            label="Äá»‹a chá»‰ tÃ²a nhÃ "
+            label="Địa chỉ tòa nhà"
             value={form.address}
             onValueChange={(value) => onChange("address", value)}
-            placeholder="VD: 132 Äá»“ng Khá»Ÿi, Quáº­n 1"
+            placeholder="VD: 132 Đồng Khởi, Quận 1"
           />
         </div>
         <div className="md:col-span-2">
           <TextField
-            label="MÃ´ táº£"
+            label="Mô tả"
             value={form.description}
             onValueChange={(value) => onChange("description", value)}
-            placeholder="Khu phÃ²ng chÃ­nh"
+            placeholder="Khu phòng chính"
           />
         </div>
       </div>
       <div className="mt-5 rounded-2xl border border-[#eadfcd] bg-[#fbf7ef] p-4">
         <p className="text-xs font-bold tracking-[0.2em] text-[#9b8c7d] uppercase">
-          Preview mÃ£ phÃ²ng
+          Preview mã phòng
         </p>
         <p className="mt-2 font-black">
           {previewRooms.length
             ? previewRooms.join(", ")
-            : "Nháº­p sá»‘ táº§ng vÃ  sá»‘ phÃ²ng Ä‘á»ƒ xem trÆ°á»›c."}
+            : "Nhập số tầng và số phòng để xem trước."}
         </p>
       </div>
       <div className="mt-6 flex justify-end">
         <Button type="submit" disabled={isSubmitting || roomTypes.length === 0}>
-          {isSubmitting ? "Äang khá»Ÿi táº¡o..." : "Khá»Ÿi táº¡o cáº¥u trÃºc"}
+          {isSubmitting ? "Đang khởi tạo..." : "Khởi tạo cấu trúc"}
         </Button>
       </div>
     </form>
@@ -431,19 +432,19 @@ function BuildingList({
 }) {
   return (
     <section className="rounded-[1.75rem] border border-[#decdb9] bg-white/78 p-6 shadow-sm">
-      <h3 className="font-serif text-4xl font-bold">Cáº¥u trÃºc hiá»‡n cÃ³</h3>
+      <h3 className="font-serif text-4xl font-bold">Cấu trúc hiện có</h3>
       <p className="mt-2 text-sm text-[#75695d]">
-        TÃ²a nhÃ  vÃ  táº§ng Ä‘ang Ä‘Æ°á»£c lÆ°u trong room-service.
+        Tòa nhà và tầng đang được lưu trong room-service.
       </p>
       <div className="mt-6 space-y-4">
         {isLoading ? (
           <p className="rounded-2xl border border-[#eadfcd] bg-[#fffaf2] p-4 font-bold">
-            Äang táº£i dá»¯ liá»‡u...
+            Đang tải dữ liệu...
           </p>
         ) : null}
         {!isLoading && buildings.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-[#cdb99f] bg-[#fffaf2] p-6 text-center font-bold">
-            ChÆ°a cÃ³ tÃ²a nhÃ  nÃ o. HÃ£y khá»Ÿi táº¡o cáº¥u trÃºc Ä‘áº§u tiÃªn.
+            Chưa có tòa nhà nào. Hãy khởi tạo cấu trúc đầu tiên.
           </p>
         ) : null}
         {buildings.map((building) => {
@@ -457,10 +458,10 @@ function BuildingList({
                 <div>
                   <h4 className="text-xl font-black">{building.name}</h4>
                   <p className="mt-1 text-sm text-[#75695d]">
-                    {building.description || "ChÆ°a cÃ³ mÃ´ táº£"}
+                    {building.description || "Chưa có mô tả"}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-[#5f5144]">
-                    {building.address || "ChÆ°a cÃ³ Ä‘á»‹a chá»‰"}
+                    {building.address || "Chưa có địa chỉ"}
                   </p>
                 </div>
                 <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
@@ -473,7 +474,7 @@ function BuildingList({
                     key={floor.id}
                     className="rounded-full border border-[#decdb9] bg-white px-3 py-1 text-xs font-bold text-[#5f5144]"
                   >
-                    Táº§ng {floor.floorNumber}
+                    Tầng {floor.floorNumber}
                   </span>
                 ))}
               </div>
@@ -501,17 +502,8 @@ function Alert({
   tone: "success" | "error";
   children: React.ReactNode;
 }) {
-  return (
-    <div
-      className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
-        tone === "success"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-          : "border-red-200 bg-red-50 text-red-800"
-      }`}
-    >
-      {children}
-    </div>
-  );
+  const message = typeof children === "string" ? children : String(children ?? "");
+  return tone === "success" ? <ToastBridge success={message} /> : <ToastBridge error={message} />;
 }
 
 function formatRoomNumber(pattern: string, floorNumber: number, roomIndex: number) {

@@ -1,6 +1,7 @@
 package com.hotelcontinental.api_gateway.configuration;
 
 import com.hotelcontinental.api_gateway.repository.IdentityClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -15,9 +16,9 @@ import java.util.List;
 @Configuration
 public class WebClientConfiguration {
     @Bean
-    WebClient webClient(){
+    WebClient webClient(@Value("${identity-service-uri:${IDENTITY_SERVICE_URI:http://localhost:8080}}") String identityServiceUri){
         return WebClient.builder()
-                .baseUrl("http://localhost:8080/identity")
+                .baseUrl(identityServiceUri + "/identity")
                 .build();
     }
 

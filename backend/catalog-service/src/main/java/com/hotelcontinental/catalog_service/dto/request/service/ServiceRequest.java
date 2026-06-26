@@ -1,6 +1,7 @@
 package com.hotelcontinental.catalog_service.dto.request.service;
 
 import com.hotelcontinental.catalog_service.enums.ServiceStatus;
+import com.hotelcontinental.catalog_service.enums.ServiceOrderMode;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
@@ -13,5 +14,6 @@ public class ServiceRequest {
     Float price;
     String image;
     ServiceStatus status;
+    ServiceOrderMode orderMode;
     Boolean deleted;
 }

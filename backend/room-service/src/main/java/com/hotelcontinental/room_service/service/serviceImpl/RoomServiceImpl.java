@@ -1,18 +1,21 @@
 package com.hotelcontinental.room_service.service.serviceImpl;
 
 import com.hotelcontinental.room_service.dto.request.room.RoomCreationRequest;
+import com.hotelcontinental.room_service.dto.request.room.HousekeepingAssignRequest;
+import com.hotelcontinental.room_service.dto.request.room.HousekeepingStatusUpdateRequest;
 import com.hotelcontinental.room_service.dto.response.room.RoomForCustomerResponse;
 import com.hotelcontinental.room_service.dto.response.room.RoomImageResponse;
 import com.hotelcontinental.room_service.dto.response.room.RoomResponse;
 import com.hotelcontinental.room_service.dto.response.room.RoomDetailResponse;
 import com.hotelcontinental.room_service.enums.RoomStatus;
+import com.hotelcontinental.room_service.enums.HousekeepingStatus;
 import com.hotelcontinental.room_service.exception.AppException;
 import com.hotelcontinental.room_service.exception.ErrorCode;
 import com.hotelcontinental.room_service.entity.Images;
 import com.hotelcontinental.room_service.entity.Rooms;
 import com.hotelcontinental.room_service.repository.ImageRepository;
-import com.hotelcontinental.room_service.repository.httpclient.IdentityClient;
 import com.hotelcontinental.room_service.repository.RoomRepository;
+import com.hotelcontinental.room_service.security.CurrentUserProvider;
 import com.hotelcontinental.room_service.service.interfaces.CloudinaryService;
 import com.hotelcontinental.room_service.service.interfaces.RoomService;
 import jakarta.transaction.Transactional;
@@ -20,11 +23,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -42,7 +43,7 @@ public class RoomServiceImpl implements RoomService {
     private ImageRepository imageRepository;
 
     @Autowired
-    private IdentityClient identityClient;
+    private CurrentUserProvider currentUserProvider;
 
     @Autowired
     private CloudinaryService cloudinaryService;
@@ -53,18 +54,10 @@ public class RoomServiceImpl implements RoomService {
     @PreAuthorize("hasAuthority('ROOM_DELETE')")
     @Transactional
     @Override
-    public void deleteRoom(String id){
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
+    public void deleteRoom(String id) {
         Rooms room = roomRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
-
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        String deletedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+        String deletedBy = currentUserProvider.getUsername();
 
         roomRepository.save(room.toBuilder()
             .deleted(true)
@@ -86,20 +79,15 @@ public class RoomServiceImpl implements RoomService {
                    .description(room.getDescription())
                    .roomSize(room.getRoomSize())
                    .status(room.getStatus())
+                   .housekeepingStatus(room.getHousekeepingStatus())
                    .build());
     }
 
     @PreAuthorize("hasAuthority('ROOM_CREATE')")
     @Transactional
     @Override
-    public RoomResponse createRoom(RoomCreationRequest request){
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        String createdBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+    public RoomResponse createRoom(RoomCreationRequest request) {
+        String createdBy = currentUserProvider.getUsername();
         boolean roomExists = roomRepository.existsByNameAndFloorId(request.getName(), request.getFloorId());
         if(roomExists)
             throw new AppException(ErrorCode.ROOM_ALREADY_EXISTS);
@@ -110,49 +98,27 @@ public class RoomServiceImpl implements RoomService {
                 .description(request.getDescription())
                 .roomSize(request.getRoomSize())
                 .status(RoomStatus.AVAILABLE)
+                .housekeepingStatus(HousekeepingStatus.CLEAN)
                 .roomTypeId(request.getRoomTypeId())
                 .floorId(request.getFloorId())
                 .createdTime(LocalDateTime.now())
                 .createdBy(createdBy)
                 .build();
-        roomRepository.save(room);
-        return RoomResponse.builder()
-            .id(room.getId())
-                .floorId(room.getFloorId())
-                .name(request.getName())
-                .pricePerDay(request.getPricePerDay())
-                .pricePerHour(request.getPricePerHour())
-                .description(request.getDescription())
-                .roomSize(request.getRoomSize())
-                .status(RoomStatus.AVAILABLE)
-                .roomTypeId(room.getRoomTypeId())
-                .createdTime(LocalDateTime.now())
-                .createdBy(createdBy)
-                .modifiedTime(null)
-                .modifiedBy(null)
-                .deleted(false)
-                .deletedTime(null)
-                .deletedBy(null)
-                .build();
+        return toRoomResponse(roomRepository.save(room));
     }
 
     @PreAuthorize("hasAuthority('ROOM_UPDATE')")
     @Transactional
     @Override
     public RoomResponse updateRoom(String id, RoomCreationRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
         Rooms room = roomRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
-
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        String modifiedBy = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+        String modifiedBy = currentUserProvider.getUsername();
 
         RoomStatus status = request.getStatus() != null ? request.getStatus() : room.getStatus();
+        HousekeepingStatus housekeepingStatus = request.getHousekeepingStatus() != null
+                ? request.getHousekeepingStatus()
+                : room.getHousekeepingStatus();
         Rooms updated = room.toBuilder()
                 .name(request.getName())
                 .pricePerDay(request.getPricePerDay())
@@ -160,6 +126,10 @@ public class RoomServiceImpl implements RoomService {
                 .description(request.getDescription())
                 .roomSize(request.getRoomSize())
                 .status(status)
+                .housekeepingStatus(housekeepingStatus)
+                .housekeepingNote(request.getHousekeepingNote() != null
+                        ? request.getHousekeepingNote()
+                        : room.getHousekeepingNote())
                 .roomTypeId(request.getRoomTypeId())
                 .floorId(request.getFloorId())
                 .modifiedTime(LocalDateTime.now())
@@ -177,6 +147,15 @@ public class RoomServiceImpl implements RoomService {
                 .description(saved.getDescription())
                 .roomSize(saved.getRoomSize())
                 .status(saved.getStatus())
+                .housekeepingStatus(saved.getHousekeepingStatus())
+                .housekeepingNote(saved.getHousekeepingNote())
+                .housekeepingUpdatedTime(saved.getHousekeepingUpdatedTime())
+                .housekeepingUpdatedBy(saved.getHousekeepingUpdatedBy())
+                .housekeepingAssignedTo(saved.getHousekeepingAssignedTo())
+                .housekeepingAssignedBy(saved.getHousekeepingAssignedBy())
+                .housekeepingAssignedTime(saved.getHousekeepingAssignedTime())
+                .housekeepingCompletedBy(saved.getHousekeepingCompletedBy())
+                .housekeepingCompletedTime(saved.getHousekeepingCompletedTime())
                 .roomTypeId(saved.getRoomTypeId())
                 .createdTime(saved.getCreatedTime())
                 .createdBy(saved.getCreatedBy())
@@ -185,6 +164,143 @@ public class RoomServiceImpl implements RoomService {
                 .deleted(Boolean.TRUE.equals(saved.getDeleted()))
                 .deletedTime(saved.getDeletedTime())
                 .deletedBy(saved.getDeletedBy())
+                .build();
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
+    @Transactional
+    @Override
+    public RoomResponse updateHousekeepingStatus(String id, HousekeepingStatusUpdateRequest request) {
+        if (request == null || request.getHousekeepingStatus() == null) {
+            throw new AppException(ErrorCode.INVALID_ROOM_REQUEST);
+        }
+
+        Rooms room = roomRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+        String modifiedBy = currentUserProvider.getUsername();
+        LocalDateTime now = LocalDateTime.now();
+        HousekeepingStatus nextStatus = request.getHousekeepingStatus();
+
+        Rooms.RoomsBuilder builder = room.toBuilder()
+                .housekeepingStatus(nextStatus)
+                .housekeepingNote(request.getNote())
+                .housekeepingUpdatedTime(now)
+                .housekeepingUpdatedBy(modifiedBy)
+                .modifiedTime(now)
+                .modifiedBy(modifiedBy);
+
+        if (nextStatus == HousekeepingStatus.DIRTY) {
+            builder.housekeepingAssignedTo(null)
+                    .housekeepingAssignedBy(null)
+                    .housekeepingAssignedTime(null)
+                    .housekeepingCompletedBy(null)
+                    .housekeepingCompletedTime(null);
+        }
+
+        if ((nextStatus == HousekeepingStatus.INSPECTION || nextStatus == HousekeepingStatus.CLEAN)
+                && room.getHousekeepingCompletedTime() == null) {
+            builder.housekeepingCompletedBy(modifiedBy)
+                    .housekeepingCompletedTime(now);
+        }
+
+        Rooms saved = roomRepository.save(builder.build());
+
+        return toRoomResponse(saved);
+    }
+
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOUSEKEEPING')")
+    @Transactional
+    @Override
+    public RoomResponse assignHousekeepingTask(String id, HousekeepingAssignRequest request) {
+        Rooms room = roomRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+
+        String actor = currentUserProvider.getUsername();
+        String assignee = request != null && StringUtils.hasText(request.getAssigneeUsername())
+                ? request.getAssigneeUsername().trim()
+                : actor;
+        LocalDateTime now = LocalDateTime.now();
+
+        Rooms saved = roomRepository.save(room.toBuilder()
+                .housekeepingStatus(HousekeepingStatus.CLEANING)
+                .housekeepingNote(actor.equals(assignee)
+                        ? "Nhân viên đã nhận việc dọn phòng."
+                        : "Phòng đã được phân công cho nhân viên dọn phòng.")
+                .housekeepingAssignedTo(assignee)
+                .housekeepingAssignedBy(actor)
+                .housekeepingAssignedTime(now)
+                .housekeepingCompletedBy(null)
+                .housekeepingCompletedTime(null)
+                .housekeepingUpdatedBy(actor)
+                .housekeepingUpdatedTime(now)
+                .modifiedBy(actor)
+                .modifiedTime(now)
+                .build());
+
+        return toRoomResponse(saved);
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_HOUSEKEEPING')")
+    @Transactional
+    @Override
+    public RoomResponse completeHousekeepingTask(String id) {
+        Rooms room = roomRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+
+        String actor = currentUserProvider.getUsername();
+        LocalDateTime now = LocalDateTime.now();
+
+        Rooms saved = roomRepository.save(room.toBuilder()
+                .housekeepingStatus(HousekeepingStatus.INSPECTION)
+                .housekeepingNote("Phòng đã dọn xong, chờ kiểm tra.")
+                .housekeepingAssignedTo(room.getHousekeepingAssignedTo() != null
+                        ? room.getHousekeepingAssignedTo()
+                        : actor)
+                .housekeepingAssignedBy(room.getHousekeepingAssignedBy() != null
+                        ? room.getHousekeepingAssignedBy()
+                        : actor)
+                .housekeepingAssignedTime(room.getHousekeepingAssignedTime() != null
+                        ? room.getHousekeepingAssignedTime()
+                        : now)
+                .housekeepingCompletedBy(actor)
+                .housekeepingCompletedTime(now)
+                .housekeepingUpdatedBy(actor)
+                .housekeepingUpdatedTime(now)
+                .modifiedBy(actor)
+                .modifiedTime(now)
+                .build());
+
+        return toRoomResponse(saved);
+    }
+
+    private RoomResponse toRoomResponse(Rooms room) {
+        return RoomResponse.builder()
+                .id(room.getId())
+                .name(room.getName())
+                .image(room.getImage())
+                .floorId(room.getFloorId())
+                .pricePerDay(room.getPricePerDay())
+                .pricePerHour(room.getPricePerHour())
+                .description(room.getDescription())
+                .roomSize(room.getRoomSize())
+                .status(room.getStatus())
+                .housekeepingStatus(room.getHousekeepingStatus())
+                .housekeepingNote(room.getHousekeepingNote())
+                .housekeepingUpdatedTime(room.getHousekeepingUpdatedTime())
+                .housekeepingUpdatedBy(room.getHousekeepingUpdatedBy())
+                .housekeepingAssignedTo(room.getHousekeepingAssignedTo())
+                .housekeepingAssignedBy(room.getHousekeepingAssignedBy())
+                .housekeepingAssignedTime(room.getHousekeepingAssignedTime())
+                .housekeepingCompletedBy(room.getHousekeepingCompletedBy())
+                .housekeepingCompletedTime(room.getHousekeepingCompletedTime())
+                .roomTypeId(room.getRoomTypeId())
+                .createdTime(room.getCreatedTime())
+                .createdBy(room.getCreatedBy())
+                .modifiedTime(room.getModifiedTime())
+                .modifiedBy(room.getModifiedBy())
+                .deleted(Boolean.TRUE.equals(room.getDeleted()))
+                .deletedTime(room.getDeletedTime())
+                .deletedBy(room.getDeletedBy())
                 .build();
     }
 
@@ -203,14 +319,7 @@ public class RoomServiceImpl implements RoomService {
         Rooms room = roomRepository.findByIdAndDeletedFalse(roomId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        String username = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+        String username = currentUserProvider.getUsername();
 
         List<Images> existingImages = imageRepository.findAllByRoomIdAndDeletedFalse(roomId);
         if (coverIndex != null) {
@@ -292,14 +401,7 @@ public class RoomServiceImpl implements RoomService {
         Rooms room = roomRepository.findByIdAndDeletedFalse(roomId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        String username = identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+        String username = currentUserProvider.getUsername();
 
         Images image = imageRepository.findByIdAndRoomIdAndDeletedFalse(imageId, roomId)
                 .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
@@ -388,3 +490,5 @@ public class RoomServiceImpl implements RoomService {
     }
 
 }
+
+

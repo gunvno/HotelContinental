@@ -78,6 +78,9 @@ function InvoiceContent() {
     () => booking?.status === "DONE" || booking?.detailStatus === "CHECKED_OUT",
     [booking?.detailStatus, booking?.status],
   );
+  const canOrderExtraService =
+    booking?.status === "CHECKED_IN" && booking?.detailStatus === "CHECKED_IN";
+  const serviceOrderHref = `/account/services?bookingId=${encodeURIComponent(bookingId)}`;
   const firstName = useAuthStore((state) => state.firstName);
   const lastName = useAuthStore((state) => state.lastName);
   const userName = useAuthStore((state) => state.userName);
@@ -358,6 +361,16 @@ function InvoiceContent() {
               description="Dịch vụ khách chọn trước thanh toán hoặc gọi thêm trong thời gian lưu trú."
               value={formatMoney(invoice.totalServicePrice)}
             />
+            {canOrderExtraService ? (
+              <div className="border-border/50 flex justify-end border-b pb-4">
+                <Link
+                  href={serviceOrderHref}
+                  className="bg-ring text-background inline-flex h-10 items-center justify-center rounded-full px-5 text-sm font-semibold"
+                >
+                  Đặt thêm dịch vụ
+                </Link>
+              </div>
+            ) : null}
             <LineItem
               title="VAT, ưu đãi và phụ phí"
               description="Tổng phụ phí sau ưu đãi thành viên hoặc voucher nếu có."

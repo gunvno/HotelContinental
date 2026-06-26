@@ -1,6 +1,7 @@
 package com.hotelcontinental.billing_service.entity;
 
 import com.hotelcontinental.billing_service.enums.PaymentMethod;
+import com.hotelcontinental.billing_service.enums.PaymentRequestPurpose;
 import com.hotelcontinental.billing_service.enums.PaymentRequestStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,7 +34,14 @@ public class PaymentRequest {
     String roomBookingId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_method", nullable = false)
+    @Column(name = "purpose", length = 30)
+    PaymentRequestPurpose purpose = PaymentRequestPurpose.ROOM_BOOKING;
+
+    @Column(name = "service_order_id")
+    String serviceOrderId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false, length = 30)
     PaymentMethod paymentMethod;
 
     @Column(name = "amount", nullable = false)

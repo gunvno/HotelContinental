@@ -17,5 +17,6 @@ public class RolePermissionProperties {
     private List<String> managerPermission = new ArrayList<>();
     private List<String> receptionistPermission = new ArrayList<>();
     private List<String> customerSupportPermission = new ArrayList<>();
+    private List<String> housekeepingPermission = new ArrayList<>();
     private List<String> customerPermission = new ArrayList<>();
 }

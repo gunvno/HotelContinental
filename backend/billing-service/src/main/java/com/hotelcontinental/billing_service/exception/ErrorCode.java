@@ -22,7 +22,9 @@ public enum ErrorCode {
     BOOKING_SYNC_FAILED(1022, "Cannot sync booking totals", HttpStatus.BAD_GATEWAY),
     CATALOG_SERVICE_NOT_FOUND(1023, "Catalog service not found", HttpStatus.BAD_REQUEST),
     SERVICE_ORDER_BOOKING_FORBIDDEN(1024, "You cannot order service for this booking", HttpStatus.FORBIDDEN),
-    BOOKING_NOT_AVAILABLE_FOR_SERVICE_ORDER(1025, "Booking is not checked in", HttpStatus.BAD_REQUEST);
+    BOOKING_NOT_AVAILABLE_FOR_SERVICE_ORDER(1025, "Booking is not checked in", HttpStatus.BAD_REQUEST),
+    SERVICE_ORDER_STAFF_ONLY(1026, "This service can only be added by staff", HttpStatus.FORBIDDEN),
+    SERVICE_ORDER_PENDING_APPROVAL(1027, "This service request is waiting for staff approval", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

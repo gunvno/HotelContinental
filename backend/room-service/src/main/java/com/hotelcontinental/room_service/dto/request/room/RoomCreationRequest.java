@@ -2,6 +2,7 @@ package com.hotelcontinental.room_service.dto.request.room;
 
 
 import com.hotelcontinental.room_service.enums.RoomStatus;
+import com.hotelcontinental.room_service.enums.HousekeepingStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -22,4 +23,6 @@ public class RoomCreationRequest {
     String description;
     String roomSize;
     RoomStatus status;
+    HousekeepingStatus housekeepingStatus;
+    String housekeepingNote;
 }

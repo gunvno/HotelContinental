@@ -1,6 +1,7 @@
 package com.hotelcontinental.billing_service.dto.response;
 
 import com.hotelcontinental.billing_service.enums.PaymentMethod;
+import com.hotelcontinental.billing_service.enums.PaymentRequestPurpose;
 import com.hotelcontinental.billing_service.enums.PaymentRequestStatus;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -15,6 +16,8 @@ import java.time.LocalDateTime;
 public class PaymentRequestResponse {
     String id;
     String roomBookingId;
+    PaymentRequestPurpose purpose;
+    String serviceOrderId;
     PaymentMethod paymentMethod;
     float amount;
     String bankAccountNo;

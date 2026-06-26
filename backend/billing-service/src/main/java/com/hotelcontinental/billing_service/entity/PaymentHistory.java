@@ -33,7 +33,7 @@ public class PaymentHistory {
     String roomBookingId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_method", nullable = false)
+    @Column(name = "payment_method", nullable = false, length = 30)
     PaymentMethod paymentMethod;
 
     @Column(name = "amount", nullable = false)

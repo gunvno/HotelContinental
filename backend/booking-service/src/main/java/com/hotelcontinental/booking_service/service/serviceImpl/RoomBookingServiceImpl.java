@@ -11,8 +11,10 @@ import com.hotelcontinental.booking_service.entity.EditHistory;
 import com.hotelcontinental.booking_service.entity.ResidenceRegistration;
 import com.hotelcontinental.booking_service.entity.RoomBookingDetails;
 import com.hotelcontinental.booking_service.entity.RoomBookings;
+import com.hotelcontinental.booking_service.enums.BookingType;
 import com.hotelcontinental.booking_service.enums.RoomBookingDetailStatus;
 import com.hotelcontinental.booking_service.enums.RoomBookingStatus;
+import com.hotelcontinental.booking_service.event.BookingEventPublisher;
 import com.hotelcontinental.booking_service.exception.AppException;
 import com.hotelcontinental.booking_service.exception.ErrorCode;
 import com.hotelcontinental.booking_service.repository.EditHistoryRepository;
@@ -31,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Objects;
 
@@ -41,6 +44,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     private final RoomBookingDetailsRepository roomBookingDetailsRepository;
     private final ResidenceRegistrationRepository residenceRegistrationRepository;
     private final EditHistoryRepository editHistoryRepository;
+    private final BookingEventPublisher bookingEventPublisher;
 
     private static final List<RoomBookingDetailStatus> BLOCKING_STATUSES = List.of(
             RoomBookingDetailStatus.BOOKED,
@@ -123,6 +127,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         detail.setDeleted(false);
         detail = roomBookingDetailsRepository.save(detail);
 
+        bookingEventPublisher.publish("BOOKING_CREATED", booking, detail, customerId);
         return map(booking, detail);
     }
 
@@ -133,11 +138,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             return getMyRoomBookings();
         }
 
-        return roomBookingsRepository.findAllByDeletedFalseOrderByCreatedTimeDesc().stream()
-                .map(booking -> {
-                    RoomBookingDetails detail = getPrimaryDetail(booking.getId());
-                    return map(booking, detail);
-                })
+        return roomBookingsRepository.findActiveBookingRows().stream()
+                .map(this::mapBookingRow)
                 .toList();
     }
 
@@ -145,11 +147,8 @@ public class RoomBookingServiceImpl implements RoomBookingService {
     @PreAuthorize("hasAuthority('BOOKING_VIEW')")
     public List<RoomBookingResponse> getMyRoomBookings() {
         String customerId = getCurrentActor();
-        return roomBookingsRepository.findByCustomerIdAndDeletedFalseOrderByCreatedTimeDesc(customerId).stream()
-                .map(booking -> {
-                    RoomBookingDetails detail = getPrimaryDetail(booking.getId());
-                    return map(booking, detail);
-                })
+        return roomBookingsRepository.findActiveBookingRowsByCustomerId(customerId).stream()
+                .map(this::mapBookingRow)
                 .toList();
     }
 
@@ -217,12 +216,13 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 actor,
                 booking.getModifiedTime()
         );
+        bookingEventPublisher.publish("BOOKING_DEPOSITED", booking, detail, actor);
         return map(booking, detail);
     }
 
     @Transactional
     @Override
-    @PreAuthorize("hasAuthority('BOOKING_CHECKIN')")
+    @PreAuthorize("hasAuthority('ROLE_RECEPTIONIST')")
     public RoomBookingResponse registerResidence(String id, ResidenceRegistrationRequest request) {
         RoomBookings booking = getBooking(id);
         RoomBookingDetails detail = getRequiredPrimaryDetail(id);
@@ -262,7 +262,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
 
     @Transactional
     @Override
-    @PreAuthorize("hasAuthority('BOOKING_CHECKIN')")
+    @PreAuthorize("hasAuthority('ROLE_RECEPTIONIST')")
     public RoomBookingResponse checkIn(String id) {
         RoomBookings booking = getBooking(id);
         RoomBookingDetails detail = getRequiredPrimaryDetail(id);
@@ -296,12 +296,13 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail checked in", actor, now);
         logBookingEdit(detail, "checkin_reality", oldCheckinReality, detail.getCheckinReality(), "Actual check-in time updated", actor, now);
 
+        bookingEventPublisher.publish("BOOKING_CHECKED_IN", booking, detail, actor);
         return map(booking, detail);
     }
 
     @Transactional
     @Override
-    @PreAuthorize("hasAuthority('BOOKING_CHECKOUT')")
+    @PreAuthorize("hasAuthority('ROLE_RECEPTIONIST')")
     public RoomBookingResponse checkOut(String id) {
         RoomBookings booking = getBooking(id);
         RoomBookingDetails detail = getRequiredPrimaryDetail(id);
@@ -332,6 +333,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail checked out", actor, now);
         logBookingEdit(detail, "checkout_reality", oldCheckoutReality, detail.getCheckoutReality(), "Actual check-out time updated", actor, now);
 
+        bookingEventPublisher.publish("BOOKING_CHECKED_OUT", booking, detail, actor);
         return map(booking, detail);
     }
 
@@ -389,6 +391,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         logBookingEdit(detail, "discount_amount", oldDiscountAmount, booking.getDiscountAmount(), "Discount amount updated", actor, now);
         logBookingEdit(detail, "refund_status", oldRefundStatus, booking.getRefundStatus(), "Refund status updated", actor, now);
         logBookingEdit(detail, "refund_amount", oldRefundAmount, booking.getRefundAmount(), "Refund amount updated", actor, now);
+        bookingEventPublisher.publish("BOOKING_TOTALS_UPDATED", booking, detail, actor);
         return map(booking, detail);
     }
 
@@ -439,6 +442,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         logBookingEdit(detail, "checkin", oldCheckin, detail.getCheckin(), "Booking check-in date changed", actor, now);
         logBookingEdit(detail, "checkout", oldCheckout, detail.getCheckout(), "Booking check-out date changed", actor, now);
 
+        bookingEventPublisher.publish("BOOKING_DATES_CHANGED", booking, detail, actor);
         return map(booking, detail);
     }
 
@@ -469,6 +473,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
             booking.setModifiedBy(actor);
             booking = roomBookingsRepository.save(booking);
             logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking cancellation requested", actor, now);
+            bookingEventPublisher.publish("BOOKING_CANCEL_REQUESTED", booking, detail, actor);
             return map(booking, detail);
         }
 
@@ -485,12 +490,13 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking cancelled", actor, now);
         logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail cancelled", actor, now);
 
+        bookingEventPublisher.publish("BOOKING_CANCELLED", booking, detail, actor);
         return map(booking, detail);
     }
 
     @Transactional
     @Override
-    @PreAuthorize("hasAuthority('BOOKING_CANCEL')")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public RoomBookingResponse approveCancellation(String id) {
         if (!canAccessAdminPortal()) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
@@ -522,6 +528,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking cancellation approved", actor, now);
         logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail cancelled after approval", actor, now);
 
+        bookingEventPublisher.publish("BOOKING_CANCELLATION_APPROVED", booking, detail, actor);
         return map(booking, detail);
     }
 
@@ -556,6 +563,7 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                         roomBookingDetailsRepository.save(detail);
                         logBookingEdit(detail, "booking_status", oldBookingStatus, booking.getStatus(), "Booking auto-cancelled because payment expired", "system-expired-payment", now);
                         logBookingEdit(detail, "detail_status", oldDetailStatus, detail.getStatus(), "Room booking detail auto-cancelled because payment expired", "system-expired-payment", now);
+                        bookingEventPublisher.publish("BOOKING_AUTO_CANCELLED", booking, detail, "system-expired-payment");
                     });
         }
     }
@@ -726,5 +734,73 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .refundStatus(booking.getRefundStatus())
                 .refundAmount(booking.getRefundAmount())
                 .build();
+    }
+
+    private RoomBookingResponse mapBookingRow(Object[] row) {
+        return RoomBookingResponse.builder()
+                .id(asString(row, 0))
+                .customerId(asString(row, 1))
+                .bookingType(parseEnum(BookingType.class, asString(row, 2)))
+                .status(parseEnum(RoomBookingStatus.class, asString(row, 3)))
+                .totalRoomPrice(asFloat(row, 4))
+                .totalServicePrice(asFloat(row, 5))
+                .totalExtraPrice(asFloat(row, 6))
+                .totalPrice(asFloat(row, 7))
+                .voucherCode(asString(row, 8))
+                .discountAmount(asFloat(row, 9))
+                .refundStatus(asString(row, 10))
+                .refundAmount(asFloat(row, 11))
+                .bookingDetailId(asString(row, 12))
+                .roomId(asString(row, 13))
+                .detailStatus(parseEnum(RoomBookingDetailStatus.class, asString(row, 14)))
+                .checkin(asLocalDateTime(row, 15))
+                .checkout(asLocalDateTime(row, 16))
+                .checkinReality(asLocalDateTime(row, 17))
+                .checkoutReality(asLocalDateTime(row, 18))
+                .roomPrice(asFloat(row, 19))
+                .deposit(asFloat(row, 20))
+                .build();
+    }
+
+    private String asString(Object[] row, int index) {
+        Object value = row.length > index ? row[index] : null;
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private float asFloat(Object[] row, int index) {
+        Object value = row.length > index ? row[index] : null;
+        if (value instanceof Number number) {
+            return number.floatValue();
+        }
+        if (value instanceof String text && StringUtils.hasText(text)) {
+            try {
+                return Float.parseFloat(text);
+            } catch (NumberFormatException ignored) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    private LocalDateTime asLocalDateTime(Object[] row, int index) {
+        Object value = row.length > index ? row[index] : null;
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime;
+        }
+        if (value instanceof Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
+        }
+        return null;
+    }
+
+    private <T extends Enum<T>> T parseEnum(Class<T> enumType, String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Enum.valueOf(enumType, value.trim());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 }

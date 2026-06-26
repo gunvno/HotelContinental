@@ -7,7 +7,12 @@ export type PermissionResponse = {
   description?: string;
 };
 
-export type StaffRoleName = "ADMIN" | "MANAGER" | "RECEPTIONIST" | "CUSTOMER_SUPPORT";
+export type StaffRoleName =
+  | "ADMIN"
+  | "MANAGER"
+  | "RECEPTIONIST"
+  | "CUSTOMER_SUPPORT"
+  | "HOUSEKEEPING";
 export type StaffAccountStatus = "ACTIVE" | "UNACTIVE";
 
 export type StaffPermissionResponse = {

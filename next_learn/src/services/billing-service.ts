@@ -3,6 +3,7 @@ import type { ApiResponse } from "@/types/api-types";
 
 export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "ONLINE_PAYMENT";
 export type PaymentRequestStatus = "PENDING" | "PAID" | "EXPIRED" | "FAILED";
+export type PaymentRequestPurpose = "ROOM_BOOKING" | "SERVICE_ORDER";
 
 export type CreatePaymentPayload = {
   roomBookingId: string;
@@ -14,6 +15,8 @@ export type CreatePaymentPayload = {
 export type PaymentHistoryResponse = {
   id: string;
   roomBookingId: string;
+  purpose?: PaymentRequestPurpose;
+  serviceOrderId?: string;
   paymentMethod: PaymentMethod;
   amount: number;
   paymentTime: string;
@@ -24,6 +27,8 @@ export type PaymentHistoryResponse = {
 export type PaymentRequestResponse = {
   id: string;
   roomBookingId: string;
+  purpose?: PaymentRequestPurpose;
+  serviceOrderId?: string;
   paymentMethod: PaymentMethod;
   amount: number;
   bankAccountNo: string;
@@ -81,6 +86,8 @@ export async function getMyPayments() {
 
 export async function createPaymentRequest(payload: {
   roomBookingId: string;
+  serviceOrderId?: string;
+  purpose?: PaymentRequestPurpose;
   amount: number;
 }) {
   const res = await http

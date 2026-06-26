@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { BedDouble, CheckCircle2, Hotel, Layers3, Plus, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Pagination } from "@/components/ui/pagination";
+import { ToastBridge } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import { getRoomBookings, type RoomBookingResponse } from "@/services/booking-service";
 import {
@@ -92,7 +93,7 @@ export default function RoomsPage() {
     } catch (loadError) {
       console.error(loadError);
       setError(
-        "KhÃ´ng táº£i Ä‘Æ°á»£c dá»¯ liá»‡u phÃ²ng. Kiá»ƒm tra gateway, room-service vÃ  token ADMIN.",
+        "Không tải được dữ liệu phòng. Kiểm tra gateway, room-service và token ADMIN.",
       );
     } finally {
       setIsLoading(false);
@@ -109,11 +110,11 @@ export default function RoomsPage() {
               Room inventory
             </p>
             <h2 className="mt-3 font-serif text-5xl leading-none font-bold tracking-tight lg:text-7xl">
-              Kho phÃ²ng
+              Kho phòng
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-[#eadbc4]">
-              Trang nÃ y chá»‰ quáº£n lÃ½ phÃ²ng váº­t lÃ½. Muá»‘n thÃªm phÃ²ng má»›i thÃ¬ chuyá»ƒn sang
-              trang táº¡o riÃªng Ä‘á»ƒ khÃ´ng lÃ m rá»‘i danh sÃ¡ch.
+              Trang này chỉ quản lý phòng vật lý. Muốn thêm phòng mới thì chuyển sang
+              trang tạo riêng để không làm rối danh sách.
             </p>
           </div>
           <Button
@@ -123,7 +124,7 @@ export default function RoomsPage() {
             className="border-white/15 bg-white/10 text-white hover:bg-white/15"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
-            LÃ m má»›i
+            Làm mới
           </Button>
         </div>
       </section>
@@ -131,22 +132,22 @@ export default function RoomsPage() {
       <section className="grid gap-4 md:grid-cols-4">
         <MetricCard
           icon={<Hotel className="h-5 w-5" />}
-          label="TÃ²a nhÃ "
+          label="Tòa nhà"
           value={String(buildings.length)}
         />
         <MetricCard
           icon={<Layers3 className="h-5 w-5" />}
-          label="Táº§ng"
+          label="Tầng"
           value={String(floors.length)}
         />
         <MetricCard
           icon={<CheckCircle2 className="h-5 w-5" />}
-          label="Sáºµn sÃ ng bÃ¡n"
+          label="Sẵn sàng bán"
           value={String(availableRooms)}
         />
         <MetricCard
           icon={<BedDouble className="h-5 w-5" />}
-          label="Tá»•ng phÃ²ng"
+          label="Tổng phòng"
           value={String(totalRooms)}
         />
       </section>
@@ -203,7 +204,7 @@ function RoomTableView({
   if (isLoading) {
     return (
       <div className="rounded-[1.75rem] border border-[#decdb9] bg-white/72 p-10 text-center font-bold text-[#75695d]">
-        Äang táº£i danh sÃ¡ch phÃ²ng...
+        Đang tải danh sách phòng...
       </div>
     );
   }
@@ -213,21 +214,21 @@ function RoomTableView({
       <div className="flex flex-col gap-3 border-b border-[#eadfcd] px-6 py-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-black tracking-[0.28em] text-[#9b5c24] uppercase">
-            Danh sÃ¡ch phÃ²ng
+            Danh sách phòng
           </p>
           <h3 className="mt-2 font-serif text-3xl font-bold text-[#211a14]">
-            PhÃ²ng váº­t lÃ½
+            Phòng vật lý
           </h3>
           <p className="mt-1 text-sm text-[#75695d]">
-            Hiá»ƒn thá»‹ {rooms.length} / {total} phÃ²ng. Báº¥m vÃ o má»™t dÃ²ng Ä‘á»ƒ xem chi tiáº¿t hoáº·c
-            sá»­a áº£nh.
+            Hiển thị {rooms.length} / {total} phòng. Bấm vào một dòng để xem chi tiết hoặc
+            sửa ảnh.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {canCreate ? (
             <Button type="button" onClick={onCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              ThÃªm phÃ²ng
+              Thêm phòng
             </Button>
           ) : null}
           <div className="rounded-full border border-[#eadfcd] bg-[#fffaf2] px-4 py-2 text-sm font-black text-[#9b5c24]">
@@ -240,14 +241,14 @@ function RoomTableView({
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#eadfcd] text-xs tracking-[0.18em] text-[#9b8c7d] uppercase">
-              <th className="px-6 py-4 font-black">PhÃ²ng</th>
-              <th className="px-4 py-4 font-black">TÃ²a nhÃ </th>
-              <th className="px-4 py-4 font-black">Táº§ng</th>
-              <th className="px-4 py-4 font-black">Loáº¡i phÃ²ng</th>
-              <th className="px-4 py-4 font-black">Diá»‡n tÃ­ch</th>
-              <th className="px-4 py-4 font-black">GiÃ¡ ngÃ y</th>
-              <th className="px-4 py-4 font-black">GiÃ¡ giá»</th>
-              <th className="px-4 py-4 font-black">Lá»‹ch Ä‘áº·t</th>
+              <th className="px-6 py-4 font-black">Phòng</th>
+              <th className="px-4 py-4 font-black">Tòa nhà</th>
+              <th className="px-4 py-4 font-black">Tầng</th>
+              <th className="px-4 py-4 font-black">Loại phòng</th>
+              <th className="px-4 py-4 font-black">Diện tích</th>
+              <th className="px-4 py-4 font-black">Giá ngày</th>
+              <th className="px-4 py-4 font-black">Giá giờ</th>
+              <th className="px-4 py-4 font-black">Lịch đặt</th>
             </tr>
           </thead>
           <tbody>
@@ -257,7 +258,7 @@ function RoomTableView({
                   colSpan={8}
                   className="px-6 py-12 text-center text-sm font-bold text-[#75695d]"
                 >
-                  ChÆ°a cÃ³ phÃ²ng. Báº¥m â€œThÃªm phÃ²ngâ€ Ä‘á»ƒ táº¡o phÃ²ng váº­t lÃ½ Ä‘áº§u tiÃªn.
+                  Chưa có phòng. Bấm “Thêm phòng” để tạo phòng vật lý đầu tiên.
                 </td>
               </tr>
             ) : (
@@ -290,7 +291,7 @@ function RoomTableView({
                         <div>
                           <p className="font-black text-[#211a14]">{room.name}</p>
                           <p className="mt-1 line-clamp-1 max-w-[220px] text-xs text-[#75695d]">
-                            {room.description || "ChÆ°a cÃ³ mÃ´ táº£"}
+                            {room.description || "Chưa có mô tả"}
                           </p>
                         </div>
                       </div>
@@ -300,7 +301,7 @@ function RoomTableView({
                     </td>
                     <td className="px-4 py-4 text-[#4d4035]">{location.floorName}</td>
                     <td className="px-4 py-4 font-semibold text-[#211a14]">
-                      {room.roomTypes?.name || "ChÆ°a gÃ¡n"}
+                      {room.roomTypes?.name || "Chưa gán"}
                     </td>
                     <td className="px-4 py-4 text-[#4d4035]">{room.roomSize || "-"}</td>
                     <td className="px-4 py-4 font-black text-[#9b5c24]">
@@ -331,7 +332,7 @@ function RoomTableView({
         page={page}
         pageSize={ROOM_PAGE_SIZE}
         total={total}
-        itemLabel="phÃ²ng"
+        itemLabel="phòng"
         onPageChange={onPageChange}
       />
     </section>
@@ -347,8 +348,8 @@ function resolveRoomLocationParts(
   const building = buildings.find((item) => item.id === floor?.buildingId);
 
   return {
-    buildingName: building?.name || "ChÆ°a gÃ¡n",
-    floorName: floor ? `Táº§ng ${floor.floorNumber}` : "ChÆ°a gÃ¡n",
+    buildingName: building?.name || "Chưa gán",
+    floorName: floor ? `Tầng ${floor.floorNumber}` : "Chưa gán",
   };
 }
 
@@ -367,8 +368,8 @@ function buildRoomSchedules(
             room.id,
             {
               kind: "MAINTENANCE",
-              label: "Báº£o trÃ¬",
-              description: "PhÃ²ng Ä‘ang báº£o trÃ¬, khÃ´ng má»Ÿ bÃ¡n theo má»i khung giá».",
+              label: "Bảo trì",
+              description: "Phòng đang bảo trì, không mở bán theo mọi khung giờ.",
             },
           ];
         }
@@ -396,8 +397,8 @@ function buildRoomSchedules(
             room.id,
             {
               kind: "BUSY_NOW",
-              label: "Äang cÃ³ khÃ¡ch",
-              description: `Äáº¿n ${formatDateTime(current.booking.checkout)}.`,
+              label: "Đang có khách",
+              description: `Đến ${formatDateTime(current.booking.checkout)}.`,
             },
           ];
         }
@@ -408,7 +409,7 @@ function buildRoomSchedules(
             room.id,
             {
               kind: "UPCOMING",
-              label: "CÃ³ lá»‹ch sáº¯p tá»›i",
+              label: "Có lịch sắp tới",
               description: `${formatDateTime(next.booking.checkin)} -> ${formatDateTime(
                 next.booking.checkout,
               )}.`,
@@ -424,8 +425,8 @@ function buildRoomSchedules(
 function freeSchedule(): RoomSchedule {
   return {
     kind: "FREE",
-    label: "Trá»‘ng theo lá»‹ch",
-    description: "KhÃ´ng cÃ³ booking cháº·n á»Ÿ hiá»‡n táº¡i hoáº·c tÆ°Æ¡ng lai gáº§n.",
+    label: "Trống theo lịch",
+    description: "Không có booking chặn ở hiện tại hoặc tương lai gần.",
   };
 }
 
@@ -456,11 +457,8 @@ function getScheduleClassName(kind: RoomScheduleKind) {
 }
 
 function Alert({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
-      {children}
-    </div>
-  );
+  const message = typeof children === "string" ? children : String(children ?? "");
+  return <ToastBridge error={message} />;
 }
 
 function formatDateTime(value?: string) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, ReceiptText, Settings, UserRound } from "lucide-react";
+import { ArrowRight, ReceiptText, Settings, UserRound, Utensils } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -215,6 +215,12 @@ function AccountSidebar() {
           icon={<ReceiptText className="h-[18px] w-[18px]" />}
         >
           Lịch sử hóa đơn
+        </AccountLink>
+        <AccountLink
+          href="/account/services"
+          icon={<Utensils className="h-[18px] w-[18px]" />}
+        >
+          Gọi thêm dịch vụ
         </AccountLink>
         <button
           type="button"

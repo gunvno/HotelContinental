@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { ToastBridge } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import {
   createRoomRateRule,
@@ -237,7 +238,7 @@ export default function AdminRoomRateRulesPage() {
                     setForm((prev) => ({ ...prev, roomTypeId: value }))
                   }
                   options={[
-                    { value: "", label: "Táº¥t cáº£ loáº¡i phÃ²ng" },
+                    { value: "", label: "Tất cả loại phòng" },
                     ...roomTypes.map((roomType) => ({
                       value: roomType.id,
                       label: roomType.name,
@@ -367,9 +368,7 @@ export default function AdminRoomRateRulesPage() {
             </div>
 
             {message ? (
-              <p className="mt-4 rounded-xl bg-[#fff6df] p-3 text-sm text-[#8a5724]">
-                {message}
-              </p>
+              <ToastBridge success={message} onClearSuccess={() => setMessage(null)} />
             ) : null}
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
@@ -406,7 +405,7 @@ export default function AdminRoomRateRulesPage() {
                   <th className="pb-3">Loại phòng</th>
                   <th className="pb-3">Khoảng ngày</th>
                   <th className="pb-3">Ngày áp dụng</th>
-                  <th className="pb-3">Hệ số</th>
+                  <th className="pb-3">H? s?</th>
                   <th className="pb-3">Trạng thái</th>
                   <th className="pb-3 text-right">Hành động</th>
                 </tr>

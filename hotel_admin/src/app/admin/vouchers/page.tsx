@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { DateTimePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { ToastBridge } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import {
   createVoucher,
@@ -215,9 +216,7 @@ export default function AdminVouchersPage() {
             </div>
 
             {message ? (
-              <p className="mt-4 rounded-xl bg-[#fff6df] p-3 text-sm text-[#8a5724]">
-                {message}
-              </p>
+              <ToastBridge success={message} onClearSuccess={() => setMessage(null)} />
             ) : null}
 
             <button

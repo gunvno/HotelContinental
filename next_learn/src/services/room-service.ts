@@ -42,6 +42,7 @@ export type ServiceResponse = {
   description?: string;
   price?: number;
   status?: string;
+  orderMode?: "CUSTOMER_INSTANT" | "CUSTOMER_REQUEST" | "STAFF_ONLY";
   deleted?: boolean;
 };
 

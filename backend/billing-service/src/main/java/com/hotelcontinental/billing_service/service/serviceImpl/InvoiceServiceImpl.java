@@ -2,11 +2,13 @@ package com.hotelcontinental.billing_service.service.serviceImpl;
 
 import com.hotelcontinental.billing_service.dto.response.InvoiceResponse;
 import com.hotelcontinental.billing_service.dto.response.RoomBookingSnapshotResponse;
+import com.hotelcontinental.billing_service.entity.BookingBillingSnapshot;
 import com.hotelcontinental.billing_service.entity.PaymentHistory;
 import com.hotelcontinental.billing_service.entity.PaymentRequest;
 import com.hotelcontinental.billing_service.enums.PaymentRequestStatus;
 import com.hotelcontinental.billing_service.exception.AppException;
 import com.hotelcontinental.billing_service.exception.ErrorCode;
+import com.hotelcontinental.billing_service.repository.BookingBillingSnapshotRepository;
 import com.hotelcontinental.billing_service.repository.PaymentHistoryRepository;
 import com.hotelcontinental.billing_service.repository.PaymentRequestRepository;
 import com.hotelcontinental.billing_service.service.interfaces.InvoiceService;
@@ -22,6 +24,7 @@ import java.time.LocalDateTime;
 public class InvoiceServiceImpl implements InvoiceService {
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final PaymentRequestRepository paymentRequestRepository;
+    private final BookingBillingSnapshotRepository bookingBillingSnapshotRepository;
     private final ExternalServiceClient externalServiceClient;
 
     @Override
@@ -30,7 +33,7 @@ public class InvoiceServiceImpl implements InvoiceService {
             throw new AppException(ErrorCode.INVALID_PAYMENT_REQUEST);
         }
 
-        RoomBookingSnapshotResponse booking = externalServiceClient.getBooking(roomBookingId.trim());
+        RoomBookingSnapshotResponse booking = getBookingSnapshot(roomBookingId.trim());
         return paymentHistoryRepository
                 .findFirstByRoomBookingIdAndDeletedFalseOrderByCreatedTimeDesc(booking.getId())
                 .map(payment -> buildFromPaymentHistory(booking, payment))
@@ -95,5 +98,30 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .paymentTime(paymentTime)
                 .issuedTime(LocalDateTime.now())
                 .build();
+    }
+
+    private RoomBookingSnapshotResponse getBookingSnapshot(String roomBookingId) {
+        return bookingBillingSnapshotRepository.findById(roomBookingId)
+                .map(this::mapSnapshot)
+                .orElseGet(() -> externalServiceClient.getBooking(roomBookingId));
+    }
+
+    private RoomBookingSnapshotResponse mapSnapshot(BookingBillingSnapshot snapshot) {
+        RoomBookingSnapshotResponse response = new RoomBookingSnapshotResponse();
+        response.setId(snapshot.getRoomBookingId());
+        response.setBookingDetailId(snapshot.getRoomBookingDetailId());
+        response.setCustomerId(snapshot.getCustomerId());
+        response.setRoomId(snapshot.getRoomId());
+        response.setStatus(snapshot.getStatus());
+        response.setDetailStatus(snapshot.getDetailStatus());
+        response.setTotalRoomPrice(snapshot.getTotalRoomPrice());
+        response.setTotalServicePrice(snapshot.getTotalServicePrice());
+        response.setTotalExtraPrice(snapshot.getTotalExtraPrice());
+        response.setTotalPrice(snapshot.getTotalPrice());
+        response.setVoucherCode(snapshot.getVoucherCode());
+        response.setDiscountAmount(snapshot.getDiscountAmount());
+        response.setRefundStatus(snapshot.getRefundStatus());
+        response.setRefundAmount(snapshot.getRefundAmount());
+        return response;
     }
 }

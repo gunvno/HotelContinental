@@ -16,6 +16,7 @@ public enum ErrorCode {
 
     ROOM_NOT_FOUND(2001, "Room not found", HttpStatus.NOT_FOUND),
     ROOM_ALREADY_EXISTS(2002, "Room already exists", HttpStatus.BAD_REQUEST),
+    INVALID_ROOM_REQUEST(2005, "Invalid room request", HttpStatus.BAD_REQUEST),
     BUILDING_NOT_FOUND(2003, "Building not found", HttpStatus.NOT_FOUND),
     BUILDING_ALREADY_EXISTS(2004, "Building already exists", HttpStatus.BAD_REQUEST)
 

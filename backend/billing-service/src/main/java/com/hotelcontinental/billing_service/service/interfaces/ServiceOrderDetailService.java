@@ -1,6 +1,7 @@
 package com.hotelcontinental.billing_service.service.interfaces;
 
 import com.hotelcontinental.billing_service.dto.request.ServiceOrderDetailCreationRequest;
+import com.hotelcontinental.billing_service.dto.request.ServiceOrderCheckoutPaymentRequest;
 import com.hotelcontinental.billing_service.dto.response.ServiceOrderDetailResponse;
 
 import java.util.List;
@@ -16,7 +17,18 @@ public interface ServiceOrderDetailService {
 
     List<ServiceOrderDetailResponse> getForCurrentCustomer(String roomBookingId);
 
+    ServiceOrderDetailResponse assign(String id);
+
     ServiceOrderDetailResponse markServed(String id);
+
+    ServiceOrderDetailResponse approve(String id);
+
+    ServiceOrderDetailResponse reject(String id);
+
+    List<ServiceOrderDetailResponse> markBookingServiceOrdersPaidAtCheckout(
+            String roomBookingId,
+            ServiceOrderCheckoutPaymentRequest request
+    );
 
     void delete(String id);
 }

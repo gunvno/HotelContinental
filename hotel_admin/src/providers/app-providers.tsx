@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { ToastProvider } from "@/components/ui/toast";
 
 export type AppProvidersProps = {
   children: ReactNode;
@@ -10,5 +11,9 @@ export type AppProvidersProps = {
 
 // Nơi tập trung các provider dùng chung để dễ mở rộng.
 export function AppProviders({ children }: AppProvidersProps) {
-  return <AuthGuard>{children}</AuthGuard>;
+  return (
+    <ToastProvider>
+      <AuthGuard>{children}</AuthGuard>
+    </ToastProvider>
+  );
 }

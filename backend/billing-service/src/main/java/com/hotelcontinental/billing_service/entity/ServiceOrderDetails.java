@@ -1,6 +1,8 @@
 package com.hotelcontinental.billing_service.entity;
 
 import com.hotelcontinental.billing_service.enums.ServiceOrderDetailStatus;
+import com.hotelcontinental.billing_service.enums.ServiceOrderApprovalStatus;
+import com.hotelcontinental.billing_service.enums.ServiceOrderPaymentStatus;
 import com.hotelcontinental.billing_service.enums.ServiceOrderSource;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -64,11 +66,37 @@ public class ServiceOrderDetails {
     ServiceOrderDetailStatus status;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status", length = 30)
+    ServiceOrderApprovalStatus approvalStatus = ServiceOrderApprovalStatus.NOT_REQUIRED;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "source")
     ServiceOrderSource source;
 
     @Column(name = "chargeable")
     Boolean chargeable = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", length = 30)
+    ServiceOrderPaymentStatus paymentStatus = ServiceOrderPaymentStatus.POST_TO_ROOM;
+
+    @Column(name = "payment_request_id")
+    String paymentRequestId;
+
+    @Column(name = "payment_time")
+    LocalDateTime paymentTime;
+
+    @Column(name = "paid_by", length = 100)
+    String paidBy;
+
+    @Column(name = "assigned_to", length = 100)
+    String assignedTo;
+
+    @Column(name = "assigned_by", length = 100)
+    String assignedBy;
+
+    @Column(name = "assigned_time")
+    LocalDateTime assignedTime;
 
     @Column(name = "served_time")
     LocalDateTime servedTime;

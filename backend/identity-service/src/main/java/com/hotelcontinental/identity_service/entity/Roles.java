@@ -36,7 +36,7 @@ public class Roles {
     String id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "name")
+    @Column(name = "name", length = 50, nullable = false)
     Role name;
 
     @Column(name = "created_time")

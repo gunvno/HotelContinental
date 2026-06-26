@@ -1,6 +1,8 @@
 package com.hotelcontinental.room_service.controller;
 
 import com.hotelcontinental.room_service.dto.ApiResponse;
+import com.hotelcontinental.room_service.dto.request.room.HousekeepingAssignRequest;
+import com.hotelcontinental.room_service.dto.request.room.HousekeepingStatusUpdateRequest;
 import com.hotelcontinental.room_service.dto.request.room.RoomCreationRequest;
 import com.hotelcontinental.room_service.dto.response.room.RoomForCustomerResponse;
 import com.hotelcontinental.room_service.dto.response.room.RoomImageResponse;
@@ -13,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -54,6 +57,33 @@ public class RoomController {
     public ApiResponse<RoomResponse> updateRoom(@PathVariable String id, @RequestBody RoomCreationRequest request) {
         return ApiResponse.<RoomResponse>builder()
                 .result(roomService.updateRoom(id, request))
+                .build();
+    }
+
+    @PatchMapping("/{id}/housekeeping")
+    public ApiResponse<RoomResponse> updateHousekeepingStatus(
+            @PathVariable String id,
+            @RequestBody HousekeepingStatusUpdateRequest request
+    ) {
+        return ApiResponse.<RoomResponse>builder()
+                .result(roomService.updateHousekeepingStatus(id, request))
+                .build();
+    }
+
+    @PostMapping("/{id}/housekeeping/assign")
+    public ApiResponse<RoomResponse> assignHousekeepingTask(
+            @PathVariable String id,
+            @RequestBody(required = false) HousekeepingAssignRequest request
+    ) {
+        return ApiResponse.<RoomResponse>builder()
+                .result(roomService.assignHousekeepingTask(id, request))
+                .build();
+    }
+
+    @PostMapping("/{id}/housekeeping/complete")
+    public ApiResponse<RoomResponse> completeHousekeepingTask(@PathVariable String id) {
+        return ApiResponse.<RoomResponse>builder()
+                .result(roomService.completeHousekeepingTask(id))
                 .build();
     }
 

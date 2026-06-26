@@ -16,14 +16,11 @@ import com.hotelcontinental.room_service.exception.ErrorCode;
 import com.hotelcontinental.room_service.repository.BuildingRepository;
 import com.hotelcontinental.room_service.repository.FloorRepository;
 import com.hotelcontinental.room_service.repository.RoomRepository;
-import com.hotelcontinental.room_service.repository.httpclient.IdentityClient;
+import com.hotelcontinental.room_service.security.CurrentUserProvider;
 import com.hotelcontinental.room_service.service.interfaces.BuildingService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -38,7 +35,7 @@ public class BuildingServiceImpl implements BuildingService {
     private final BuildingRepository buildingRepository;
     private final FloorRepository floorRepository;
     private final RoomRepository roomRepository;
-    private final IdentityClient identityClient;
+    private final CurrentUserProvider currentUserProvider;
 
     @PreAuthorize("hasAuthority('BUILDING_SETUP')")
     @Transactional
@@ -142,13 +139,7 @@ public class BuildingServiceImpl implements BuildingService {
     }
 
     private String getCurrentUsername() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-        JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
-        String accessToken = jwtAuthenticationToken.getToken().getTokenValue();
-        return identityClient.getUserInfo(accessToken).getResult().getPreferred_username();
+        return currentUserProvider.getUsername();
     }
 
     private String formatRoomNumber(String pattern, int floorNumber, int roomIndex) {

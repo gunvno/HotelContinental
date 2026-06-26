@@ -1,6 +1,8 @@
 package com.hotelcontinental.billing_service.dto.response;
 
 import com.hotelcontinental.billing_service.enums.ServiceOrderDetailStatus;
+import com.hotelcontinental.billing_service.enums.ServiceOrderApprovalStatus;
+import com.hotelcontinental.billing_service.enums.ServiceOrderPaymentStatus;
 import com.hotelcontinental.billing_service.enums.ServiceOrderSource;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -26,8 +28,16 @@ public class ServiceOrderDetailResponse {
     float totalPrice;
     String description;
     ServiceOrderDetailStatus status;
+    ServiceOrderApprovalStatus approvalStatus;
     ServiceOrderSource source;
     Boolean chargeable;
+    ServiceOrderPaymentStatus paymentStatus;
+    String paymentRequestId;
+    LocalDateTime paymentTime;
+    String paidBy;
+    String assignedTo;
+    String assignedBy;
+    LocalDateTime assignedTime;
     LocalDateTime servedTime;
     String servedBy;
     LocalDateTime createdTime;

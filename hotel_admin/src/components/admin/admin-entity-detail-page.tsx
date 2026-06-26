@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { ToastBridge } from "@/components/ui/toast";
 import {
   type AmenityResponse,
   type AmenityRoomResponse,
@@ -846,15 +847,6 @@ function Alert({
   tone: "success" | "error";
   children: React.ReactNode;
 }) {
-  return (
-    <div
-      className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
-        tone === "success"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : "border-red-200 bg-red-50 text-red-700"
-      }`}
-    >
-      {children}
-    </div>
-  );
+  const message = typeof children === "string" ? children : String(children ?? "");
+  return tone === "success" ? <ToastBridge success={message} /> : <ToastBridge error={message} />;
 }

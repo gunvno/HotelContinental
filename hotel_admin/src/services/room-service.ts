@@ -90,6 +90,13 @@ export type RoomTypeServiceResponse = {
 };
 
 // ============= ROOMS =============
+export type HousekeepingStatus =
+  | "CLEAN"
+  | "DIRTY"
+  | "CLEANING"
+  | "INSPECTION"
+  | "MAINTENANCE";
+
 export type CreateRoomPayload = {
   roomTypeId?: string;
   floorId?: string;
@@ -103,6 +110,8 @@ export type CreateRoomPayload = {
   description?: string;
   roomSize: string;
   status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "MAINTENANCE";
+  housekeepingStatus?: HousekeepingStatus;
+  housekeepingNote?: string;
 };
 
 export type RoomResponse = {
@@ -115,6 +124,15 @@ export type RoomResponse = {
   description?: string;
   roomSize: string;
   status: string;
+  housekeepingStatus?: HousekeepingStatus;
+  housekeepingNote?: string;
+  housekeepingUpdatedTime?: string;
+  housekeepingUpdatedBy?: string;
+  housekeepingAssignedTo?: string;
+  housekeepingAssignedBy?: string;
+  housekeepingAssignedTime?: string;
+  housekeepingCompletedBy?: string;
+  housekeepingCompletedTime?: string;
   createdBy?: string;
   roomTypeId?: string;
   roomTypes?: RoomTypeResponse | null;
@@ -129,6 +147,7 @@ export type ServiceResponse = {
   price?: number;
   image?: string;
   status?: "AVAILABLE" | "UNAVAILABLE" | "MAINTENANCE";
+  orderMode?: "CUSTOMER_INSTANT" | "CUSTOMER_REQUEST" | "STAFF_ONLY";
   deleted?: boolean;
 };
 
@@ -138,6 +157,7 @@ export type CatalogServicePayload = {
   price: number;
   image?: string;
   status?: "AVAILABLE" | "UNAVAILABLE" | "MAINTENANCE";
+  orderMode?: "CUSTOMER_INSTANT" | "CUSTOMER_REQUEST" | "STAFF_ONLY";
   deleted?: boolean;
 };
 
@@ -595,6 +615,35 @@ export async function updateRoom(
   };
   const res = await http
     .put(`room/room/${id}`, { json })
+    .json<ApiResponse<RoomResponse>>();
+  return enrichRoom((res.result ?? res.content) as RoomResponse);
+}
+
+export async function updateRoomHousekeepingStatus(
+  id: string,
+  payload: { housekeepingStatus: HousekeepingStatus; note?: string },
+): Promise<RoomResponse> {
+  const res = await http
+    .patch(`room/room/${id}/housekeeping`, { json: payload })
+    .json<ApiResponse<RoomResponse>>();
+  return enrichRoom((res.result ?? res.content) as RoomResponse);
+}
+
+export async function assignRoomHousekeepingTask(
+  id: string,
+  assigneeUsername?: string,
+): Promise<RoomResponse> {
+  const res = await http
+    .post(`room/room/${id}/housekeeping/assign`, {
+      json: assigneeUsername ? { assigneeUsername } : {},
+    })
+    .json<ApiResponse<RoomResponse>>();
+  return enrichRoom((res.result ?? res.content) as RoomResponse);
+}
+
+export async function completeRoomHousekeepingTask(id: string): Promise<RoomResponse> {
+  const res = await http
+    .post(`room/room/${id}/housekeeping/complete`)
     .json<ApiResponse<RoomResponse>>();
   return enrichRoom((res.result ?? res.content) as RoomResponse);
 }

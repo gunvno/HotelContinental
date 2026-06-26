@@ -2,6 +2,7 @@ package com.hotelcontinental.billing_service.controller;
 
 import com.hotelcontinental.billing_service.dto.ApiResponse;
 import com.hotelcontinental.billing_service.dto.request.ServiceOrderDetailCreationRequest;
+import com.hotelcontinental.billing_service.dto.request.ServiceOrderCheckoutPaymentRequest;
 import com.hotelcontinental.billing_service.dto.response.ServiceOrderDetailResponse;
 import com.hotelcontinental.billing_service.service.interfaces.ServiceOrderDetailService;
 import lombok.RequiredArgsConstructor;
@@ -65,6 +66,37 @@ public class ServiceOrderDetailController {
     public ApiResponse<ServiceOrderDetailResponse> markServed(@PathVariable String id) {
         return ApiResponse.<ServiceOrderDetailResponse>builder()
                 .result(serviceOrderDetailService.markServed(id))
+                .build();
+    }
+
+    @PostMapping("/{id}/assign")
+    public ApiResponse<ServiceOrderDetailResponse> assign(@PathVariable String id) {
+        return ApiResponse.<ServiceOrderDetailResponse>builder()
+                .result(serviceOrderDetailService.assign(id))
+                .build();
+    }
+
+    @PostMapping("/{id}/approve")
+    public ApiResponse<ServiceOrderDetailResponse> approve(@PathVariable String id) {
+        return ApiResponse.<ServiceOrderDetailResponse>builder()
+                .result(serviceOrderDetailService.approve(id))
+                .build();
+    }
+
+    @PostMapping("/{id}/reject")
+    public ApiResponse<ServiceOrderDetailResponse> reject(@PathVariable String id) {
+        return ApiResponse.<ServiceOrderDetailResponse>builder()
+                .result(serviceOrderDetailService.reject(id))
+                .build();
+    }
+
+    @PostMapping("/bookings/{roomBookingId}/checkout-payment")
+    public ApiResponse<List<ServiceOrderDetailResponse>> markBookingServiceOrdersPaidAtCheckout(
+            @PathVariable String roomBookingId,
+            @RequestBody ServiceOrderCheckoutPaymentRequest request
+    ) {
+        return ApiResponse.<List<ServiceOrderDetailResponse>>builder()
+                .result(serviceOrderDetailService.markBookingServiceOrdersPaidAtCheckout(roomBookingId, request))
                 .build();
     }
 

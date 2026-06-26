@@ -23,6 +23,7 @@ function PaymentQrContent() {
 
   const [paymentRequest, setPaymentRequest] = useState<PaymentRequestResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checkingPayment, setCheckingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const data = useMemo(
@@ -66,6 +67,81 @@ function PaymentQrContent() {
     };
   }, [data.paymentRequestId]);
 
+  async function redirectAfterPaid(latestRequest: PaymentRequestResponse) {
+    if (latestRequest.purpose === "SERVICE_ORDER") {
+      router.push(
+        `/payment/success?${new URLSearchParams({
+          bookingId: data.bookingId,
+          paymentId: latestRequest.providerTransactionId || latestRequest.id,
+          roomId: data.roomId,
+          roomTitle: data.roomTitle,
+          checkIn: data.checkIn,
+          checkOut: data.checkOut,
+          guests: String(data.guests),
+          total: String(latestRequest.amount),
+          purpose: "SERVICE_ORDER",
+        }).toString()}`,
+      );
+      return;
+    }
+
+    if (data.voucherCode && !voucherConsumedRef.current) {
+      voucherConsumedRef.current = true;
+      await consumeVoucher(data.voucherCode, data.bookingId);
+    }
+
+    let paymentId = latestRequest.providerTransactionId || latestRequest.id;
+    try {
+      const payment = await getLatestPaymentByBooking(data.bookingId);
+      paymentId = payment.id;
+    } catch {
+      // Payment request is already paid; allow the customer to leave the waiting screen.
+    }
+
+    router.push(
+      `/payment/success?${new URLSearchParams({
+        bookingId: data.bookingId,
+        paymentId,
+        roomId: data.roomId,
+        roomTitle: data.roomTitle,
+        checkIn: data.checkIn,
+        checkOut: data.checkOut,
+        guests: String(data.guests),
+        total: String(latestRequest.amount),
+      }).toString()}`,
+    );
+  }
+
+  async function checkPaymentStatus(showPendingMessage = false) {
+    if (!paymentRequest) return;
+
+    setCheckingPayment(true);
+    try {
+      const latestRequest = await getPaymentRequest(paymentRequest.id);
+      setPaymentRequest(latestRequest);
+
+      if (latestRequest.status === "PAID") {
+        await redirectAfterPaid(latestRequest);
+        return;
+      }
+
+      if (latestRequest.status === "EXPIRED" || latestRequest.status === "FAILED") {
+        setError("Mã thanh toán đã hết hạn hoặc thất bại. Vui lòng tạo lại yêu cầu thanh toán.");
+        return;
+      }
+
+      if (showPendingMessage) {
+        setError("Chưa nhận được xác nhận từ PayOS. Nếu bạn vừa chuyển khoản, vui lòng đợi thêm vài giây rồi kiểm tra lại.");
+      }
+    } catch {
+      if (showPendingMessage) {
+        setError("Chưa kiểm tra được trạng thái thanh toán. Vui lòng thử lại sau.");
+      }
+    } finally {
+      setCheckingPayment(false);
+    }
+  }
+
   useEffect(() => {
     if (!paymentRequest || !data.bookingId) return;
 
@@ -77,31 +153,7 @@ function PaymentQrContent() {
         setPaymentRequest(latestRequest);
 
         if (latestRequest.status === "PAID") {
-          if (data.voucherCode && !voucherConsumedRef.current) {
-            voucherConsumedRef.current = true;
-            await consumeVoucher(data.voucherCode, data.bookingId);
-          }
-
-          let paymentId = latestRequest.providerTransactionId || latestRequest.id;
-          try {
-            const payment = await getLatestPaymentByBooking(data.bookingId);
-            paymentId = payment.id;
-          } catch {
-            // Payment request is already paid; allow the customer to leave the waiting screen.
-          }
-
-          router.push(
-            `/payment/success?${new URLSearchParams({
-              bookingId: data.bookingId,
-              paymentId,
-              roomId: data.roomId,
-              roomTitle: data.roomTitle,
-              checkIn: data.checkIn,
-              checkOut: data.checkOut,
-              guests: String(data.guests),
-              total: String(latestRequest.amount),
-            }).toString()}`,
-          );
+          await redirectAfterPaid(latestRequest);
         }
 
         if (latestRequest.status === "EXPIRED" || latestRequest.status === "FAILED") {
@@ -217,6 +269,15 @@ function PaymentQrContent() {
                       {error}
                     </p>
                   ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() => void checkPaymentStatus(true)}
+                    disabled={checkingPayment}
+                    className="bg-ring text-background inline-flex h-11 w-full items-center justify-center rounded-full px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {checkingPayment ? "Đang kiểm tra..." : "Tôi đã thanh toán"}
+                  </button>
                 </div>
               </div>
             )}

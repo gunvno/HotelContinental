@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { ToastBridge } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { login } from "@/services/auth-service";
 import { useAuthStore } from "@/store/auth-store";
@@ -158,9 +159,7 @@ export default function AdminLoginPage() {
         </div>
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-600">
-            {error}
-          </div>
+          <ToastBridge error={error} onClearError={() => setError(null)} />
         )}
 
         <Button type="submit" size="lg" disabled={loading} className="w-full">

@@ -1,6 +1,7 @@
 package com.hotelcontinental.catalog_service.entity;
 
 import com.hotelcontinental.catalog_service.enums.ServiceStatus;
+import com.hotelcontinental.catalog_service.enums.ServiceOrderMode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -54,6 +55,10 @@ public class Services {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     ServiceStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_mode", length = 40)
+    ServiceOrderMode orderMode = ServiceOrderMode.CUSTOMER_INSTANT;
 
     @Column(name = "created_time")
     LocalDateTime createdTime;

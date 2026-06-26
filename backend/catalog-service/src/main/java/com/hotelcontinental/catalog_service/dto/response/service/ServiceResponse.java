@@ -1,6 +1,7 @@
 package com.hotelcontinental.catalog_service.dto.response.service;
 
 import com.hotelcontinental.catalog_service.enums.ServiceStatus;
+import com.hotelcontinental.catalog_service.enums.ServiceOrderMode;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -18,6 +19,7 @@ public class ServiceResponse {
     float price;
     String image;
     ServiceStatus status;
+    ServiceOrderMode orderMode;
     Boolean deleted;
     LocalDateTime createdTime;
     String createdBy;

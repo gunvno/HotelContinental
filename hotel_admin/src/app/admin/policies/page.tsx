@@ -4,6 +4,7 @@ import { FileText, Plus, RefreshCcw, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
+import { ToastBridge } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import {
   createPolicy,
@@ -214,7 +215,7 @@ export default function AdminPoliciesPage() {
       </div>
 
       {message ? (
-        <p className="rounded-xl bg-[#fff6df] p-3 text-sm text-[#8a5724]">{message}</p>
+        <ToastBridge success={message} onClearSuccess={() => setMessage(null)} />
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[340px_1fr]">

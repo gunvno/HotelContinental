@@ -1,6 +1,7 @@
 package com.hotelcontinental.room_service.entity;
 
 import com.hotelcontinental.room_service.enums.RoomStatus;
+import com.hotelcontinental.room_service.enums.HousekeepingStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -44,6 +45,26 @@ public class Rooms {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     RoomStatus status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "housekeeping_status", nullable = false)
+    @Builder.Default
+    HousekeepingStatus housekeepingStatus = HousekeepingStatus.CLEAN;
+    @Column(name = "housekeeping_note", length = 500)
+    String housekeepingNote;
+    @Column(name = "housekeeping_updated_time")
+    LocalDateTime housekeepingUpdatedTime;
+    @Column(name = "housekeeping_updated_by", length = 100)
+    String housekeepingUpdatedBy;
+    @Column(name = "housekeeping_assigned_to", length = 100)
+    String housekeepingAssignedTo;
+    @Column(name = "housekeeping_assigned_by", length = 100)
+    String housekeepingAssignedBy;
+    @Column(name = "housekeeping_assigned_time")
+    LocalDateTime housekeepingAssignedTime;
+    @Column(name = "housekeeping_completed_by", length = 100)
+    String housekeepingCompletedBy;
+    @Column(name = "housekeeping_completed_time")
+    LocalDateTime housekeepingCompletedTime;
     @Column(name = "created_time")
     LocalDateTime createdTime;
     @Column(name = "created_by", length = 100)

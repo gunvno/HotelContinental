@@ -4,6 +4,7 @@ import com.hotelcontinental.catalog_service.dto.ApiResponse;
 import com.hotelcontinental.catalog_service.dto.request.service.ServiceRequest;
 import com.hotelcontinental.catalog_service.dto.response.service.ServiceResponse;
 import com.hotelcontinental.catalog_service.entity.Services;
+import com.hotelcontinental.catalog_service.enums.ServiceOrderMode;
 import com.hotelcontinental.catalog_service.enums.ServiceStatus;
 import com.hotelcontinental.catalog_service.repository.ServicesRepository;
 import lombok.RequiredArgsConstructor;
@@ -85,6 +86,9 @@ public class ServiceController {
         entity.setPrice(request.getPrice() == null ? 0 : request.getPrice());
         entity.setImage(request.getImage());
         entity.setStatus(request.getStatus() == null ? ServiceStatus.AVAILABLE : request.getStatus());
+        entity.setOrderMode(request.getOrderMode() == null
+                ? ServiceOrderMode.CUSTOMER_INSTANT
+                : request.getOrderMode());
     }
 
     private ServiceResponse map(Services entity) {
@@ -95,6 +99,9 @@ public class ServiceController {
                 .price(entity.getPrice())
                 .image(entity.getImage())
                 .status(entity.getStatus())
+                .orderMode(entity.getOrderMode() == null
+                        ? ServiceOrderMode.CUSTOMER_INSTANT
+                        : entity.getOrderMode())
                 .deleted(entity.getDeleted())
                 .createdTime(entity.getCreatedTime())
                 .createdBy(entity.getCreatedBy())

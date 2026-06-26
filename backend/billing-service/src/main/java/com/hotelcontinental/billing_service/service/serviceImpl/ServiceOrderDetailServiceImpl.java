@@ -2,18 +2,24 @@ package com.hotelcontinental.billing_service.service.serviceImpl;
 
 import com.hotelcontinental.billing_service.dto.request.RoomBookingTotalsUpdateRequest;
 import com.hotelcontinental.billing_service.dto.request.ServiceOrderDetailCreationRequest;
+import com.hotelcontinental.billing_service.dto.request.PaymentCreationRequest;
+import com.hotelcontinental.billing_service.dto.request.ServiceOrderCheckoutPaymentRequest;
 import com.hotelcontinental.billing_service.dto.response.CatalogServiceSnapshotResponse;
 import com.hotelcontinental.billing_service.dto.response.RoomBookingSnapshotResponse;
 import com.hotelcontinental.billing_service.dto.response.RoomSnapshotResponse;
 import com.hotelcontinental.billing_service.dto.response.RoomTypeServiceSnapshotResponse;
 import com.hotelcontinental.billing_service.dto.response.ServiceOrderDetailResponse;
 import com.hotelcontinental.billing_service.entity.ServiceOrderDetails;
+import com.hotelcontinental.billing_service.enums.PaymentMethod;
+import com.hotelcontinental.billing_service.enums.ServiceOrderApprovalStatus;
 import com.hotelcontinental.billing_service.enums.ServiceOrderDetailStatus;
+import com.hotelcontinental.billing_service.enums.ServiceOrderPaymentStatus;
 import com.hotelcontinental.billing_service.enums.ServiceOrderSource;
 import com.hotelcontinental.billing_service.exception.AppException;
 import com.hotelcontinental.billing_service.exception.ErrorCode;
 import com.hotelcontinental.billing_service.repository.ServiceOrderDetailsRepository;
 import com.hotelcontinental.billing_service.service.interfaces.ServiceOrderDetailService;
+import com.hotelcontinental.billing_service.service.interfaces.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -29,10 +35,11 @@ import java.util.List;
 public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService {
     private final ServiceOrderDetailsRepository serviceOrderDetailsRepository;
     private final ExternalServiceClient externalServiceClient;
+    private final PaymentService paymentService;
 
     @Override
     @Transactional
-    @PreAuthorize("hasAuthority('SERVICE_ORDER_CREATE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_RECEPTIONIST')")
     public ServiceOrderDetailResponse create(ServiceOrderDetailCreationRequest request) {
         return createInternal(request, false);
     }
@@ -62,6 +69,12 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
         if (Boolean.TRUE.equals(catalogService.getDeleted()) || catalogService.getPrice() < 0) {
             throw new AppException(ErrorCode.CATALOG_SERVICE_NOT_FOUND);
         }
+        String orderMode = catalogService.getOrderMode() == null || catalogService.getOrderMode().isBlank()
+                ? "CUSTOMER_INSTANT"
+                : catalogService.getOrderMode();
+        if (currentCustomerOnly && "STAFF_ONLY".equals(orderMode)) {
+            throw new AppException(ErrorCode.SERVICE_ORDER_STAFF_ONLY);
+        }
         RoomSnapshotResponse room = loadRoomSafely(booking.getRoomId());
 
         LocalDateTime now = LocalDateTime.now();
@@ -80,8 +93,12 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
         detail.setPrice(catalogService.getPrice());
         detail.setDescription(request.getDescription());
         detail.setStatus(ServiceOrderDetailStatus.WAITING);
+        detail.setApprovalStatus(currentCustomerOnly && "CUSTOMER_REQUEST".equals(orderMode)
+                ? ServiceOrderApprovalStatus.PENDING
+                : ServiceOrderApprovalStatus.NOT_REQUIRED);
         detail.setSource(ServiceOrderSource.EXTRA);
         detail.setChargeable(true);
+        detail.setPaymentStatus(ServiceOrderPaymentStatus.POST_TO_ROOM);
         detail.setCreatedTime(now);
         detail.setCreatedBy(actor);
         detail.setDeleted(false);
@@ -96,7 +113,7 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
 
     @Override
     @Transactional
-    @PreAuthorize("hasAuthority('SERVICE_ORDER_INCLUDED_SYNC')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_RECEPTIONIST')")
     public List<ServiceOrderDetailResponse> ensureIncludedServices(String roomBookingId) {
         if (roomBookingId == null || roomBookingId.isBlank()) {
             throw new AppException(ErrorCode.INVALID_SERVICE_ORDER_REQUEST);
@@ -141,8 +158,10 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
             detail.setPrice(0);
             detail.setDescription("Dịch vụ kèm theo loại phòng");
             detail.setStatus(ServiceOrderDetailStatus.WAITING);
+            detail.setApprovalStatus(ServiceOrderApprovalStatus.NOT_REQUIRED);
             detail.setSource(ServiceOrderSource.INCLUDED);
             detail.setChargeable(false);
+            detail.setPaymentStatus(ServiceOrderPaymentStatus.PAID);
             detail.setCreatedTime(now);
             detail.setCreatedBy(actor);
             detail.setDeleted(false);
@@ -187,20 +206,140 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
 
     @Override
     @Transactional
-    @PreAuthorize("hasAuthority('SERVICE_ORDER_SERVE')")
-    public ServiceOrderDetailResponse markServed(String id) {
+    @PreAuthorize("hasAuthority('ROLE_HOUSEKEEPING')")
+    public ServiceOrderDetailResponse assign(String id) {
         ServiceOrderDetails detail = getRequiredDetail(id);
-        detail.setStatus(ServiceOrderDetailStatus.SERVED);
-        detail.setServedTime(LocalDateTime.now());
-        detail.setServedBy(getCurrentActor());
-        detail.setModifiedTime(LocalDateTime.now());
-        detail.setModifiedBy(getCurrentActor());
+        if (detail.getApprovalStatus() == ServiceOrderApprovalStatus.PENDING
+                || detail.getApprovalStatus() == ServiceOrderApprovalStatus.REJECTED) {
+            throw new AppException(ErrorCode.SERVICE_ORDER_PENDING_APPROVAL);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        String actor = getCurrentActor();
+        detail.setAssignedTo(actor);
+        detail.setAssignedBy(actor);
+        detail.setAssignedTime(now);
+        detail.setModifiedTime(now);
+        detail.setModifiedBy(actor);
         return map(serviceOrderDetailsRepository.save(detail), null, null);
     }
 
     @Override
     @Transactional
-    @PreAuthorize("hasAuthority('SERVICE_ORDER_DELETE')")
+    @PreAuthorize("hasAuthority('ROLE_HOUSEKEEPING')")
+    public ServiceOrderDetailResponse markServed(String id) {
+        ServiceOrderDetails detail = getRequiredDetail(id);
+        if (detail.getApprovalStatus() == ServiceOrderApprovalStatus.PENDING
+                || detail.getApprovalStatus() == ServiceOrderApprovalStatus.REJECTED) {
+            throw new AppException(ErrorCode.SERVICE_ORDER_PENDING_APPROVAL);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        String actor = getCurrentActor();
+        if (detail.getAssignedTime() == null) {
+            detail.setAssignedTo(actor);
+            detail.setAssignedBy(actor);
+            detail.setAssignedTime(now);
+        }
+        detail.setStatus(ServiceOrderDetailStatus.SERVED);
+        detail.setServedTime(now);
+        detail.setServedBy(actor);
+        detail.setModifiedTime(now);
+        detail.setModifiedBy(actor);
+        return map(serviceOrderDetailsRepository.save(detail), null, null);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
+    public ServiceOrderDetailResponse approve(String id) {
+        ServiceOrderDetails detail = getRequiredDetail(id);
+        detail.setApprovalStatus(ServiceOrderApprovalStatus.APPROVED);
+        detail.setModifiedTime(LocalDateTime.now());
+        detail.setModifiedBy(getCurrentActor());
+        detail = serviceOrderDetailsRepository.save(detail);
+        if (detail.getRoomBookingId() != null && !detail.getRoomBookingId().isBlank()) {
+            RoomBookingSnapshotResponse booking = externalServiceClient.getBooking(detail.getRoomBookingId());
+            syncBookingTotals(detail.getRoomBookingId(), booking);
+        }
+        return map(detail, null, null);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
+    public ServiceOrderDetailResponse reject(String id) {
+        ServiceOrderDetails detail = getRequiredDetail(id);
+        detail.setApprovalStatus(ServiceOrderApprovalStatus.REJECTED);
+        detail.setModifiedTime(LocalDateTime.now());
+        detail.setModifiedBy(getCurrentActor());
+        detail = serviceOrderDetailsRepository.save(detail);
+        if (detail.getRoomBookingId() != null && !detail.getRoomBookingId().isBlank()) {
+            RoomBookingSnapshotResponse booking = externalServiceClient.getBooking(detail.getRoomBookingId());
+            syncBookingTotals(detail.getRoomBookingId(), booking);
+        }
+        return map(detail, null, null);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAuthority('ROLE_RECEPTIONIST')")
+    public List<ServiceOrderDetailResponse> markBookingServiceOrdersPaidAtCheckout(
+            String roomBookingId,
+            ServiceOrderCheckoutPaymentRequest request
+    ) {
+        if (roomBookingId == null || roomBookingId.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_SERVICE_ORDER_REQUEST);
+        }
+
+        RoomBookingSnapshotResponse booking = externalServiceClient.getBooking(roomBookingId.trim());
+        List<ServiceOrderDetails> unpaidDetails = serviceOrderDetailsRepository
+                .findByRoomBookingIdAndPaymentStatusAndDeletedFalseOrderByCreatedTimeDesc(
+                        booking.getId(),
+                        ServiceOrderPaymentStatus.POST_TO_ROOM
+                )
+                .stream()
+                .filter(detail -> !Boolean.FALSE.equals(detail.getChargeable()))
+                .filter(detail -> detail.getSource() == null || detail.getSource() == ServiceOrderSource.EXTRA)
+                .filter(detail -> detail.getApprovalStatus() == null
+                        || detail.getApprovalStatus() == ServiceOrderApprovalStatus.NOT_REQUIRED
+                        || detail.getApprovalStatus() == ServiceOrderApprovalStatus.APPROVED)
+                .toList();
+
+        float totalAmount = unpaidDetails.stream()
+                .map(detail -> detail.getPrice() * detail.getQuantity())
+                .reduce(0F, Float::sum);
+        if (totalAmount <= 0) {
+            return getAll(booking.getId());
+        }
+
+        PaymentCreationRequest paymentRequest = new PaymentCreationRequest();
+        paymentRequest.setRoomBookingId(booking.getId());
+        paymentRequest.setPaymentMethod(request != null && request.getPaymentMethod() != null
+                ? request.getPaymentMethod()
+                : PaymentMethod.CASH);
+        paymentRequest.setAmount(totalAmount);
+        paymentRequest.setNote(request != null && request.getNote() != null && !request.getNote().isBlank()
+                ? request.getNote()
+                : "Checkout service charges");
+        paymentService.createPayment(paymentRequest);
+
+        LocalDateTime now = LocalDateTime.now();
+        String actor = getCurrentActor();
+        unpaidDetails.forEach(detail -> {
+            detail.setPaymentStatus(ServiceOrderPaymentStatus.PAID);
+            detail.setPaymentTime(now);
+            detail.setPaidBy(actor);
+            detail.setModifiedTime(now);
+            detail.setModifiedBy(actor);
+            serviceOrderDetailsRepository.save(detail);
+        });
+
+        return getAll(booking.getId());
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public void delete(String id) {
         ServiceOrderDetails detail = getRequiredDetail(id);
         String roomBookingId = detail.getRoomBookingId();
@@ -296,8 +435,20 @@ public class ServiceOrderDetailServiceImpl implements ServiceOrderDetailService 
                 .totalPrice(Boolean.FALSE.equals(detail.getChargeable()) ? 0 : detail.getPrice() * detail.getQuantity())
                 .description(detail.getDescription())
                 .status(detail.getStatus())
+                .approvalStatus(detail.getApprovalStatus() != null
+                        ? detail.getApprovalStatus()
+                        : ServiceOrderApprovalStatus.NOT_REQUIRED)
                 .source(detail.getSource() != null ? detail.getSource() : ServiceOrderSource.EXTRA)
                 .chargeable(detail.getChargeable() != null ? detail.getChargeable() : true)
+                .paymentStatus(detail.getPaymentStatus() != null
+                        ? detail.getPaymentStatus()
+                        : ServiceOrderPaymentStatus.POST_TO_ROOM)
+                .paymentRequestId(detail.getPaymentRequestId())
+                .paymentTime(detail.getPaymentTime())
+                .paidBy(detail.getPaidBy())
+                .assignedTo(detail.getAssignedTo())
+                .assignedBy(detail.getAssignedBy())
+                .assignedTime(detail.getAssignedTime())
                 .servedTime(detail.getServedTime())
                 .servedBy(detail.getServedBy())
                 .createdTime(detail.getCreatedTime())

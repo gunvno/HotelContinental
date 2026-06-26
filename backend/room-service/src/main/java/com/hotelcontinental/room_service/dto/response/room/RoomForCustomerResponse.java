@@ -1,6 +1,7 @@
 package com.hotelcontinental.room_service.dto.response.room;
 
 import com.hotelcontinental.room_service.enums.RoomStatus;
+import com.hotelcontinental.room_service.enums.HousekeepingStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -22,4 +23,5 @@ public class RoomForCustomerResponse {
     String description;
     String roomSize;
     RoomStatus status;
+    HousekeepingStatus housekeepingStatus;
 }

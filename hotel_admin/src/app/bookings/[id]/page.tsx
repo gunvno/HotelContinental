@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   ArrowLeft,
@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/info-card";
 import { SectionPanel } from "@/components/ui/section-panel";
 import { Select } from "@/components/ui/select";
+import { ToastBridge } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import { formatDateTime, formatMoney, formatPlainDate } from "@/lib/format";
 import {
@@ -58,7 +59,9 @@ import {
 import { getRoom, type RoomResponse } from "@/services/room-service";
 import {
   getServiceOrderDetails,
+  markBookingServiceOrdersPaidAtCheckout,
   type ServiceOrderDetailResponse,
+  type ServiceOrderCheckoutPaymentMethod,
 } from "@/services/service-order-service";
 import { getUserSummary, type UserSummaryResponse } from "@/services/user-service";
 
@@ -71,70 +74,78 @@ type DisplayStatus =
   | "CANCELLED";
 
 const statusLabel: Record<DisplayStatus, string> = {
-  PENDING: "Chá» xÃ¡c nháº­n",
-  CONFIRMED: "ÄÃ£ xÃ¡c nháº­n",
-  CANCEL_REQUESTED: "YÃªu cáº§u há»§y",
-  CHECKED_IN: "Äang á»Ÿ",
-  CHECKED_OUT: "ÄÃ£ tráº£ phÃ²ng",
-  CANCELLED: "ÄÃ£ há»§y",
+  PENDING: "Chờ xác nhận",
+  CONFIRMED: "Đã xác nhận",
+  CANCEL_REQUESTED: "Yêu cầu hủy",
+  CHECKED_IN: "Đang ở",
+  CHECKED_OUT: "Đã trả phòng",
+  CANCELLED: "Đã hủy",
 };
 
 const bookingStatusLabel: Record<string, string> = {
-  PENDING: "Chá» thanh toÃ¡n",
-  DEPOSITED: "ÄÃ£ xÃ¡c nháº­n thanh toÃ¡n",
-  CANCEL_REQUESTED: "YÃªu cáº§u há»§y",
-  CHECKED_IN: "Äang lÆ°u trÃº",
-  CANCEL: "ÄÃ£ há»§y",
-  DONE: "ÄÃ£ hoÃ n táº¥t",
+  PENDING: "Chờ thanh toán",
+  DEPOSITED: "Đã xác nhận thanh toán",
+  CANCEL_REQUESTED: "Yêu cầu hủy",
+  CHECKED_IN: "Đang lưu trú",
+  CANCEL: "Đã hủy",
+  DONE: "Đã hoàn tất",
 };
 
 const detailStatusLabel: Record<string, string> = {
-  BOOKED: "ÄÃ£ giá»¯ phÃ²ng",
-  CHECKED_IN: "ÄÃ£ nháº­n phÃ²ng",
-  CHECKED_OUT: "ÄÃ£ tráº£ phÃ²ng",
-  CANCELED: "ÄÃ£ há»§y phÃ²ng",
-  NO_SHOW: "KhÃ´ng Ä‘áº¿n",
+  BOOKED: "Đã giữ phòng",
+  CHECKED_IN: "Đã nhận phòng",
+  CHECKED_OUT: "Đã trả phòng",
+  CANCELED: "Đã hủy phòng",
+  NO_SHOW: "Không đến",
 };
 
 const paymentStatusLabel: Record<string, string> = {
-  PENDING: "Chá» thanh toÃ¡n",
-  PAID: "ÄÃ£ thanh toÃ¡n",
-  EXPIRED: "Háº¿t háº¡n",
-  FAILED: "Tháº¥t báº¡i",
+  PENDING: "Chờ thanh toán",
+  PAID: "Đã thanh toán",
+  EXPIRED: "Hết hạn",
+  FAILED: "Thất bại",
 };
 
 const serviceStatusLabel: Record<string, string> = {
-  WAITING: "Chá» phá»¥c vá»¥",
-  SERVED: "ÄÃ£ phá»¥c vá»¥",
+  WAITING: "Chờ phục vụ",
+  SERVED: "Đã phục vụ",
+};
+
+const servicePaymentStatusLabel: Record<string, string> = {
+  POST_TO_ROOM: "Thu khi checkout",
+  PENDING_PAYMENT: "Chờ thanh toán online",
+  PAID: "Đã thanh toán",
 };
 
 const historyFieldLabel: Record<string, string> = {
-  checkin: "NgÃ y nháº­n phÃ²ng",
-  checkout: "NgÃ y tráº£ phÃ²ng",
-  checkin_reality: "Giá» thá»±c nháº­n",
-  checkout_reality: "Giá» thá»±c tráº£",
-  booking_status: "Tráº¡ng thÃ¡i booking",
-  detail_status: "Tráº¡ng thÃ¡i phÃ²ng",
-  total_room_price: "Tiá»n phÃ²ng",
-  total_service_price: "Tiá»n dá»‹ch vá»¥",
-  total_extra_price: "Phá»¥ thu",
-  total_price: "Tá»•ng tiá»n",
-  voucher_code: "MÃ£ voucher",
-  discount_amount: "Tiá»n giáº£m giÃ¡",
-  refund_status: "Tráº¡ng thÃ¡i hoÃ n tiá»n",
-  refund_amount: "Tiá»n hoÃ n",
+  checkin: "Ngày nhận phòng",
+  checkout: "Ngày trả phòng",
+  checkin_reality: "Giờ thực nhận",
+  checkout_reality: "Giờ thực trả",
+  booking_status: "Trạng thái booking",
+  detail_status: "Trạng thái phòng",
+  total_room_price: "Tiền phòng",
+  total_service_price: "Tiền dịch vụ",
+  total_extra_price: "Phụ thu",
+  total_price: "Tổng tiền",
+  voucher_code: "Mã voucher",
+  discount_amount: "Tiền giảm giá",
+  refund_status: "Trạng thái hoàn tiền",
+  refund_amount: "Tiền hoàn",
 };
 
 export default function BookingDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const permission = usePermission();
+  const isManager = permission.has("ROLE_MANAGER");
+  const isReceptionist = permission.has("ROLE_RECEPTIONIST");
   const canViewBookings = permission.has("BOOKING_VIEW");
-  const canCheckIn = permission.has("BOOKING_CHECKIN");
-  const canCheckOut = permission.has("BOOKING_CHECKOUT");
-  const canCancelBooking = permission.has("BOOKING_CANCEL");
-  const canConfirmPayment = permission.has("PAYMENT_CONFIRM");
-  const canUpdateTotals = permission.has("BOOKING_UPDATE_TOTALS");
+  const canCheckIn = permission.has("BOOKING_CHECKIN") && isReceptionist;
+  const canCheckOut = permission.has("BOOKING_CHECKOUT") && isReceptionist;
+  const canCancelBooking = permission.has("BOOKING_CANCEL") && isManager;
+  const canConfirmPayment = permission.has("PAYMENT_CONFIRM") && isReceptionist;
+  const canUpdateTotals = permission.has("BOOKING_UPDATE_TOTALS") && isManager;
   const bookingId = useMemo(() => String(params.id ?? ""), [params.id]);
 
   const [booking, setBooking] = useState<RoomBookingResponse | null>(null);
@@ -153,6 +164,8 @@ export default function BookingDetailPage() {
     refundStatus: "NONE",
     refundAmount: 0,
   });
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] =
+    useState<ServiceOrderCheckoutPaymentMethod>("CASH");
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -198,7 +211,7 @@ export default function BookingDetailPage() {
       setInvoice(invoiceData);
     } catch {
       setMessage(
-        "KhÃ´ng thá»ƒ táº£i chi tiáº¿t booking. Kiá»ƒm tra booking-service vÃ  quyá»n BOOKING_VIEW.",
+        "Không thể tải chi tiết booking. Kiểm tra booking-service và quyền BOOKING_VIEW.",
       );
     } finally {
       setLoading(false);
@@ -222,7 +235,7 @@ export default function BookingDetailPage() {
       await loadBooking();
       setMessage(successMessage);
     } catch {
-      setMessage("KhÃ´ng thá»ƒ thá»±c hiá»‡n thao tÃ¡c nÃ y. Kiá»ƒm tra tráº¡ng thÃ¡i booking vÃ  quyá»n tÃ i khoáº£n.");
+      setMessage("Không thể thực hiện thao tác này. Kiểm tra trạng thái booking và quyền tài khoản.");
     } finally {
       setActionLoading(null);
     }
@@ -231,10 +244,10 @@ export default function BookingDetailPage() {
   function handleCancelBooking() {
     if (!booking) return;
     const ok = window.confirm(
-      "Báº¡n cháº¯c cháº¯n muá»‘n há»§y booking nÃ y? Booking Ä‘Ã£ thanh toÃ¡n sáº½ chuyá»ƒn sang yÃªu cáº§u há»§y Ä‘á»ƒ quáº£n lÃ½ duyá»‡t.",
+      "Bạn chắc chắn muốn hủy booking này? Booking đã thanh toán sẽ chuyển sang yêu cầu hủy để quản lý duyệt.",
     );
     if (!ok) return;
-    void runBookingAction("cancel", `ÄÃ£ gá»­i thao tÃ¡c há»§y booking ${shortCode(booking.id)}.`, () =>
+    void runBookingAction("cancel", `Đã gửi thao tác hủy booking ${shortCode(booking.id)}.`, () =>
       cancelRoomBooking(booking.id),
     );
   }
@@ -250,7 +263,7 @@ export default function BookingDetailPage() {
 
     await runBookingAction(
       "finance",
-      `ÄÃ£ cáº­p nháº­t thanh toÃ¡n cho booking ${shortCode(booking.id)}.`,
+      `Đã cập nhật thanh toán cho booking ${shortCode(booking.id)}.`,
       () =>
         updateRoomBookingTotals(booking.id, {
           totalRoomPrice: booking.totalRoomPrice,
@@ -265,9 +278,26 @@ export default function BookingDetailPage() {
     );
   }
 
+  async function handleCheckout() {
+    if (!booking || actionLoading) return;
+    await runBookingAction(
+      "checkout",
+      `Đã check-out booking ${shortCode(booking.id)}.`,
+      async () => {
+        if (unpaidServiceTotal > 0) {
+          await markBookingServiceOrdersPaidAtCheckout(booking.id, {
+            paymentMethod: checkoutPaymentMethod,
+            note: `Checkout service charges - ${shortCode(booking.id)}`,
+          });
+        }
+        await checkOutRoomBooking(booking.id);
+      },
+    );
+  }
+
   if (!canViewBookings) {
     return (
-      <PermissionDenied message="Báº¡n khÃ´ng cÃ³ quyá»n BOOKING_VIEW Ä‘á»ƒ xem chi tiáº¿t booking." />
+      <PermissionDenied message="Bạn không có quyền BOOKING_VIEW để xem chi tiết booking." />
     );
   }
 
@@ -296,11 +326,21 @@ export default function BookingDetailPage() {
     0;
   const remainingAmount =
     invoice?.remainingAmount ?? Math.max(invoiceGrandTotal - paidAmount, 0);
+  const unpaidServiceTotal = services
+    .filter((item) => item.chargeable !== false)
+    .filter((item) => item.source !== "INCLUDED")
+    .filter((item) => item.paymentStatus !== "PAID")
+    .reduce(
+      (total, item) => total + Number(item.totalPrice || item.price * item.quantity || 0),
+      0,
+    );
+  const refundAmount = invoice?.refundAmount ?? booking?.refundAmount ?? 0;
+  const checkoutAmountDue = Math.max(remainingAmount, unpaidServiceTotal);
   const refundStatus = getRefundStatus(
     displayStatus,
     paidAmount,
     invoice?.refundStatus ?? booking?.refundStatus,
-    invoice?.refundAmount ?? booking?.refundAmount ?? 0,
+    refundAmount,
   );
 
   return (
@@ -311,18 +351,16 @@ export default function BookingDetailPage() {
         className="inline-flex items-center gap-2 text-sm font-semibold text-[#17213a] hover:text-[#9b5c24]"
       >
         <ArrowLeft className="h-4 w-4" />
-        Quay láº¡i danh sÃ¡ch Ä‘áº·t phÃ²ng
+        Quay lại danh sách đặt phòng
       </button>
 
       {message ? (
-        <div className="rounded-xl bg-[#fff6df] p-3 text-sm font-semibold text-[#8a5724]">
-          {message}
-        </div>
+        <ToastBridge success={message} onClearSuccess={() => setMessage(null)} />
       ) : null}
 
       {loading ? (
         <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-10 text-center text-[#7c6f63]">
-          Äang táº£i chi tiáº¿t booking...
+          Đang tải chi tiết booking...
         </div>
       ) : booking ? (
         <>
@@ -330,7 +368,7 @@ export default function BookingDetailPage() {
             <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
               <div className="min-w-0">
                 <p className="text-xs font-bold tracking-[0.22em] text-[#9b5c24] uppercase">
-                  Trung tÃ¢m váº­n hÃ nh booking
+                  Trung tâm vận hành booking
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <h2 className="text-3xl font-black tracking-tight break-all text-[#17213a] md:text-4xl">
@@ -343,7 +381,7 @@ export default function BookingDetailPage() {
                   </span>
                 </div>
                 <p className="mt-3 text-sm break-all text-[#7c6f63]">
-                  MÃ£ Ä‘áº§y Ä‘á»§: {booking.id}
+                  Mã đầy đủ: {booking.id}
                 </p>
               </div>
 
@@ -356,16 +394,16 @@ export default function BookingDetailPage() {
                   className="gap-2"
                 >
                   <RefreshCcw className="h-4 w-4" />
-                  Táº£i láº¡i
+                  Tải lại
                 </Button>
-                {displayStatus === "PENDING" ? (
+                {displayStatus === "PENDING" && canConfirmPayment ? (
                   <Button
                     type="button"
-                    disabled={!canConfirmPayment || Boolean(actionLoading)}
+                    disabled={Boolean(actionLoading)}
                     onClick={() =>
                       void runBookingAction(
                         "payment",
-                        `ÄÃ£ xÃ¡c nháº­n chuyá»ƒn khoáº£n cho booking ${shortCode(booking.id)}.`,
+                        `Đã xác nhận chuyển khoản cho booking ${shortCode(booking.id)}.`,
                         async () => {
                           const latestPayment = await getLatestPaymentRequestByBooking(
                             booking.id,
@@ -377,13 +415,13 @@ export default function BookingDetailPage() {
                     className="gap-2"
                   >
                     <CreditCard className="h-4 w-4" />
-                    XÃ¡c nháº­n CK
+                    Xác nhận CK
                   </Button>
                 ) : null}
-                {readyToCheckIn ? (
+                {readyToCheckIn && canCheckIn ? (
                   <Button
                     type="button"
-                    disabled={!canCheckIn || Boolean(actionLoading)}
+                    disabled={Boolean(actionLoading)}
                     onClick={() => router.push(`/bookings/${booking.id}/checkin`)}
                     className="gap-2"
                   >
@@ -391,49 +429,43 @@ export default function BookingDetailPage() {
                     Check-in
                   </Button>
                 ) : null}
-                {readyToCheckOut ? (
+                {readyToCheckOut && canCheckOut ? (
                   <Button
                     type="button"
-                    disabled={!canCheckOut || Boolean(actionLoading)}
-                    onClick={() =>
-                      void runBookingAction(
-                        "checkout",
-                        `ÄÃ£ check-out booking ${shortCode(booking.id)}.`,
-                        () => checkOutRoomBooking(booking.id),
-                      )
-                    }
+                    disabled={Boolean(actionLoading)}
+                    onClick={() => void handleCheckout()}
                     className="gap-2"
                   >
                     <LogOut className="h-4 w-4" />
                     Check-out
                   </Button>
                 ) : null}
-                {canCancelThisBooking ? (
+                {canCancelThisBooking && canCancelBooking ? (
                   <Button
                     type="button"
-                    disabled={!canCancelBooking || Boolean(actionLoading)}
+                    disabled={Boolean(actionLoading)}
                     onClick={handleCancelBooking}
                     className="gap-2 border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
                   >
                     <XCircle className="h-4 w-4" />
-                    Há»§y booking
+                    Hủy booking
                   </Button>
                 ) : null}
-                {canApproveThisCancellation ? (
+                {canApproveThisCancellation && canCancelBooking ? (
                   <Button
                     type="button"
-                    disabled={!canCancelBooking || Boolean(actionLoading)}
+                    disabled={Boolean(actionLoading)}
                     onClick={() =>
                       void runBookingAction(
                         "approve-cancel",
-                        `ÄÃ£ duyá»‡t há»§y booking ${shortCode(booking.id)}.`,
+                        `Đã duyệt hủy booking ${shortCode(booking.id)}.`,
                         () => approveRoomBookingCancellation(booking.id),
                       )
                     }
                     className="gap-2"
                   >
                     <ShieldCheck className="h-4 w-4" />
-                    Duyá»‡t há»§y
+                    Duyệt hủy
                   </Button>
                 ) : null}
               </div>
@@ -443,100 +475,102 @@ export default function BookingDetailPage() {
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <SummaryInfoCard
               icon={<UserRound className="h-5 w-5" />}
-              label="KhÃ¡ch Ä‘áº·t"
+              label="Khách đặt"
               value={customerName}
               sub={customer?.email || customer?.username || booking.customerId}
             />
             <SummaryInfoCard
               icon={<BedDouble className="h-5 w-5" />}
-              label="PhÃ²ng"
+              label="Phòng"
               value={roomName}
               sub={room?.roomTypes?.name || booking.roomId}
             />
             <SummaryInfoCard
               icon={<Clock3 className="h-5 w-5" />}
-              label="Thá»i lÆ°á»£ng"
+              label="Thời lượng"
               value={getDurationLabel(booking.checkin, booking.checkout)}
               sub={booking.bookingType}
             />
             <SummaryInfoCard
               icon={<BadgeDollarSign className="h-5 w-5" />}
-              label="Tá»•ng tiá»n"
+              label="Tổng tiền"
               value={formatMoney(booking.totalPrice)}
-              sub={`Äáº·t cá»c ${formatMoney(booking.deposit)}`}
+              sub={`Đặt cọc ${formatMoney(booking.deposit)}`}
             />
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
             <SectionPanel
               eyebrow="Booking"
-              title="ThÃ´ng tin booking"
+              title="Thông tin booking"
               icon={<FileText className="h-5 w-5" />}
             >
               <div className="grid gap-4 md:grid-cols-2">
                 <LargeInfoCard
                   icon={<CalendarDays className="h-5 w-5" />}
-                  label="Nháº­n phÃ²ng dá»± kiáº¿n"
+                  label="Nhận phòng dự kiến"
                   value={formatDateTime(booking.checkin)}
                 />
                 <LargeInfoCard
                   icon={<CalendarDays className="h-5 w-5" />}
-                  label="Tráº£ phÃ²ng dá»± kiáº¿n"
+                  label="Trả phòng dự kiến"
                   value={formatDateTime(booking.checkout)}
                 />
                 <LargeInfoCard
                   icon={<CheckCircle2 className="h-5 w-5" />}
-                  label="Thá»±c nháº­n"
+                  label="Thực nhận"
                   value={booking.checkinReality ? formatDateTime(booking.checkinReality) : "-"}
                 />
                 <LargeInfoCard
                   icon={<CheckCircle2 className="h-5 w-5" />}
-                  label="Thá»±c tráº£"
+                  label="Thực trả"
                   value={booking.checkoutReality ? formatDateTime(booking.checkoutReality) : "-"}
                 />
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <DetailInfoCard label="Tráº¡ng thÃ¡i booking" value={formatBookingStatus(booking.status)} />
-                <DetailInfoCard label="Tráº¡ng thÃ¡i phÃ²ng" value={formatDetailStatus(booking.detailStatus)} />
-                <DetailInfoCard label="Loáº¡i booking" value={booking.bookingType} />
-                <DetailInfoCard label="MÃ£ khÃ¡ch" value={booking.customerId} />
+                <DetailInfoCard label="Trạng thái booking" value={formatBookingStatus(booking.status)} />
+                <DetailInfoCard label="Trạng thái phòng" value={formatDetailStatus(booking.detailStatus)} />
+                <DetailInfoCard label="Loại booking" value={booking.bookingType} />
+                <DetailInfoCard label="Mã khách" value={booking.customerId} />
               </div>
             </SectionPanel>
 
             <SectionPanel
-              eyebrow="PhÃ²ng"
-              title="PhÃ²ng Ä‘ang xá»­ lÃ½"
+              eyebrow="Phòng"
+              title="Phòng đang xử lý"
               icon={<BedDouble className="h-5 w-5" />}
             >
               <div className="grid gap-4 md:grid-cols-2">
-                <DetailInfoCard label="TÃªn phÃ²ng" value={roomName} />
-                <DetailInfoCard label="Loáº¡i phÃ²ng" value={room?.roomTypes?.name || "-"} />
-                <DetailInfoCard label="Diá»‡n tÃ­ch" value={room?.roomSize || "-"} />
-                <DetailInfoCard label="Tráº¡ng thÃ¡i phÃ²ng" value={room?.status || "-"} />
-                <DetailInfoCard label="GiÃ¡ theo ngÃ y" value={formatMoney(room?.pricePerDay)} />
-                <DetailInfoCard label="GiÃ¡ theo giá»" value={formatMoney(room?.pricePerHour)} />
+                <DetailInfoCard label="Tên phòng" value={roomName} />
+                <DetailInfoCard label="Loại phòng" value={room?.roomTypes?.name || "-"} />
+                <DetailInfoCard label="Diện tích" value={room?.roomSize || "-"} />
+                <DetailInfoCard label="Trạng thái phòng" value={room?.status || "-"} />
+                <DetailInfoCard label="Giá theo ngày" value={formatMoney(room?.pricePerDay)} />
+                <DetailInfoCard label="Giá theo giờ" value={formatMoney(room?.pricePerHour)} />
               </div>
             </SectionPanel>
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
             <SectionPanel
-              eyebrow="KhÃ¡ch lÆ°u trÃº"
-              title="Danh sÃ¡ch ngÆ°á»i á»Ÿ"
+              eyebrow="Khách lưu trú"
+              title="Danh sách người ở"
               icon={<UsersRound className="h-5 w-5" />}
               right={
+                canCheckIn ? (
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={!canCheckIn || displayStatus === "CHECKED_OUT" || displayStatus === "CANCELLED"}
+                  disabled={displayStatus === "CHECKED_OUT" || displayStatus === "CANCELLED"}
                   onClick={() => router.push(`/bookings/${booking.id}/checkin`)}
                 >
-                  Cáº­p nháº­t
+                  Cập nhật
                 </Button>
+                ) : null
               }
             >
               {guests.length === 0 ? (
-                <EmptyState text="ChÆ°a cÃ³ khÃ¡ch lÆ°u trÃº. Khi check-in, lá»… tÃ¢n nháº­p danh sÃ¡ch ngÆ°á»i á»Ÿ táº¡i Ä‘Ã¢y." />
+                <EmptyState text="Chưa có khách lưu trú. Khi check-in, lễ tân nhập danh sách người ở tại đây." />
               ) : (
                 <div className="space-y-3">
                   {guests.map((guest, index) => (
@@ -547,7 +581,7 @@ export default function BookingDetailPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-bold tracking-[0.14em] text-[#9b5c24] uppercase">
-                            KhÃ¡ch {index + 1}
+                            Khách {index + 1}
                           </p>
                           <p className="mt-1 text-base font-black text-[#17213a]">
                             {guest.fullName}
@@ -558,8 +592,8 @@ export default function BookingDetailPage() {
                         </span>
                       </div>
                       <div className="mt-3 grid gap-2 text-sm text-[#7c6f63] sm:grid-cols-2">
-                        <span>Giáº¥y tá»: {guest.identityNumber}</span>
-                        <span>NgÃ y sinh: {formatPlainDate(guest.dateOfBirth)}</span>
+                        <span>Giấy tờ: {guest.identityNumber}</span>
+                        <span>Ngày sinh: {formatPlainDate(guest.dateOfBirth)}</span>
                       </div>
                     </div>
                   ))}
@@ -568,21 +602,21 @@ export default function BookingDetailPage() {
             </SectionPanel>
 
             <SectionPanel
-              eyebrow="Dá»‹ch vá»¥ phÃ¡t sinh"
-              title="Dá»‹ch vá»¥ cá»§a booking"
+              eyebrow="Dịch vụ phát sinh"
+              title="Dịch vụ của booking"
               icon={<Utensils className="h-5 w-5" />}
             >
               {services.length === 0 ? (
-                <EmptyState text="ChÆ°a cÃ³ dá»‹ch vá»¥ phÃ¡t sinh hoáº·c dá»‹ch vá»¥ Ä‘i kÃ¨m nÃ o Ä‘Æ°á»£c ghi nháº­n." />
+                <EmptyState text="Chưa có dịch vụ phát sinh hoặc dịch vụ đi kèm nào được ghi nhận." />
               ) : (
                 <div className="overflow-hidden rounded-2xl border border-[#eee3d5]">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-[#fbf6ed] text-xs font-bold tracking-[0.12em] text-[#7c6f63] uppercase">
                       <tr>
-                        <th className="px-4 py-3">Dá»‹ch vá»¥</th>
+                        <th className="px-4 py-3">Dịch vụ</th>
                         <th className="px-4 py-3">SL</th>
-                        <th className="px-4 py-3">Tiá»n</th>
-                        <th className="px-4 py-3">Tráº¡ng thÃ¡i</th>
+                        <th className="px-4 py-3">Tiền</th>
+                        <th className="px-4 py-3">Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#eee3d5] bg-white">
@@ -593,7 +627,7 @@ export default function BookingDetailPage() {
                               {item.serviceName || item.serviceId}
                             </p>
                             <p className="text-xs text-[#9f8a77]">
-                              {item.source === "INCLUDED" ? "Äi kÃ¨m" : "PhÃ¡t sinh"}
+                              {item.source === "INCLUDED" ? "Đi kèm" : "Phát sinh"}
                             </p>
                           </td>
                           <td className="px-4 py-3 font-semibold text-[#17213a]">
@@ -612,6 +646,9 @@ export default function BookingDetailPage() {
                             >
                               {serviceStatusLabel[item.status] ?? item.status}
                             </span>
+                            <p className="mt-2 text-xs font-semibold text-[#7c6f63]">
+                              {servicePaymentStatusLabel[item.paymentStatus ?? "POST_TO_ROOM"]}
+                            </p>
                           </td>
                         </tr>
                       ))}
@@ -624,55 +661,130 @@ export default function BookingDetailPage() {
 
           <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
             <SectionPanel
-              eyebrow="HÃ³a Ä‘Æ¡n / thanh toÃ¡n"
-              title="Invoice & thanh toÃ¡n"
+              eyebrow="Hóa đơn / thanh toán"
+              title="Invoice & thanh toán"
               icon={<ReceiptText className="h-5 w-5" />}
             >
               <div className="grid gap-4 md:grid-cols-2">
-                <MoneyInfoCard label="Tiá»n phÃ²ng" value={formatMoney(invoiceRoomTotal)} />
-                <MoneyInfoCard label="Tiá»n dá»‹ch vá»¥" value={formatMoney(invoiceServiceTotal)} />
-                <MoneyInfoCard label="Phá»¥ thu" value={formatMoney(invoiceExtraTotal)} />
+                <MoneyInfoCard label="Tiền phòng" value={formatMoney(invoiceRoomTotal)} />
+                <MoneyInfoCard label="Tiền dịch vụ" value={formatMoney(invoiceServiceTotal)} />
+                <MoneyInfoCard label="Phụ thu" value={formatMoney(invoiceExtraTotal)} />
                 <MoneyInfoCard
                   label="Voucher"
                   value={
                     discountAmount > 0
                       ? `-${formatMoney(discountAmount)}${voucherCode ? ` (${voucherCode})` : ""}`
-                      : "ChÆ°a Ã¡p dá»¥ng"
+                      : "Chưa áp dụng"
                   }
                 />
-                <MoneyInfoCard label="Äáº·t cá»c / Ä‘Ã£ tráº£" value={formatMoney(paidAmount)} />
-                <MoneyInfoCard label="CÃ²n pháº£i tráº£" value={formatMoney(remainingAmount)} strong />
+                <MoneyInfoCard label="Đặt cọc / đã trả" value={formatMoney(paidAmount)} />
+                <MoneyInfoCard label="Còn phải trả" value={formatMoney(remainingAmount)} strong />
               </div>
+              {readyToCheckOut ? (
+                <div className="mt-4 rounded-2xl border border-[#c8792a] bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-xs font-bold tracking-[0.16em] text-[#9b5c24] uppercase">
+                        Quy trình checkout
+                      </p>
+                      <h3 className="mt-1 text-xl font-black text-[#17213a]">
+                        Xác nhận thu tiền và kết thúc lưu trú
+                      </h3>
+                      <p className="mt-1 text-sm text-[#7c6f63]">
+                        Kiểm tra các khoản còn phải thu trước khi chuyển booking sang trạng thái đã trả phòng.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-[#fff6df] px-4 py-3 text-right">
+                      <p className="text-xs font-bold tracking-[0.14em] text-[#8a5724] uppercase">
+                        Cần thu khi checkout
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-[#17213a]">
+                        {formatMoney(checkoutAmountDue)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <CheckoutLine label="Tiền phòng đã trả" value={formatMoney(paidAmount)} />
+                    <CheckoutLine
+                      label="Dịch vụ trả sau"
+                      value={formatMoney(unpaidServiceTotal)}
+                      note="Chỉ gồm dịch vụ chưa thanh toán online."
+                    />
+                    <CheckoutLine label="Phụ thu" value={formatMoney(invoiceExtraTotal)} />
+                    <CheckoutLine
+                      label="Hoàn tiền nếu có"
+                      value={refundAmount > 0 ? formatMoney(refundAmount) : "Không phát sinh"}
+                      note={refundStatus.label}
+                    />
+                    <CheckoutLine label="Còn phải trả" value={formatMoney(remainingAmount)} strong />
+                    <div className="rounded-2xl border border-[#eadfcd] bg-[#fbf6ed] p-4">
+                      <p className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
+                        Phương thức thu
+                      </p>
+                      <Select
+                        value={checkoutPaymentMethod}
+                        onValueChange={(value) =>
+                          setCheckoutPaymentMethod(value as ServiceOrderCheckoutPaymentMethod)
+                        }
+                        className="mt-2"
+                        options={[
+                          { value: "CASH", label: "Tiền mặt" },
+                          { value: "BANK_TRANSFER", label: "Chuyển khoản" },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-[#fbf6ed] p-4 md:flex-row md:items-center md:justify-between">
+                    <div className="text-sm text-[#6f5f50]">
+                      <p className="font-bold text-[#17213a]">Xác nhận kết thúc lưu trú</p>
+                      <p>
+                        Khi xác nhận, hệ thống sẽ ghi nhận thanh toán dịch vụ trả sau rồi check-out booking.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      disabled={!canCheckOut || Boolean(actionLoading)}
+                      onClick={() => void handleCheckout()}
+                      className="gap-2 md:min-w-[220px]"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Xác nhận check-out
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-4 rounded-2xl border border-[#eee3d5] bg-[#fbf6ed] p-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <p className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                      Tráº¡ng thÃ¡i thanh toÃ¡n
+                      Trạng thái thanh toán
                     </p>
                     <p className="mt-1 font-black text-[#17213a]">
                       {paymentRequest
                         ? paymentStatusLabel[paymentRequest.status] ?? paymentRequest.status
-                        : "ChÆ°a cÃ³ yÃªu cáº§u thanh toÃ¡n"}
+                        : "Chưa có yêu cầu thanh toán"}
                     </p>
                     <p className="mt-1 text-xs break-all text-[#9f8a77]">
                       {paymentRequest?.transferContent ||
                         invoice?.invoiceNo ||
-                        "ChÆ°a phÃ¡t sinh mÃ£ thanh toÃ¡n/hÃ³a Ä‘Æ¡n."}
+                        "Chưa phát sinh mã thanh toán/hóa đơn."}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                      Tráº¡ng thÃ¡i hoÃ n tiá»n
+                      Trạng thái hoàn tiền
                     </p>
                     <p className="mt-1 font-black text-[#17213a]">{refundStatus.label}</p>
                     <p className="mt-1 text-xs text-[#9f8a77]">{refundStatus.description}</p>
                   </div>
                 </div>
                 <div className="mt-4 grid gap-3 border-t border-[#eadfcd] pt-4 text-sm md:grid-cols-2">
-                  <DetailMini label="Tá»•ng trÆ°á»›c voucher" value={formatMoney(invoiceGrandTotal)} />
-                  <DetailMini label="Sá»‘ tiá»n request" value={formatMoney(paymentRequest?.amount)} />
+                  <DetailMini label="Tổng trước voucher" value={formatMoney(invoiceGrandTotal)} />
+                  <DetailMini label="Số tiền request" value={formatMoney(paymentRequest?.amount)} />
                   <DetailMini
-                    label="Thá»i gian thanh toÃ¡n"
+                    label="Thời gian thanh toán"
                     value={
                       paymentRequest?.paidTime
                         ? formatDateTime(paymentRequest.paidTime)
@@ -680,15 +792,15 @@ export default function BookingDetailPage() {
                     }
                   />
                   <DetailMini
-                    label="MÃ£ invoice"
-                    value={invoice?.invoiceNo || "ChÆ°a cÃ³ invoice Ä‘Ã£ thanh toÃ¡n"}
+                    label="Mã invoice"
+                    value={invoice?.invoiceNo || "Chưa có invoice đã thanh toán"}
                   />
                   <DetailMini
-                    label="PhÆ°Æ¡ng thá»©c"
+                    label="Phương thức"
                     value={invoice?.paymentMethod || paymentRequest?.provider || "-"}
                   />
                   <DetailMini
-                    label="Háº¿t háº¡n thanh toÃ¡n"
+                    label="Hết hạn thanh toán"
                     value={
                       paymentRequest?.expiredTime
                         ? formatDateTime(paymentRequest.expiredTime)
@@ -697,13 +809,13 @@ export default function BookingDetailPage() {
                   />
                 </div>
                 <div className="mt-4 rounded-xl bg-white p-3 text-xs font-semibold text-[#7c6f63]">
-                  Voucher vÃ  hoÃ n tiá»n Ä‘ang láº¥y tá»« booking/invoice. Náº¿u chÆ°a cÃ³ giao dá»‹ch
-                  hoÃ n tiá»n tháº­t, tráº¡ng thÃ¡i sáº½ hiá»ƒn thá»‹ theo dá»¯ liá»‡u refund hiá»‡n cÃ³.
+                  Voucher và hoàn tiền đang lấy từ booking/invoice. Nếu chưa có giao dịch
+                  hoàn tiền thật, trạng thái sẽ hiển thị theo dữ liệu refund hiện có.
                 </div>
                 {canUpdateTotals ? (
                   <div className="mt-4 rounded-2xl border border-[#eadfcd] bg-white p-4">
                     <p className="text-sm font-black text-[#17213a]">
-                      Cáº­p nháº­t voucher / hoÃ n tiá»n
+                      Cập nhật voucher / hoàn tiền
                     </p>
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
                       <TextField
@@ -714,7 +826,7 @@ export default function BookingDetailPage() {
                             voucherCode,
                           })
                         }
-                        placeholder="MÃ£ voucher"
+                        placeholder="Mã voucher"
                       />
                       <TextField
                         type="number"
@@ -726,7 +838,7 @@ export default function BookingDetailPage() {
                             discountAmount: Number(discountAmount) || 0,
                           })
                         }
-                        placeholder="Tiá»n giáº£m"
+                        placeholder="Tiền giảm"
                       />
                       <Select
                         value={financeForm.refundStatus}
@@ -734,11 +846,11 @@ export default function BookingDetailPage() {
                           setFinanceForm({ ...financeForm, refundStatus: value })
                         }
                         options={[
-                          { value: "NONE", label: "ChÆ°a phÃ¡t sinh" },
-                          { value: "REQUESTED", label: "Chá» duyá»‡t hoÃ n tiá»n" },
-                          { value: "APPROVED", label: "ÄÃ£ duyá»‡t hoÃ n tiá»n" },
-                          { value: "REJECTED", label: "Tá»« chá»‘i hoÃ n tiá»n" },
-                          { value: "PAID", label: "ÄÃ£ hoÃ n tiá»n" },
+                          { value: "NONE", label: "Chưa phát sinh" },
+                          { value: "REQUESTED", label: "Chờ duyệt hoàn tiền" },
+                          { value: "APPROVED", label: "Đã duyệt hoàn tiền" },
+                          { value: "REJECTED", label: "Từ chối hoàn tiền" },
+                          { value: "PAID", label: "Đã hoàn tiền" },
                         ]}
                       />
                       <TextField
@@ -751,7 +863,7 @@ export default function BookingDetailPage() {
                             refundAmount: Number(refundAmount) || 0,
                           })
                         }
-                        placeholder="Tiá»n hoÃ n"
+                        placeholder="Tiền hoàn"
                       />
                     </div>
                     <Button
@@ -760,7 +872,7 @@ export default function BookingDetailPage() {
                       disabled={Boolean(actionLoading)}
                       className="mt-3 w-full"
                     >
-                      LÆ°u thanh toÃ¡n
+                      Lưu thanh toán
                     </Button>
                   </div>
                 ) : null}
@@ -769,17 +881,17 @@ export default function BookingDetailPage() {
 
             <SectionPanel
               eyebrow="Audit"
-              title="Lá»‹ch sá»­ chá»‰nh sá»­a"
+              title="Lịch sử chỉnh sửa"
               icon={<ScrollText className="h-5 w-5" />}
               right={
                 <span className="rounded-full bg-[#fff6df] px-3 py-1 text-xs font-bold text-[#8a5724]">
-                  {editHistory.length} báº£n ghi
+                  {editHistory.length} bản ghi
                 </span>
               }
             >
               <div className="space-y-3">
                 {editHistory.length === 0 ? (
-                  <EmptyState text="ChÆ°a cÃ³ lá»‹ch sá»­ chá»‰nh sá»­a cho booking nÃ y." />
+                  <EmptyState text="Chưa có lịch sử chỉnh sửa cho booking này." />
                 ) : (
                   editHistory.map((item) => <HistoryItem key={item.id} item={item} />)
                 )}
@@ -789,7 +901,7 @@ export default function BookingDetailPage() {
         </>
       ) : (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700">
-          KhÃ´ng tÃ¬m tháº¥y booking.
+          Không tìm thấy booking.
         </div>
       )}
     </div>
@@ -834,6 +946,30 @@ function DetailMini({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 font-semibold break-words text-[#17213a]">{value}</p>
+    </div>
+  );
+}
+
+function CheckoutLine({
+  label,
+  value,
+  note,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#eadfcd] bg-[#fbf6ed] p-4">
+      <p className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
+        {label}
+      </p>
+      <p className={`mt-1 ${strong ? "text-2xl" : "text-lg"} font-black text-[#17213a]`}>
+        {value}
+      </p>
+      {note ? <p className="mt-1 text-xs font-semibold text-[#9f8a77]">{note}</p> : null}
     </div>
   );
 }
@@ -889,35 +1025,35 @@ function getRefundStatus(
       label: formatRefundStatus(refundStatus),
       description:
         refundAmount > 0
-          ? `Sá»‘ tiá»n hoÃ n: ${formatMoney(refundAmount)}`
-          : "ÄÃ£ cÃ³ tráº¡ng thÃ¡i hoÃ n tiá»n tá»« há»‡ thá»‘ng.",
+          ? `Số tiền hoàn: ${formatMoney(refundAmount)}`
+          : "Đã có trạng thái hoàn tiền từ hệ thống.",
     };
   }
   if (status === "CANCEL_REQUESTED" && paidAmount > 0) {
     return {
-      label: "Chá» duyá»‡t hoÃ n tiá»n",
-      description: "Booking Ä‘Ã£ thanh toÃ¡n vÃ  Ä‘ang chá» quáº£n lÃ½ duyá»‡t há»§y.",
+      label: "Chờ duyệt hoàn tiền",
+      description: "Booking đã thanh toán và đang chờ quản lý duyệt hủy.",
     };
   }
   if (status === "CANCELLED" && paidAmount > 0) {
     return {
-      label: "Cáº§n kiá»ƒm tra hoÃ n tiá»n",
-      description: "Há»‡ thá»‘ng chÆ°a cÃ³ giao dá»‹ch hoÃ n tiá»n riÃªng Ä‘á»ƒ Ä‘á»‘i soÃ¡t tá»± Ä‘á»™ng.",
+      label: "Cần kiểm tra hoàn tiền",
+      description: "Hệ thống chưa có giao dịch hoàn tiền riêng để đối soát tự động.",
     };
   }
   return {
-    label: "ChÆ°a phÃ¡t sinh",
-    description: "ChÆ°a cÃ³ yÃªu cáº§u hoÃ n tiá»n Ä‘Æ°á»£c ghi nháº­n cho booking nÃ y.",
+    label: "Chưa phát sinh",
+    description: "Chưa có yêu cầu hoàn tiền được ghi nhận cho booking này.",
   };
 }
 
 function formatRefundStatus(status?: string) {
   const labels: Record<string, string> = {
-    NONE: "ChÆ°a phÃ¡t sinh",
-    REQUESTED: "Chá» duyá»‡t hoÃ n tiá»n",
-    APPROVED: "ÄÃ£ duyá»‡t hoÃ n tiá»n",
-    REJECTED: "Tá»« chá»‘i hoÃ n tiá»n",
-    PAID: "ÄÃ£ hoÃ n tiá»n",
+    NONE: "Chưa phát sinh",
+    REQUESTED: "Chờ duyệt hoàn tiền",
+    APPROVED: "Đã duyệt hoàn tiền",
+    REJECTED: "Từ chối hoàn tiền",
+    PAID: "Đã hoàn tiền",
   };
   if (!status) return labels.NONE;
   return labels[status] ?? status;
@@ -984,10 +1120,10 @@ function getDurationLabel(start?: string, end?: string) {
   const minutes = totalMinutes % 60;
 
   if (days > 0) {
-    return `${days} ngÃ y${hours > 0 ? ` ${hours} giá»` : ""}`;
+    return `${days} ngày${hours > 0 ? ` ${hours} giờ` : ""}`;
   }
   if (hours > 0) {
-    return `${hours} giá»${minutes > 0 ? ` ${minutes} phÃºt` : ""}`;
+    return `${hours} giờ${minutes > 0 ? ` ${minutes} phút` : ""}`;
   }
-  return `${minutes} phÃºt`;
+  return `${minutes} phút`;
 }

@@ -11,5 +11,6 @@ public class CatalogServiceSnapshotResponse {
     String name;
     float price;
     String status;
+    String orderMode;
     Boolean deleted;
 }

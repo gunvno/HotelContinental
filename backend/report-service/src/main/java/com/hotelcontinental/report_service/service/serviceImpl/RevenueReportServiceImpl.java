@@ -5,6 +5,8 @@ import com.hotelcontinental.report_service.dto.response.RevenueBreakdownResponse
 import com.hotelcontinental.report_service.dto.response.RevenueSummaryResponse;
 import com.hotelcontinental.report_service.dto.response.RevenueTimePointResponse;
 import com.hotelcontinental.report_service.dto.response.RoomBookingSnapshotResponse;
+import com.hotelcontinental.report_service.entity.BookingReportSnapshot;
+import com.hotelcontinental.report_service.repository.BookingReportSnapshotRepository;
 import com.hotelcontinental.report_service.repository.httpclient.ExternalReportDataClient;
 import com.hotelcontinental.report_service.service.interfaces.RevenueReportService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RevenueReportServiceImpl implements RevenueReportService {
     private final ExternalReportDataClient externalReportDataClient;
+    private final BookingReportSnapshotRepository bookingReportSnapshotRepository;
 
     @Override
     @PreAuthorize("hasAuthority('REVENUE_VIEW')")
@@ -37,7 +40,7 @@ public class RevenueReportServiceImpl implements RevenueReportService {
         }
 
         List<PaymentHistorySnapshotResponse> allPayments = externalReportDataClient.getPayments();
-        List<RoomBookingSnapshotResponse> bookings = externalReportDataClient.getRoomBookings();
+        List<RoomBookingSnapshotResponse> bookings = getBookingSnapshots();
         Map<String, RoomBookingSnapshotResponse> bookingMap = bookings.stream()
                 .collect(Collectors.toMap(RoomBookingSnapshotResponse::getId, Function.identity(), (left, right) -> left));
 
@@ -117,5 +120,39 @@ public class RevenueReportServiceImpl implements RevenueReportService {
         return bookings.stream()
                 .filter(booking -> status.equals(booking.getStatus()))
                 .count();
+    }
+
+    private List<RoomBookingSnapshotResponse> getBookingSnapshots() {
+        List<BookingReportSnapshot> snapshots = bookingReportSnapshotRepository.findAll();
+        if (snapshots.isEmpty()) {
+            return externalReportDataClient.getRoomBookings();
+        }
+        return snapshots.stream()
+                .map(this::mapSnapshot)
+                .toList();
+    }
+
+    private RoomBookingSnapshotResponse mapSnapshot(BookingReportSnapshot snapshot) {
+        RoomBookingSnapshotResponse response = new RoomBookingSnapshotResponse();
+        response.setId(snapshot.getRoomBookingId());
+        response.setBookingDetailId(snapshot.getRoomBookingDetailId());
+        response.setCustomerId(snapshot.getCustomerId());
+        response.setRoomId(snapshot.getRoomId());
+        response.setBookingType(snapshot.getBookingType());
+        response.setStatus(snapshot.getStatus());
+        response.setDetailStatus(snapshot.getDetailStatus());
+        response.setCheckin(snapshot.getCheckin());
+        response.setCheckout(snapshot.getCheckout());
+        response.setCheckinReality(snapshot.getCheckinReality());
+        response.setCheckoutReality(snapshot.getCheckoutReality());
+        response.setTotalRoomPrice(snapshot.getTotalRoomPrice());
+        response.setTotalServicePrice(snapshot.getTotalServicePrice());
+        response.setTotalExtraPrice(snapshot.getTotalExtraPrice());
+        response.setTotalPrice(snapshot.getTotalPrice());
+        response.setVoucherCode(snapshot.getVoucherCode());
+        response.setDiscountAmount(snapshot.getDiscountAmount());
+        response.setRefundStatus(snapshot.getRefundStatus());
+        response.setRefundAmount(snapshot.getRefundAmount());
+        return response;
     }
 }

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   ArrowLeft,
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TextField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
+import { ToastBridge } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import { formatMoney } from "@/lib/format";
 import {
@@ -42,27 +43,27 @@ const emptyGuest: GuestForm = {
 };
 
 const bookingStatusLabel: Record<string, string> = {
-  PENDING: "Chá» thanh toÃ¡n",
-  DEPOSITED: "ÄÃ£ xÃ¡c nháº­n thanh toÃ¡n",
-  CANCEL_REQUESTED: "YÃªu cáº§u há»§y",
-  CHECKED_IN: "Äang lÆ°u trÃº",
-  CANCEL: "ÄÃ£ há»§y",
-  DONE: "ÄÃ£ tráº£ phÃ²ng",
+  PENDING: "Chờ thanh toán",
+  DEPOSITED: "Đã xác nhận thanh toán",
+  CANCEL_REQUESTED: "Yêu cầu hủy",
+  CHECKED_IN: "Đang lưu trú",
+  CANCEL: "Đã hủy",
+  DONE: "Đã trả phòng",
 };
 
 const detailStatusLabel: Record<string, string> = {
-  BOOKED: "ÄÃ£ giá»¯ phÃ²ng",
-  CHECKED_IN: "ÄÃ£ nháº­n phÃ²ng",
-  CHECKED_OUT: "ÄÃ£ tráº£ phÃ²ng",
-  CANCELED: "ÄÃ£ há»§y",
-  NO_SHOW: "KhÃ´ng Ä‘áº¿n",
+  BOOKED: "Đã giữ phòng",
+  CHECKED_IN: "Đã nhận phòng",
+  CHECKED_OUT: "Đã trả phòng",
+  CANCELED: "Đã hủy",
+  NO_SHOW: "Không đến",
 };
 
 export default function BookingCheckInPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const permission = usePermission();
-  const canCheckIn = permission.has("BOOKING_CHECKIN");
+  const canCheckIn = permission.has("BOOKING_CHECKIN") && permission.has("ROLE_RECEPTIONIST");
   const bookingId = useMemo(() => String(params.id ?? ""), [params.id]);
 
   const [booking, setBooking] = useState<RoomBookingResponse | null>(null);
@@ -97,7 +98,7 @@ export default function BookingCheckInPage() {
       }
     } catch {
       setMessage(
-        "KhÃ´ng thá»ƒ táº£i booking. Kiá»ƒm tra booking-service vÃ  quyá»n BOOKING_VIEW.",
+        "Không thể tải booking. Kiểm tra booking-service và quyền BOOKING_VIEW.",
       );
     } finally {
       setLoading(false);
@@ -140,7 +141,7 @@ export default function BookingCheckInPage() {
     if (!booking || submitting) return;
     if (!validateGuests()) {
       setMessage(
-        "Vui lÃ²ng nháº­p Ä‘á»§ há» tÃªn, CCCD/CMND, giá»›i tÃ­nh vÃ  ngÃ y sinh cá»§a khÃ¡ch lÆ°u trÃº.",
+        "Vui lòng nhập đủ họ tên, CCCD/CMND, giới tính và ngày sinh của khách lưu trú.",
       );
       return;
     }
@@ -160,11 +161,11 @@ export default function BookingCheckInPage() {
       const updated = await checkInRoomBooking(booking.id);
       await ensureIncludedServiceOrderDetails(booking.id).catch(() => null);
       setBooking(updated);
-      setMessage("ÄÃ£ lÆ°u Ä‘Äƒng kÃ½ lÆ°u trÃº vÃ  check-in thÃ nh cÃ´ng.");
+      setMessage("Đã lưu đăng ký lưu trú và check-in thành công.");
       window.setTimeout(() => router.push("/bookings"), 700);
     } catch {
       setMessage(
-        "KhÃ´ng thá»ƒ check-in. Kiá»ƒm tra tráº¡ng thÃ¡i booking, dá»¯ liá»‡u Ä‘Äƒng kÃ½ lÆ°u trÃº vÃ  quyá»n BOOKING_CHECKIN.",
+        "Không thể check-in. Kiểm tra trạng thái booking, dữ liệu đăng ký lưu trú và quyền BOOKING_CHECKIN.",
       );
     } finally {
       setSubmitting(false);
@@ -173,14 +174,14 @@ export default function BookingCheckInPage() {
 
   if (!canCheckIn) {
     return (
-      <PermissionDenied message="Báº¡n khÃ´ng cÃ³ quyá»n BOOKING_CHECKIN Ä‘á»ƒ thá»±c hiá»‡n check-in." />
+      <PermissionDenied message="Bạn không có quyền BOOKING_CHECKIN để thực hiện check-in." />
     );
   }
 
   const readyToCheckIn =
     booking?.status === "DEPOSITED" && booking?.detailStatus === "BOOKED";
-  const customerName = formatCustomerName(customer) || "ChÆ°a táº£i Ä‘Æ°á»£c tÃªn khÃ¡ch";
-  const roomName = room?.name || booking?.roomId || "ChÆ°a táº£i Ä‘Æ°á»£c tÃªn phÃ²ng";
+  const customerName = formatCustomerName(customer) || "Chưa tải được tên khách";
+  const roomName = room?.name || booking?.roomId || "Chưa tải được tên phòng";
 
   return (
     <div className="space-y-6">
@@ -190,31 +191,29 @@ export default function BookingCheckInPage() {
         className="inline-flex items-center gap-2 text-sm font-semibold text-[#17213a] hover:text-[#9b5c24]"
       >
         <ArrowLeft className="h-4 w-4" />
-        Quay láº¡i danh sÃ¡ch Ä‘áº·t phÃ²ng
+        Quay lại danh sách đặt phòng
       </button>
 
       <section className="rounded-2xl border border-[#decdb9] bg-white/85 p-6 shadow-sm">
         <p className="text-sm font-bold tracking-[0.22em] text-[#9b5c24] uppercase">
-          Tiáº¿p nháº­n khÃ¡ch
+          Tiếp nhận khách
         </p>
         <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#17213a]">
           Check-in booking
         </h2>
         <p className="mt-2 max-w-3xl text-sm text-[#7c6f63]">
-          Nháº­p thÃ´ng tin Ä‘Äƒng kÃ½ lÆ°u trÃº trÆ°á»›c khi chuyá»ƒn booking sang tráº¡ng thÃ¡i khÃ¡ch
-          Ä‘ang á»Ÿ.
+          Nhập thông tin đăng ký lưu trú trước khi chuyển booking sang trạng thái khách
+          đang ở.
         </p>
       </section>
 
       {message ? (
-        <div className="rounded-xl bg-[#fff6df] p-3 text-sm font-semibold text-[#8a5724]">
-          {message}
-        </div>
+        <ToastBridge success={message} onClearSuccess={() => setMessage(null)} />
       ) : null}
 
       {loading ? (
         <div className="rounded-2xl border border-[#decdb9] bg-white/90 p-10 text-center text-[#7c6f63]">
-          Äang táº£i booking...
+          Đang tải booking...
         </div>
       ) : booking ? (
         <>
@@ -222,25 +221,25 @@ export default function BookingCheckInPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <InfoCard
                 icon={<CalendarDays className="h-5 w-5" />}
-                label="MÃ£ booking"
+                label="Mã booking"
                 value={shortCode(booking.id)}
                 sub={booking.id}
               />
               <InfoCard
                 icon={<UserRound className="h-5 w-5" />}
-                label="KhÃ¡ch hÃ ng"
+                label="Khách hàng"
                 value={customerName}
                 sub={customer?.email || customer?.username}
               />
               <InfoCard
                 icon={<BedDouble className="h-5 w-5" />}
-                label="PhÃ²ng"
+                label="Phòng"
                 value={roomName}
                 sub={room?.roomTypes?.name}
               />
               <InfoCard
                 icon={<CheckCircle2 className="h-5 w-5" />}
-                label="Tráº¡ng thÃ¡i"
+                label="Trạng thái"
                 value={`${formatBookingStatus(booking.status)} / ${formatDetailStatus(booking.detailStatus)}`}
               />
             </div>
@@ -248,7 +247,7 @@ export default function BookingCheckInPage() {
             <div className="mt-6 grid gap-4 rounded-2xl border border-[#eee3d5] bg-[#fbf6ed] p-5 md:grid-cols-2">
               <div>
                 <p className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
-                  Nháº­n phÃ²ng dá»± kiáº¿n
+                  Nhận phòng dự kiến
                 </p>
                 <p className="mt-2 text-lg font-semibold text-[#17213a]">
                   {formatDateTime(booking.checkin)}
@@ -256,7 +255,7 @@ export default function BookingCheckInPage() {
               </div>
               <div>
                 <p className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
-                  Tráº£ phÃ²ng dá»± kiáº¿n
+                  Trả phòng dự kiến
                 </p>
                 <p className="mt-2 text-lg font-semibold text-[#17213a]">
                   {formatDateTime(booking.checkout)}
@@ -268,9 +267,9 @@ export default function BookingCheckInPage() {
           <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-[#17213a]">ÄÄƒng kÃ½ lÆ°u trÃº</h3>
+                <h3 className="text-xl font-semibold text-[#17213a]">Đăng ký lưu trú</h3>
                 <p className="mt-2 text-sm text-[#7c6f63]">
-                  Má»—i khÃ¡ch lÆ°u trÃº cáº§n cÃ³ thÃ´ng tin giáº¥y tá» Ä‘á»ƒ lÆ°u vÃ o báº£ng
+                  Mỗi khách lưu trú cần có thông tin giấy tờ để lưu vào bảng
                   residence_registration.
                 </p>
               </div>
@@ -282,7 +281,7 @@ export default function BookingCheckInPage() {
                 className="gap-2"
               >
                 <Plus className="h-4 w-4" />
-                ThÃªm khÃ¡ch
+                Thêm khách
               </Button>
             </div>
 
@@ -294,7 +293,7 @@ export default function BookingCheckInPage() {
                 >
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <p className="font-semibold text-[#17213a]">
-                      KhÃ¡ch lÆ°u trÃº {index + 1}
+                      Khách lưu trú {index + 1}
                     </p>
                     <Button
                       type="button"
@@ -305,16 +304,16 @@ export default function BookingCheckInPage() {
                       className="gap-2"
                     >
                       <Trash2 className="h-4 w-4" />
-                      XÃ³a
+                      Xóa
                     </Button>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <TextField
-                      label="Há» vÃ  tÃªn"
+                      label="Họ và tên"
                       value={guest.fullName}
                       onValueChange={(fullName) => updateGuest(index, { fullName })}
-                      placeholder="VÃ­ dá»¥: Táº¡ VÄƒn Long"
+                      placeholder="Ví dụ: Tạ Văn Long"
                     />
                     <TextField
                       label="CCCD / CMND"
@@ -322,11 +321,11 @@ export default function BookingCheckInPage() {
                       onValueChange={(identityNumber) =>
                         updateGuest(index, { identityNumber })
                       }
-                      placeholder="Nháº­p sá»‘ cÄƒn cÆ°á»›c"
+                      placeholder="Nhập số căn cước"
                     />
                     <label className="block">
                       <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                        Giá»›i tÃ­nh
+                        Giới tính
                       </span>
                       <Select
                         value={guest.gender}
@@ -334,14 +333,14 @@ export default function BookingCheckInPage() {
                         className="mt-2"
                         options={[
                           { value: "MALE", label: "Nam" },
-                          { value: "FEMALE", label: "Ná»¯" },
-                          { value: "OTHER", label: "KhÃ¡c" },
+                          { value: "FEMALE", label: "Nữ" },
+                          { value: "OTHER", label: "Khác" },
                         ]}
                       />
                     </label>
                     <label className="block">
                       <span className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
-                        NgÃ y sinh
+                        Ngày sinh
                       </span>
                       <DatePicker
                         value={guest.dateOfBirth}
@@ -357,28 +356,28 @@ export default function BookingCheckInPage() {
           </section>
 
           <section className="rounded-2xl border border-[#decdb9] bg-white/90 p-6 shadow-sm">
-            <h3 className="text-xl font-semibold text-[#17213a]">XÃ¡c nháº­n check-in</h3>
+            <h3 className="text-xl font-semibold text-[#17213a]">Xác nhận check-in</h3>
             <div className="mt-5 space-y-3 rounded-2xl bg-[#fbf6ed] p-4 text-sm text-[#5f5144]">
               <div className="flex justify-between gap-4">
-                <span>Tá»•ng tiá»n</span>
+                <span>Tổng tiền</span>
                 <strong className="text-[#17213a]">
                   {formatMoney(booking.totalPrice)}
                 </strong>
               </div>
               <div className="flex justify-between gap-4">
-                <span>Tiá»n phÃ²ng</span>
+                <span>Tiền phòng</span>
                 <span>{formatMoney(booking.totalRoomPrice)}</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span>Dá»‹ch vá»¥ phÃ¡t sinh</span>
+                <span>Dịch vụ phát sinh</span>
                 <span>{formatMoney(booking.totalServicePrice)}</span>
               </div>
             </div>
 
             {!readyToCheckIn ? (
               <div className="mt-5 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
-                Booking nÃ y chÆ°a sáºµn sÃ ng check-in. Cáº§n tráº¡ng thÃ¡i Ä‘Ã£ xÃ¡c nháº­n thanh toÃ¡n
-                vÃ  phÃ²ng cÃ²n Ä‘Æ°á»£c giá»¯.
+                Booking này chưa sẵn sàng check-in. Cần trạng thái đã xác nhận thanh toán
+                và phòng còn được giữ.
               </div>
             ) : null}
 
@@ -391,7 +390,7 @@ export default function BookingCheckInPage() {
                 className="gap-2"
               >
                 <RefreshCcw className="h-4 w-4" />
-                Táº£i láº¡i
+                Tải lại
               </Button>
               <Button
                 type="button"
@@ -404,14 +403,14 @@ export default function BookingCheckInPage() {
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
-                LÆ°u Ä‘Äƒng kÃ½ vÃ  check-in
+                Lưu đăng ký và check-in
               </Button>
             </div>
           </section>
         </>
       ) : (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700">
-          KhÃ´ng tÃ¬m tháº¥y booking.
+          Không tìm thấy booking.
         </div>
       )}
     </div>

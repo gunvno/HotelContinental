@@ -11,15 +11,18 @@ import {
   Utensils,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { Container } from "@/components/ui/container";
+import { Select } from "@/components/ui/select";
 import {
   getMyRoomBookings,
   type RoomBookingResponse,
 } from "@/services/booking-service";
 import { getCatalogServices, type ServiceResponse } from "@/services/room-service";
+import { createPaymentRequest } from "@/services/billing-service";
 import {
   createMyServiceOrderDetail,
   getMyServiceOrderDetails,
@@ -35,6 +38,28 @@ function formatMoney(value?: number) {
 
 function shortCode(id?: string) {
   return id ? id.slice(0, 8).toUpperCase() : "N/A";
+}
+
+function shortRoomId(value?: string) {
+  if (!value) return "N/A";
+  return value.length > 10 ? `${value.slice(0, 8)}...` : value;
+}
+
+function formatBookingDateRange(checkin?: string, checkout?: string) {
+  return `${formatBookingDateTime(checkin)} → ${formatBookingDateTime(checkout)}`;
+}
+
+function formatBookingDateTime(value?: string) {
+  if (!value) return "Chưa có";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function statusLabel(status?: RoomBookingResponse["status"]) {
@@ -56,6 +81,15 @@ function statusLabel(status?: RoomBookingResponse["status"]) {
 
 export default function AccountServicesPage() {
   const token = useAuthStore((state) => state.token);
+  const router = useRouter();
+  const initialBookingId =
+    typeof window === "undefined"
+      ? ""
+      : new URLSearchParams(window.location.search).get("bookingId") || "";
+  const initialPaymentStatus =
+    typeof window === "undefined"
+      ? ""
+      : new URLSearchParams(window.location.search).get("payment") || "";
   const [bookings, setBookings] = useState<RoomBookingResponse[]>([]);
   const [services, setServices] = useState<ServiceResponse[]>([]);
   const [items, setItems] = useState<ServiceOrderDetailResponse[]>([]);
@@ -63,12 +97,17 @@ export default function AccountServicesPage() {
   const [serviceId, setServiceId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [description, setDescription] = useState("");
+  const [paymentMode, setPaymentMode] = useState<"POST_TO_ROOM" | "PAY_NOW">(
+    "POST_TO_ROOM",
+  );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId);
   const selectedService = services.find((service) => service.id === serviceId);
+  const selectedServiceOrderMode = selectedService?.orderMode ?? "CUSTOMER_INSTANT";
+  const serviceNeedsApproval = selectedServiceOrderMode === "CUSTOMER_REQUEST";
   const canOrderService =
     selectedBooking?.status === "CHECKED_IN" &&
     selectedBooking?.detailStatus === "CHECKED_IN";
@@ -82,6 +121,12 @@ export default function AccountServicesPage() {
       ),
     [bookings],
   );
+
+  useEffect(() => {
+    if (serviceNeedsApproval && paymentMode === "PAY_NOW") {
+      setPaymentMode("POST_TO_ROOM");
+    }
+  }, [paymentMode, serviceNeedsApproval]);
 
   async function loadData(targetBookingId = selectedBookingId) {
     setLoading(true);
@@ -101,7 +146,11 @@ export default function AccountServicesPage() {
         active[0];
 
       setBookings(active);
-      setServices(serviceData.filter((service) => !service.deleted));
+      setServices(
+        serviceData.filter(
+          (service) => !service.deleted && service.orderMode !== "STAFF_ONLY",
+        ),
+      );
       setSelectedBookingId(nextBooking?.id ?? "");
 
       if (nextBooking) {
@@ -118,8 +167,14 @@ export default function AccountServicesPage() {
 
   useEffect(() => {
     if (!token) return;
-    void loadData("");
-  }, [token]);
+    void loadData(initialBookingId);
+  }, [token, initialBookingId]);
+
+  useEffect(() => {
+    if (initialPaymentStatus === "success") {
+      setMessage("Đã thanh toán dịch vụ thành công. Dịch vụ đã được cập nhật vào kỳ lưu trú.");
+    }
+  }, [initialPaymentStatus]);
 
   async function handleBookingChange(value: string) {
     setSelectedBookingId(value);
@@ -148,12 +203,33 @@ export default function AccountServicesPage() {
     setSubmitting(true);
     setMessage(null);
     try {
-      await createMyServiceOrderDetail({
+      const serviceOrder = await createMyServiceOrderDetail({
         roomBookingId: selectedBookingId,
         serviceId,
         quantity,
         description: description.trim() || undefined,
       });
+      if (paymentMode === "PAY_NOW" && !serviceNeedsApproval) {
+        const amount = Number(serviceOrder.totalPrice || serviceOrder.price * serviceOrder.quantity || 0);
+        const paymentRequest = await createPaymentRequest({
+          roomBookingId: selectedBookingId,
+          serviceOrderId: serviceOrder.id,
+          purpose: "SERVICE_ORDER",
+          amount,
+        });
+        const params = new URLSearchParams({
+          paymentRequestId: paymentRequest.id,
+          bookingId: selectedBookingId,
+          total: String(amount),
+          roomId: selectedBooking?.roomId ?? "",
+          roomTitle: selectedBooking?.roomId ?? "",
+          checkIn: selectedBooking?.checkin ?? "",
+          checkOut: selectedBooking?.checkout ?? "",
+          guests: "1",
+        });
+        router.push(`/payment/qr?${params.toString()}`);
+        return;
+      }
       setServiceId("");
       setQuantity(1);
       setDescription("");
@@ -263,7 +339,49 @@ export default function AccountServicesPage() {
                   </div>
 
                   <div className="mt-6 space-y-4">
-                    <label className="block">
+                    <div>
+                      <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
+                        Booking
+                      </span>
+                      <div className="mt-2 max-h-[260px] space-y-2 overflow-y-auto pr-1">
+                        {activeBookings.map((booking) => {
+                          const selected = booking.id === selectedBookingId;
+                          return (
+                            <button
+                              key={booking.id}
+                              type="button"
+                              onClick={() => void handleBookingChange(booking.id)}
+                              className={`w-full rounded-2xl border p-3 text-left transition ${
+                                selected
+                                  ? "border-[#a46522] bg-[#fff6df] shadow-sm"
+                                  : "border-[#ead8c4] bg-white hover:border-[#c8792a]"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-black text-[#1f1a17]">
+                                    {shortCode(booking.id)}
+                                  </p>
+                                  <p className="mt-1 text-xs font-semibold text-[#7c6f63]">
+                                    Phòng {shortRoomId(booking.roomId)}
+                                  </p>
+                                </div>
+                                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                                  {statusLabel(booking.status)}
+                                </span>
+                              </div>
+                              <div className="mt-3 grid gap-1 text-xs text-[#7c6f63]">
+                                <p>{formatBookingDateRange(booking.checkin, booking.checkout)}</p>
+                                <p className="font-bold text-[#8a5724]">
+                                  Tổng: {formatMoney(booking.totalPrice ?? 0)}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <label className="hidden">
                       <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
                         Booking
                       </span>
@@ -281,23 +399,25 @@ export default function AccountServicesPage() {
                       </select>
                     </label>
 
-                    <label className="block">
-                      <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
-                        Dịch vụ
-                      </span>
-                      <select
-                        value={serviceId}
-                        onChange={(event) => setServiceId(event.target.value)}
-                        className="mt-2 h-12 w-full rounded-xl border border-[#decdb9] bg-white px-3 text-sm outline-none focus:border-[#c8792a]"
-                      >
-                        <option value="">-- Chọn dịch vụ --</option>
-                        {services.map((service) => (
-                          <option key={service.id} value={service.id}>
-                            {service.name} - {formatMoney(service.price)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <Select
+                      label="Dịch vụ"
+                      value={serviceId}
+                      placeholder="-- Chọn dịch vụ --"
+                      onValueChange={(nextServiceId) => {
+                        const nextService = services.find((service) => service.id === nextServiceId);
+                        setServiceId(nextServiceId);
+                        if (nextService?.orderMode === "CUSTOMER_REQUEST") {
+                          setPaymentMode("POST_TO_ROOM");
+                        }
+                      }}
+                      options={[
+                        { value: "", label: "-- Chọn dịch vụ --" },
+                        ...services.map((service) => ({
+                          value: service.id,
+                          label: `${service.name} - ${formatMoney(service.price)}`,
+                        })),
+                      ]}
+                    />
 
                     <label className="block">
                       <span className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
@@ -345,6 +465,31 @@ export default function AccountServicesPage() {
                         Booking này chưa check-in nên chưa thể gọi dịch vụ phát sinh.
                       </p>
                     ) : null}
+
+                    <div className="rounded-2xl border border-[#ead8c4] bg-white p-3">
+                      <p className="text-xs font-bold tracking-[0.16em] text-[#7c6f63] uppercase">
+                        Thanh toán
+                      </p>
+                      <div className="mt-3 grid gap-2">
+                        <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[#fbf5ed] p-3 text-sm font-semibold text-[#1f1a17]">
+                          <input
+                            type="radio"
+                            checked={paymentMode === "POST_TO_ROOM"}
+                            onChange={() => setPaymentMode("POST_TO_ROOM")}
+                          />
+                          Thu cùng hóa đơn checkout
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[#fbf5ed] p-3 text-sm font-semibold text-[#1f1a17]">
+                          <input
+                            type="radio"
+                            checked={paymentMode === "PAY_NOW"}
+                            disabled={serviceNeedsApproval}
+                            onChange={() => setPaymentMode("PAY_NOW")}
+                          />
+                          Thanh toán PayOS ngay
+                        </label>
+                      </div>
+                    </div>
 
                     <button
                       type="button"
@@ -426,6 +571,13 @@ export default function AccountServicesPage() {
                                 >
                                   {item.status === "SERVED" ? "Đã phục vụ" : "Đang chờ"}
                                 </span>
+                                <p className="mt-2 text-xs font-semibold text-[#7c6f63]">
+                                  {item.paymentStatus === "PAID"
+                                    ? "Đã thanh toán"
+                                    : item.paymentStatus === "PENDING_PAYMENT"
+                                      ? "Chờ thanh toán PayOS"
+                                      : "Thu khi checkout"}
+                                </p>
                               </td>
                             </tr>
                           ))

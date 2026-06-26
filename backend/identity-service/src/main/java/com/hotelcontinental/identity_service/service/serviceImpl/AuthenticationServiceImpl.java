@@ -26,6 +26,7 @@ import com.hotelcontinental.identity_service.repository.InvalidatedTokenReposito
 import com.hotelcontinental.identity_service.repository.RolesRepository;
 import com.hotelcontinental.identity_service.repository.UserRepository;
 import com.hotelcontinental.identity_service.service.interfaces.AuthenticationService;
+import com.hotelcontinental.identity_service.service.interfaces.StaffActivityService;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -73,6 +74,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final StaffActivityService staffActivityService;
 
     @Value("${jwt.signerKey}")
     @NonFinal
@@ -95,7 +97,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new AppException(ErrorCode.LOGIN_FAILED);
         }
 
-        return buildAuthenticationResponse(account);
+        AuthenticationResponse response = buildAuthenticationResponse(account);
+        try {
+            staffActivityService.recordLogin(account);
+        } catch (Exception exception) {
+            log.warn("Failed to record staff login for account {}", account.getUsername(), exception);
+        }
+        return response;
     }
 
     @Override
@@ -131,7 +139,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public void logout(LogoutRequest request) {
         try {
-            invalidateToken(verifyToken(request.getToken()));
+            SignedJWT signedJWT = verifyToken(request.getToken());
+            invalidateToken(signedJWT);
+            String userId = signedJWT.getJWTClaimsSet().getSubject();
+            accountsRepository.findByUserId(userId)
+                    .ifPresent(account -> {
+                        try {
+                            staffActivityService.recordLogout(account.getId());
+                        } catch (Exception exception) {
+                            log.warn("Failed to record staff logout for account {}", account.getUsername(), exception);
+                        }
+                    });
         } catch (ParseException | JOSEException exception) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
@@ -263,6 +281,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .expirationTime(Date.from(now.plusSeconds(durationSeconds)))
                 .jwtID(UUID.randomUUID().toString())
                 .claim("username", account.getUsername())
+                .claim("email", account.getUser() != null ? account.getUser().getEmail() : null)
                 .claim("scope", String.join(" ", buildAuthorities(account)))
                 .build();
 

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ToastBridge } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import { cn } from "@/lib/utils";
 import {
@@ -235,9 +236,7 @@ export default function ChatsPage() {
       </section>
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
-          {error}
-        </div>
+        <ToastBridge error={error} onClearError={() => setError(null)} />
       ) : null}
 
       <section className="flex min-h-[700px] flex-col overflow-hidden rounded-2xl border border-[#decdb9] bg-white shadow-sm lg:flex-row dark:border-[#3a2e24] dark:bg-[#15110d]">

@@ -18,7 +18,7 @@ import {
 
 const navItems: Array<{ label: string; href: string; hash?: string }> = [
   { label: "Dashboard", href: "/" },
-  { label: "Danh mục", href: "/admin" },
+  { label: "Danh mục", href: "/admin/room-types" },
   { label: "Phòng", href: "/rooms" },
   { label: "Đặt phòng", href: "/bookings" },
   { label: "Người dùng", href: "/users" },

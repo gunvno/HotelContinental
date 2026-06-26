@@ -22,6 +22,18 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
 
+  kafka:
+    bootstrap-servers: localhost:9094
+    consumer:
+      group-id: billing-service-booking-events
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.hotelcontinental.billing_service.event.BookingEvent
+
 app:
   internal-secret: ${APP_INTERNAL_SECRET:dev-internal-secret}
   services:

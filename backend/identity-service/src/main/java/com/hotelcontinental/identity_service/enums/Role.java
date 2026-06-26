@@ -5,5 +5,6 @@ public enum Role {
     MANAGER,
     RECEPTIONIST,
     CUSTOMER_SUPPORT,
+    HOUSEKEEPING,
     CUSTOMER
 }

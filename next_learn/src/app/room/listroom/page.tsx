@@ -94,6 +94,12 @@ function toDateInputValue(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
 function toLocalDateTimeValue(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -818,8 +824,8 @@ function DatePickerField({
 export default function RoomListPage() {
   const [selectedRoom, setSelectedRoom] = useState(0);
   const [stayType, setStayType] = useState("night");
-  const [checkIn, setCheckIn] = useState("2026-06-15");
-  const [checkOut, setCheckOut] = useState("2026-06-17");
+  const [checkIn, setCheckIn] = useState(() => toDateInputValue(new Date()));
+  const [checkOut, setCheckOut] = useState(() => toDateInputValue(addDays(new Date(), 2)));
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [stayHours, setStayHours] = useState("3");
   const [guestCount, setGuestCount] = useState("2");
