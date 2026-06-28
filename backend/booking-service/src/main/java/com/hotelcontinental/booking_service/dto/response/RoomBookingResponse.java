@@ -17,6 +17,10 @@ public class RoomBookingResponse {
     String id;
     String bookingDetailId;
     String customerId;
+    String customerName;
+    String customerPhone;
+    String customerIdentityNumber;
+    String offlineSource;
     String roomId;
     BookingType bookingType;
     RoomBookingStatus status;

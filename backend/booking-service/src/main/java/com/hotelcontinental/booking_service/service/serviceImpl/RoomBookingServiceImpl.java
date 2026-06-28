@@ -66,16 +66,23 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         }
         String customerId = authentication.getName();
 
-        List<RoomBookingDetails> existingDetails = roomBookingDetailsRepository.findExistingActiveBookingDetails(
-                customerId,
-                request.getRoomId(),
-                request.getCheckin(),
-                request.getCheckout(),
-                BLOCKING_STATUSES
-        );
-        if (!existingDetails.isEmpty()) {
-            RoomBookingDetails existingDetail = existingDetails.get(0);
-            return map(existingDetail.getRoomBookings(), existingDetail);
+        boolean offlineBooking = request.getBookingType() == BookingType.OFFLINE;
+        if (offlineBooking && !hasAuthority(authentication, "ROLE_RECEPTIONIST")) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (!offlineBooking) {
+            List<RoomBookingDetails> existingDetails = roomBookingDetailsRepository.findExistingActiveBookingDetails(
+                    customerId,
+                    request.getRoomId(),
+                    request.getCheckin(),
+                    request.getCheckout(),
+                    BLOCKING_STATUSES
+            );
+            if (!existingDetails.isEmpty()) {
+                RoomBookingDetails existingDetail = existingDetails.get(0);
+                return map(existingDetail.getRoomBookings(), existingDetail);
+            }
         }
 
         boolean roomBusy = roomBookingDetailsRepository.findBusyRoomIds(
@@ -96,8 +103,12 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         );
         RoomBookings booking = new RoomBookings();
         booking.setCustomerId(customerId);
+        booking.setCustomerName(normalizeText(request.getCustomerName()));
+        booking.setCustomerPhone(normalizeText(request.getCustomerPhone()));
+        booking.setCustomerIdentityNumber(normalizeText(request.getCustomerIdentityNumber()));
+        booking.setOfflineSource(offlineBooking ? normalizeOfflineSource(request.getOfflineSource()) : null);
         booking.setBookingType(request.getBookingType());
-        booking.setStatus(RoomBookingStatus.PENDING);
+        booking.setStatus(offlineBooking ? RoomBookingStatus.DEPOSITED : RoomBookingStatus.PENDING);
         booking.setTotalRoomPrice(request.getTotalRoomPrice());
         booking.setTotalServicePrice(initialServicePrice);
         booking.setTotalExtraPrice(request.getTotalExtraPrice());
@@ -127,7 +138,12 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         detail.setDeleted(false);
         detail = roomBookingDetailsRepository.save(detail);
 
+        createPrimaryResidenceRegistrationIfPresent(request, detail);
+
         bookingEventPublisher.publish("BOOKING_CREATED", booking, detail, customerId);
+        if (offlineBooking) {
+            bookingEventPublisher.publish("BOOKING_DEPOSITED", booking, detail, customerId);
+        }
         return map(booking, detail);
     }
 
@@ -609,6 +625,43 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .anyMatch("ADMIN_PORTAL_ACCESS"::equals);
     }
 
+    private boolean hasAuthority(Authentication authentication, String authority) {
+        return authentication != null
+                && authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority::equals);
+    }
+
+    private String normalizeText(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private String normalizeOfflineSource(String value) {
+        String normalized = normalizeText(value);
+        if (normalized == null) {
+            return "WALK_IN";
+        }
+        return normalized.equalsIgnoreCase("PHONE") ? "PHONE" : "WALK_IN";
+    }
+
+    private void createPrimaryResidenceRegistrationIfPresent(
+            RoomBookingCreationRequest request,
+            RoomBookingDetails detail
+    ) {
+        if (!StringUtils.hasText(request.getCustomerName())
+                || !StringUtils.hasText(request.getCustomerIdentityNumber())) {
+            return;
+        }
+
+        ResidenceRegistration registration = new ResidenceRegistration();
+        registration.setRoomBookingDetails(detail);
+        registration.setFullName(request.getCustomerName().trim());
+        registration.setIdentityNumber(request.getCustomerIdentityNumber().trim());
+        registration.setGender(StringUtils.hasText(request.getCustomerGender()) ? request.getCustomerGender().trim() : "UNKNOWN");
+        registration.setDateOfBirth(StringUtils.hasText(request.getCustomerDateOfBirth()) ? request.getCustomerDateOfBirth().trim() : "UNKNOWN");
+        residenceRegistrationRepository.save(registration);
+    }
+
     private void validateBookingAccess(RoomBookings booking) {
         if (canAccessAdminPortal()) {
             return;
@@ -715,6 +768,10 @@ public class RoomBookingServiceImpl implements RoomBookingService {
                 .id(booking.getId())
                 .bookingDetailId(detail != null ? detail.getId() : null)
                 .customerId(booking.getCustomerId())
+                .customerName(booking.getCustomerName())
+                .customerPhone(booking.getCustomerPhone())
+                .customerIdentityNumber(booking.getCustomerIdentityNumber())
+                .offlineSource(booking.getOfflineSource())
                 .roomId(detail != null ? detail.getRoomId() : null)
                 .bookingType(booking.getBookingType())
                 .status(booking.getStatus())
@@ -740,25 +797,29 @@ public class RoomBookingServiceImpl implements RoomBookingService {
         return RoomBookingResponse.builder()
                 .id(asString(row, 0))
                 .customerId(asString(row, 1))
-                .bookingType(parseEnum(BookingType.class, asString(row, 2)))
-                .status(parseEnum(RoomBookingStatus.class, asString(row, 3)))
-                .totalRoomPrice(asFloat(row, 4))
-                .totalServicePrice(asFloat(row, 5))
-                .totalExtraPrice(asFloat(row, 6))
-                .totalPrice(asFloat(row, 7))
-                .voucherCode(asString(row, 8))
-                .discountAmount(asFloat(row, 9))
-                .refundStatus(asString(row, 10))
-                .refundAmount(asFloat(row, 11))
-                .bookingDetailId(asString(row, 12))
-                .roomId(asString(row, 13))
-                .detailStatus(parseEnum(RoomBookingDetailStatus.class, asString(row, 14)))
-                .checkin(asLocalDateTime(row, 15))
-                .checkout(asLocalDateTime(row, 16))
-                .checkinReality(asLocalDateTime(row, 17))
-                .checkoutReality(asLocalDateTime(row, 18))
-                .roomPrice(asFloat(row, 19))
-                .deposit(asFloat(row, 20))
+                .customerName(asString(row, 2))
+                .customerPhone(asString(row, 3))
+                .customerIdentityNumber(asString(row, 4))
+                .offlineSource(asString(row, 5))
+                .bookingType(parseEnum(BookingType.class, asString(row, 6)))
+                .status(parseEnum(RoomBookingStatus.class, asString(row, 7)))
+                .totalRoomPrice(asFloat(row, 8))
+                .totalServicePrice(asFloat(row, 9))
+                .totalExtraPrice(asFloat(row, 10))
+                .totalPrice(asFloat(row, 11))
+                .voucherCode(asString(row, 12))
+                .discountAmount(asFloat(row, 13))
+                .refundStatus(asString(row, 14))
+                .refundAmount(asFloat(row, 15))
+                .bookingDetailId(asString(row, 16))
+                .roomId(asString(row, 17))
+                .detailStatus(parseEnum(RoomBookingDetailStatus.class, asString(row, 18)))
+                .checkin(asLocalDateTime(row, 19))
+                .checkout(asLocalDateTime(row, 20))
+                .checkinReality(asLocalDateTime(row, 21))
+                .checkoutReality(asLocalDateTime(row, 22))
+                .roomPrice(asFloat(row, 23))
+                .deposit(asFloat(row, 24))
                 .build();
     }
 

@@ -14,6 +14,12 @@ public class RoomBookingCreationRequest {
     LocalDateTime checkin;
     LocalDateTime checkout;
     BookingType bookingType = BookingType.ONLINE;
+    String customerName;
+    String customerPhone;
+    String customerIdentityNumber;
+    String customerGender;
+    String customerDateOfBirth;
+    String offlineSource;
     float roomPrice;
     float totalRoomPrice;
     float totalServicePrice;

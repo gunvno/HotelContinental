@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   CreditCard,
   LogOut,
+  Plus,
   RefreshCcw,
   Search,
   UserRound,
@@ -61,6 +62,7 @@ export default function BookingsPage() {
   const canCheckOut = permission.has("BOOKING_CHECKOUT") && isReceptionist;
   const canCancelBooking = permission.has("BOOKING_CANCEL") && isManager;
   const canConfirmPayment = permission.has("PAYMENT_CONFIRM") && isReceptionist;
+  const canCreateBooking = permission.has("BOOKING_CREATE") && isReceptionist;
 
   const [bookings, setBookings] = useState<RoomBookingResponse[]>([]);
   const [roomNames, setRoomNames] = useState<Record<string, string>>({});
@@ -102,9 +104,10 @@ export default function BookingsPage() {
     return bookings.filter((booking) => {
       const displayStatus = getDisplayStatus(booking);
       const roomName = roomNames[booking.roomId] ?? booking.roomId;
+      const customerText = getBookingCustomerLabel(booking).toLowerCase();
       const matchesQuery =
         shortCode(booking.id).toLowerCase().includes(normalizedQuery) ||
-        booking.customerId.toLowerCase().includes(normalizedQuery) ||
+        customerText.includes(normalizedQuery) ||
         roomName.toLowerCase().includes(normalizedQuery);
       const matchesStatus = status === "ALL" || displayStatus === status;
       return matchesQuery && matchesStatus;
@@ -206,15 +209,26 @@ export default function BookingsPage() {
               liệu booking thật.
             </p>
           </div>
-          <Button
-            type="button"
-            onClick={() => void loadData()}
-            disabled={loading || isActionBusy}
-            className="gap-2"
-          >
-            <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Tải lại
-          </Button>
+              {canCreateBooking ? (
+                <Button
+                  type="button"
+                  onClick={() => router.push("/bookings/create")}
+                  disabled={isActionBusy}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Tạo booking
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                onClick={() => void loadData()}
+                disabled={loading || isActionBusy}
+                className="gap-2"
+              >
+                <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                Tải lại
+              </Button>
         </div>
       </div>
 
@@ -302,7 +316,14 @@ export default function BookingsPage() {
                       <td className="py-4 pr-4 font-medium text-[#17213a]">
                         {shortCode(booking.id)}
                       </td>
-                      <td className="py-4 pr-4 text-[#5f5144]">{booking.customerId}</td>
+                      <td className="py-4 pr-4 text-[#5f5144]">
+                        <div className="font-semibold text-[#17213a]">
+                          {getBookingCustomerLabel(booking)}
+                        </div>
+                        {booking.customerPhone ? (
+                          <div className="text-xs text-[#9f8a77]">{booking.customerPhone}</div>
+                        ) : null}
+                      </td>
                       <td className="py-4 pr-4 text-[#5f5144]">
                         {roomNames[booking.roomId] ?? booking.roomId}
                       </td>
@@ -469,6 +490,10 @@ function badgeClass(status: DisplayStatus) {
 
 function shortCode(id: string) {
   return `BK-${id.slice(0, 8).toUpperCase()}`;
+}
+
+function getBookingCustomerLabel(booking: RoomBookingResponse) {
+  return booking.customerName || booking.customerPhone || booking.customerId;
 }
 
 function formatDateTime(value?: string) {

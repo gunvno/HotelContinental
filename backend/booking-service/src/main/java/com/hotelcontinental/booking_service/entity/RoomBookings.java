@@ -26,6 +26,14 @@ public class RoomBookings {
 
     @Column(name = "customer_id")
     String customerId;
+    @Column(name = "customer_name", length = 150)
+    String customerName;
+    @Column(name = "customer_phone", length = 30)
+    String customerPhone;
+    @Column(name = "customer_identity_number", length = 50)
+    String customerIdentityNumber;
+    @Column(name = "offline_source", length = 30)
+    String offlineSource;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "booking_type", nullable = false)

@@ -5,7 +5,7 @@ export type ServiceOrderDetailStatus = "WAITING" | "SERVED";
 export type ServiceOrderApprovalStatus = "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
 export type ServiceOrderSource = "INCLUDED" | "EXTRA";
 export type ServiceOrderPaymentStatus = "POST_TO_ROOM" | "PENDING_PAYMENT" | "PAID";
-export type ServiceOrderCheckoutPaymentMethod = "CASH" | "BANK_TRANSFER";
+export type ServiceOrderCheckoutPaymentMethod = "CASH" | "CARD" | "BANK_TRANSFER";
 
 export type ServiceOrderDetailPayload = {
   roomBookingId: string;

@@ -19,6 +19,10 @@ export type RoomBookingResponse = {
   id: string;
   bookingDetailId?: string;
   customerId: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerIdentityNumber?: string;
+  offlineSource?: "WALK_IN" | "PHONE" | string;
   roomId: string;
   bookingType: "ONLINE" | "OFFLINE";
   status: RoomBookingStatus;
@@ -37,6 +41,29 @@ export type RoomBookingResponse = {
   discountAmount: number;
   refundStatus?: string;
   refundAmount: number;
+};
+
+export type RoomBookingCreationPayload = {
+  roomId: string;
+  checkin: string;
+  checkout: string;
+  bookingType: "ONLINE" | "OFFLINE";
+  customerName?: string;
+  customerPhone?: string;
+  customerIdentityNumber?: string;
+  customerGender?: string;
+  customerDateOfBirth?: string;
+  offlineSource?: "WALK_IN" | "PHONE";
+  roomPrice: number;
+  totalRoomPrice: number;
+  totalServicePrice?: number;
+  totalExtraPrice?: number;
+  totalPrice: number;
+  deposit?: number;
+  voucherCode?: string;
+  discountAmount?: number;
+  refundStatus?: string;
+  refundAmount?: number;
 };
 
 export type EditHistoryResponse = {
@@ -81,6 +108,22 @@ export async function getRoomBookings() {
     .get("booking/room-bookings")
     .json<ApiResponse<RoomBookingResponse[]>>();
   return (res.result ?? res.content ?? []) as RoomBookingResponse[];
+}
+
+export async function createRoomBooking(payload: RoomBookingCreationPayload) {
+  const res = await http
+    .post("booking/room-bookings", { json: payload })
+    .json<ApiResponse<RoomBookingResponse>>();
+  return (res.result ?? res.content) as RoomBookingResponse;
+}
+
+export async function getBusyRoomIds(start: string, end: string) {
+  const res = await http
+    .get("booking/availability/busy-room-ids", {
+      searchParams: { start, end },
+    })
+    .json<ApiResponse<string[]>>();
+  return (res.result ?? res.content ?? []) as string[];
 }
 
 export async function getRoomBooking(id: string) {

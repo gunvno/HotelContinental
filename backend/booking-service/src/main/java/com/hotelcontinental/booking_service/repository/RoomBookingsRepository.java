@@ -23,6 +23,10 @@ public interface RoomBookingsRepository extends JpaRepository<RoomBookings, Stri
             select
               b.id,
               b.customer_id,
+              b.customer_name,
+              b.customer_phone,
+              b.customer_identity_number,
+              b.offline_source,
               b.booking_type,
               b.status,
               b.total_room_price,
@@ -61,6 +65,10 @@ public interface RoomBookingsRepository extends JpaRepository<RoomBookings, Stri
             select
               b.id,
               b.customer_id,
+              b.customer_name,
+              b.customer_phone,
+              b.customer_identity_number,
+              b.offline_source,
               b.booking_type,
               b.status,
               b.total_room_price,

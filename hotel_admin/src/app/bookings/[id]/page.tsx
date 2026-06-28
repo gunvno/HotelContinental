@@ -10,6 +10,7 @@ import {
   CreditCard,
   FileText,
   LogOut,
+  Printer,
   ReceiptText,
   RefreshCcw,
   ScrollText,
@@ -20,7 +21,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { PermissionDenied } from "@/components/auth/permission-gate";
 import { Button } from "@/components/ui/button";
@@ -295,6 +296,10 @@ export default function BookingDetailPage() {
     );
   }
 
+  function handlePrintInvoice() {
+    window.print();
+  }
+
   if (!canViewBookings) {
     return (
       <PermissionDenied message="Bạn không có quyền BOOKING_VIEW để xem chi tiết booking." />
@@ -302,7 +307,8 @@ export default function BookingDetailPage() {
   }
 
   const displayStatus = booking ? getDisplayStatus(booking) : "PENDING";
-  const customerName = formatCustomerName(customer) || booking?.customerId || "-";
+  const customerName =
+    booking?.customerName || formatCustomerName(customer) || booking?.customerId || "-";
   const roomName = room?.name || booking?.roomId || "-";
   const readyToCheckIn =
     booking?.status === "DEPOSITED" && booking?.detailStatus === "BOOKED";
@@ -334,6 +340,16 @@ export default function BookingDetailPage() {
       (total, item) => total + Number(item.totalPrice || item.price * item.quantity || 0),
       0,
     );
+  const includedServices = services.filter(
+    (item) => item.source === "INCLUDED" || item.chargeable === false,
+  );
+  const extraServices = services.filter(
+    (item) => item.source !== "INCLUDED" && item.chargeable !== false,
+  );
+  const extraServiceTotal = extraServices.reduce(
+    (total, item) => total + Number(item.totalPrice || item.price * item.quantity || 0),
+    0,
+  );
   const refundAmount = invoice?.refundAmount ?? booking?.refundAmount ?? 0;
   const checkoutAmountDue = Math.max(remainingAmount, unpaidServiceTotal);
   const refundStatus = getRefundStatus(
@@ -345,6 +361,59 @@ export default function BookingDetailPage() {
 
   return (
     <div className="space-y-6">
+      <style jsx global>{`
+        .booking-invoice-print {
+          display: none;
+        }
+
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+
+          .booking-invoice-print,
+          .booking-invoice-print * {
+            visibility: visible !important;
+          }
+
+          .booking-invoice-print {
+            display: block !important;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            min-height: 100vh;
+            background: #ffffff;
+            color: #111827;
+            padding: 32px;
+            font-family: Arial, sans-serif;
+          }
+
+          @page {
+            size: A4;
+            margin: 14mm;
+          }
+        }
+      `}</style>
+
+      {booking ? (
+        <PrintInvoice
+          booking={booking}
+          customerName={customerName}
+          roomName={roomName}
+          roomTypeName={room?.roomTypes?.name}
+          includedServices={includedServices}
+          extraServices={extraServices}
+          invoiceRoomTotal={invoiceRoomTotal}
+          extraServiceTotal={extraServiceTotal}
+          invoiceExtraTotal={invoiceExtraTotal}
+          discountAmount={discountAmount}
+          paidAmount={paidAmount}
+          remainingAmount={remainingAmount}
+          refundAmount={refundAmount}
+          paymentMethod={formatPaymentMethod(checkoutPaymentMethod)}
+        />
+      ) : null}
+
       <button
         type="button"
         onClick={() => router.push("/bookings")}
@@ -477,7 +546,7 @@ export default function BookingDetailPage() {
               icon={<UserRound className="h-5 w-5" />}
               label="Khách đặt"
               value={customerName}
-              sub={customer?.email || customer?.username || booking.customerId}
+              sub={booking.customerPhone || customer?.email || customer?.username || booking.customerId}
             />
             <SummaryInfoCard
               icon={<BedDouble className="h-5 w-5" />}
@@ -532,6 +601,9 @@ export default function BookingDetailPage() {
                 <DetailInfoCard label="Trạng thái phòng" value={formatDetailStatus(booking.detailStatus)} />
                 <DetailInfoCard label="Loại booking" value={booking.bookingType} />
                 <DetailInfoCard label="Mã khách" value={booking.customerId} />
+                <DetailInfoCard label="SĐT khách" value={booking.customerPhone || "-"} />
+                <DetailInfoCard label="CCCD / hộ chiếu" value={booking.customerIdentityNumber || "-"} />
+                <DetailInfoCard label="Nguồn offline" value={formatOfflineSource(booking.offlineSource)} />
               </div>
             </SectionPanel>
 
@@ -730,9 +802,98 @@ export default function BookingDetailPage() {
                         className="mt-2"
                         options={[
                           { value: "CASH", label: "Tiền mặt" },
+                          { value: "CARD", label: "Thẻ" },
                           { value: "BANK_TRANSFER", label: "Chuyển khoản" },
                         ]}
                       />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-[#eadfcd] bg-[#fbf6ed] p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
+                          Chi tiết bill
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-[#6f5f50]">
+                          Tổng hợp tiền phòng, dịch vụ kèm phòng và dịch vụ phát sinh tính tiền.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handlePrintInvoice}
+                        className="gap-2"
+                      >
+                        <Printer className="h-4 w-4" />
+                        In hóa đơn
+                      </Button>
+                    </div>
+
+                    <div className="mt-4 overflow-hidden rounded-2xl border border-[#eadfcd] bg-white">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-[#fbf6ed] text-xs font-bold tracking-[0.14em] text-[#7c6f63] uppercase">
+                          <tr>
+                            <th className="px-4 py-3">Khoản mục</th>
+                            <th className="px-4 py-3">SL</th>
+                            <th className="px-4 py-3 text-right">Thành tiền</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#eadfcd]">
+                          <tr>
+                            <td className="px-4 py-3">
+                              <p className="font-black text-[#17213a]">Tiền phòng</p>
+                              <p className="text-xs font-semibold text-[#7c6f63]">
+                                {roomName} - {formatDateTime(booking.checkin)} đến {formatDateTime(booking.checkout)}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3">1</td>
+                            <td className="px-4 py-3 text-right font-black text-[#17213a]">
+                              {formatMoney(invoiceRoomTotal)}
+                            </td>
+                          </tr>
+                          {includedServices.map((item) => (
+                            <tr key={`included-${item.id}`}>
+                              <td className="px-4 py-3">
+                                <p className="font-black text-[#17213a]">
+                                  {item.serviceName || "Dịch vụ kèm phòng"}
+                                </p>
+                                <p className="text-xs font-semibold text-emerald-700">
+                                  Miễn phí / kèm phòng
+                                </p>
+                              </td>
+                              <td className="px-4 py-3">{item.quantity}</td>
+                              <td className="px-4 py-3 text-right font-black text-emerald-700">
+                                0 đ
+                              </td>
+                            </tr>
+                          ))}
+                          {extraServices.map((item) => (
+                            <tr key={`extra-${item.id}`}>
+                              <td className="px-4 py-3">
+                                <p className="font-black text-[#17213a]">
+                                  {item.serviceName || "Dịch vụ bổ sung"}
+                                </p>
+                                <p className="text-xs font-semibold text-[#7c6f63]">
+                                  {servicePaymentStatusLabel[item.paymentStatus ?? "POST_TO_ROOM"]}
+                                </p>
+                              </td>
+                              <td className="px-4 py-3">{item.quantity}</td>
+                              <td className="px-4 py-3 text-right font-black text-[#17213a]">
+                                {formatMoney(item.totalPrice || item.price * item.quantity)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 text-sm md:grid-cols-2">
+                      <DetailMini label="Tổng dịch vụ bổ sung" value={formatMoney(extraServiceTotal)} />
+                      <DetailMini label="Phụ thu" value={formatMoney(invoiceExtraTotal)} />
+                      <DetailMini label="Voucher / giảm giá" value={`-${formatMoney(discountAmount)}`} />
+                      <DetailMini label="Cần thu khi checkout" value={formatMoney(checkoutAmountDue)} />
                     </div>
                   </div>
 
@@ -950,6 +1111,194 @@ function DetailMini({ label, value }: { label: string; value: string }) {
   );
 }
 
+function PrintInvoice({
+  booking,
+  customerName,
+  roomName,
+  roomTypeName,
+  includedServices,
+  extraServices,
+  invoiceRoomTotal,
+  extraServiceTotal,
+  invoiceExtraTotal,
+  discountAmount,
+  paidAmount,
+  remainingAmount,
+  refundAmount,
+  paymentMethod,
+}: {
+  booking: RoomBookingResponse;
+  customerName: string;
+  roomName: string;
+  roomTypeName?: string;
+  includedServices: ServiceOrderDetailResponse[];
+  extraServices: ServiceOrderDetailResponse[];
+  invoiceRoomTotal: number;
+  extraServiceTotal: number;
+  invoiceExtraTotal: number;
+  discountAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  refundAmount: number;
+  paymentMethod: string;
+}) {
+  const invoiceTotal =
+    invoiceRoomTotal + extraServiceTotal + invoiceExtraTotal - discountAmount;
+
+  return (
+    <div className="booking-invoice-print">
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 24 }}>
+        <div>
+          <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 3 }}>
+            CONTINENTAL HOTEL
+          </div>
+          <div style={{ marginTop: 6, fontSize: 13, color: "#555" }}>
+            Hóa đơn thanh toán lưu trú
+          </div>
+        </div>
+        <div style={{ textAlign: "right", fontSize: 13 }}>
+          <div style={{ fontWeight: 700 }}>Mã booking: {shortCode(booking.id)}</div>
+          <div>Ngày in: {formatDateTime(new Date().toISOString())}</div>
+          <div>Phương thức thu: {paymentMethod}</div>
+        </div>
+      </div>
+
+      <hr style={{ margin: "24px 0", border: 0, borderTop: "1px solid #ddd" }} />
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, fontSize: 13 }}>
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Thông tin khách</div>
+          <div>Khách: {customerName}</div>
+          <div>SĐT: {booking.customerPhone || "-"}</div>
+          <div>CCCD / hộ chiếu: {booking.customerIdentityNumber || "-"}</div>
+        </div>
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Thông tin phòng</div>
+          <div>Phòng: {roomName}</div>
+          <div>Loại phòng: {roomTypeName || "-"}</div>
+          <div>Nhận phòng: {formatDateTime(booking.checkin)}</div>
+          <div>Trả phòng: {formatDateTime(booking.checkout)}</div>
+        </div>
+      </div>
+
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 24, fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: "#f5efe5" }}>
+            <th style={printTh}>Khoản mục</th>
+            <th style={printTh}>SL</th>
+            <th style={{ ...printTh, textAlign: "right" }}>Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <PrintRow
+            name="Tiền phòng"
+            note={`${formatDateTime(booking.checkin)} - ${formatDateTime(booking.checkout)}`}
+            quantity="1"
+            amount={formatMoney(invoiceRoomTotal)}
+          />
+          {includedServices.map((item) => (
+            <PrintRow
+              key={`print-included-${item.id}`}
+              name={item.serviceName || "Dịch vụ kèm phòng"}
+              note="Miễn phí / kèm phòng"
+              quantity={String(item.quantity)}
+              amount="0 đ"
+            />
+          ))}
+          {extraServices.map((item) => (
+            <PrintRow
+              key={`print-extra-${item.id}`}
+              name={item.serviceName || "Dịch vụ bổ sung"}
+              note={servicePaymentStatusLabel[item.paymentStatus ?? "POST_TO_ROOM"]}
+              quantity={String(item.quantity)}
+              amount={formatMoney(item.totalPrice || item.price * item.quantity)}
+            />
+          ))}
+        </tbody>
+      </table>
+
+      <div style={{ marginTop: 24, marginLeft: "auto", width: 320, fontSize: 13 }}>
+        <PrintTotal label="Tiền phòng" value={formatMoney(invoiceRoomTotal)} />
+        <PrintTotal label="Dịch vụ bổ sung" value={formatMoney(extraServiceTotal)} />
+        <PrintTotal label="Phụ thu" value={formatMoney(invoiceExtraTotal)} />
+        <PrintTotal label="Giảm giá" value={`-${formatMoney(discountAmount)}`} />
+        <PrintTotal label="Tổng bill" value={formatMoney(invoiceTotal)} strong />
+        <PrintTotal label="Đã thu" value={formatMoney(paidAmount)} />
+        <PrintTotal label="Còn phải thu" value={formatMoney(remainingAmount)} strong />
+        <PrintTotal label="Hoàn tiền nếu có" value={formatMoney(refundAmount)} />
+      </div>
+
+      <div style={{ marginTop: 48, display: "flex", justifyContent: "space-between" }}>
+        <div style={{ textAlign: "center", width: 220 }}>
+          <div style={{ fontWeight: 700 }}>Khách hàng</div>
+          <div style={{ marginTop: 72 }}>(Ký, ghi rõ họ tên)</div>
+        </div>
+        <div style={{ textAlign: "center", width: 220 }}>
+          <div style={{ fontWeight: 700 }}>Lễ tân</div>
+          <div style={{ marginTop: 72 }}>(Ký, ghi rõ họ tên)</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const printTh: CSSProperties = {
+  border: "1px solid #ddd",
+  padding: "10px",
+  textAlign: "left",
+};
+
+function PrintRow({
+  name,
+  note,
+  quantity,
+  amount,
+}: {
+  name: string;
+  note?: string;
+  quantity: string;
+  amount: string;
+}) {
+  return (
+    <tr>
+      <td style={{ border: "1px solid #ddd", padding: "10px" }}>
+        <div style={{ fontWeight: 700 }}>{name}</div>
+        {note ? <div style={{ color: "#666", fontSize: 12 }}>{note}</div> : null}
+      </td>
+      <td style={{ border: "1px solid #ddd", padding: "10px" }}>{quantity}</td>
+      <td style={{ border: "1px solid #ddd", padding: "10px", textAlign: "right", fontWeight: 700 }}>
+        {amount}
+      </td>
+    </tr>
+  );
+}
+
+function PrintTotal({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        borderBottom: "1px solid #eee",
+        padding: "8px 0",
+        fontWeight: strong ? 800 : 500,
+        fontSize: strong ? 15 : 13,
+      }}
+    >
+      <span>{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
 function CheckoutLine({
   label,
   value,
@@ -1063,6 +1412,24 @@ function formatCustomerName(customer: UserSummaryResponse | null) {
   if (!customer) return "";
   const fullName = [customer.firstName, customer.lastName].filter(Boolean).join(" ");
   return fullName || customer.username || customer.email || "";
+}
+
+function formatOfflineSource(source?: string) {
+  if (!source) return "-";
+  if (source === "WALK_IN") return "Walk-in";
+  if (source === "PHONE") return "Qua điện thoại";
+  return source;
+}
+
+function formatPaymentMethod(method?: string) {
+  if (!method) return "-";
+  const labels: Record<string, string> = {
+    CASH: "Tiền mặt",
+    CARD: "Thẻ",
+    BANK_TRANSFER: "Chuyển khoản",
+    ONLINE_PAYMENT: "Thanh toán online",
+  };
+  return labels[method] ?? method;
 }
 
 function formatBookingStatus(status?: string) {

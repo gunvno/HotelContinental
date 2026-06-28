@@ -55,6 +55,13 @@ const primaryNav = [
     allowedRoles: ["ROLE_ADMIN", "ROLE_MANAGER"],
   },
   {
+    label: "Phòng trống",
+    href: "/rooms/availability",
+    icon: DoorOpen,
+    requiredPermission: "ROOM_VIEW",
+    allowedRoles: ["ROLE_MANAGER", "ROLE_RECEPTIONIST"],
+  },
+  {
     label: "Phòng",
     href: "/rooms",
     icon: BedDouble,
@@ -409,7 +416,11 @@ function NavGroup({
           const active =
             item.href === "/"
               ? pathname === item.href
-              : pathname.startsWith(item.href);
+              : item.href === "/rooms"
+                ? pathname === "/rooms" || pathname.startsWith("/rooms/")
+                  ? !pathname.startsWith("/rooms/availability")
+                  : false
+                : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
@@ -436,6 +447,7 @@ function NavGroup({
 function getPathTitle(pathname: string) {
   if (pathname === "/") return "Bảng điều khiển";
   if (pathname.startsWith("/operations")) return "Bảng công việc vận hành";
+  if (pathname.startsWith("/rooms/availability")) return "Phòng trống";
   if (pathname.startsWith("/rooms")) return "Quản lý phòng";
   if (pathname.startsWith("/housekeeping")) return "Dọn phòng";
   if (pathname.startsWith("/admin/room-types")) return "Loại phòng";
